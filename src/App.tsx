@@ -1,6 +1,10 @@
 import { useState, useMemo } from 'react';
 import type { SimulationInput } from './types';
 import { runSimulation } from './logic/simulator';
+import { useAuth } from './contexts/AuthContext';
+import LoginForm from './components/auth/LoginForm';
+import RegisterForm from './components/auth/RegisterForm';
+import ResetPassword from './components/auth/ResetPassword';
 import InputForm from './components/InputForm';
 import ResultSummary from './components/ResultSummary';
 import BalanceChart from './components/BalanceChart';
@@ -36,18 +40,56 @@ const defaultInput: SimulationInput = {
 };
 
 function App() {
+  const { user, loading, signOut } = useAuth();
+  const [authView, setAuthView] = useState<'login' | 'register' | 'reset'>('login');
   const [input, setInput] = useState<SimulationInput>(defaultInput);
   const [showTable, setShowTable] = useState(false);
 
   const result = useMemo(() => runSimulation(input), [input]);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-sm text-gray-500">読み込み中...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    if (authView === 'register') {
+      return <RegisterForm onSwitchToLogin={() => setAuthView('login')} />;
+    }
+    if (authView === 'reset') {
+      return <ResetPassword onSwitchToLogin={() => setAuthView('login')} />;
+    }
+    return (
+      <LoginForm
+        onSwitchToRegister={() => setAuthView('register')}
+        onSwitchToReset={() => setAuthView('reset')}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-4 py-3">
-        <h1 className="text-lg font-bold text-gray-800">
-          セミリタイア ライフ・マネー・シミュレーション
-        </h1>
-        <p className="text-xs text-gray-500">Semi-Retire Life & Money Simulator</p>
+      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-bold text-gray-800">
+            セミリタイア ライフ・マネー・シミュレーション
+          </h1>
+          <p className="text-xs text-gray-500">Semi-Retire Life & Money Simulator</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-600">
+            {user.user_metadata?.full_name || user.email}
+          </span>
+          <button
+            onClick={signOut}
+            className="text-xs text-gray-500 hover:text-gray-700 border border-gray-300 rounded px-2 py-1"
+          >
+            ログアウト
+          </button>
+        </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
