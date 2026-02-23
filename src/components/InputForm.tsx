@@ -143,6 +143,7 @@ export default function InputForm({ input, onChange }: Props) {
       </Section>
 
       <Section title="7. 生活費減少" defaultOpen={false}>
+        <NumberField label="減額開始年齢" value={input.reductionStartAge} onChange={(v) => update('reductionStartAge', v)} unit="歳" />
         <NumberField label="減額間隔" value={input.reductionInterval} onChange={(v) => update('reductionInterval', v)} unit="年" />
         <PercentField label="減少率" value={input.reductionRate} onChange={(v) => update('reductionRate', v)} />
       </Section>

@@ -43,6 +43,7 @@ export interface SimulationInput {
   inflationRate: number;     // 想定インフレ率 e.g. 0.02
 
   // 7. 生活費減少
+  reductionStartAge: number; // 減額開始年齢 e.g. 70
   reductionInterval: number; // 減額間隔(年)
   reductionRate: number;     // 減少率 e.g. 0.10
 

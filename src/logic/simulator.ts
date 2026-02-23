@@ -43,17 +43,17 @@ function calcRetirementIncome(
 
 /**
  * Check if the given age triggers a living expense reduction.
- * Reduction happens at retireAge + interval*1, retireAge + interval*2, ..., retireAge + interval*7
+ * Reduction happens at startAge, startAge + interval, startAge + interval*2, ...
  */
 function getReductionFactor(
   age: number,
-  retireAge: number,
+  startAge: number,
   interval: number,
   reductionRate: number,
 ): number {
-  if (interval <= 0) return 1;
-  for (let n = 1; n <= 7; n++) {
-    if (age === retireAge + interval * n) {
+  if (interval <= 0 || age < startAge) return 1;
+  for (let n = 0; n <= 7; n++) {
+    if (age === startAge + interval * n) {
       return 1 - reductionRate;
     }
   }
@@ -82,6 +82,7 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     investmentTaxRate,
     taxFreeRatio,
     inflationRate,
+    reductionStartAge,
     reductionInterval,
     reductionRate,
     oneTimeEvents,
@@ -152,7 +153,7 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     cashBal += positiveOneTime;
 
     // O: Living expense (with inflation and reduction)
-    const rf = getReductionFactor(age, retireAge, reductionInterval, reductionRate);
+    const rf = getReductionFactor(age, reductionStartAge, reductionInterval, reductionRate);
     let livingExpense: number;
     if (isFirstRow) {
       livingExpense = annualLivingExpense * rf;

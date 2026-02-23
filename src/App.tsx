@@ -29,6 +29,7 @@ const defaultInput: SimulationInput = {
   investmentTaxRate: 0.20,
   taxFreeRatio: 0,
   inflationRate: 0.02,
+  reductionStartAge: 70,
   reductionInterval: 10,
   reductionRate: 0.10,
   oneTimeEvents: Array.from({ length: 5 }, () => ({ name: '', amount: 0, age: 0 })),
