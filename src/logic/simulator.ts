@@ -104,6 +104,7 @@ export function runSimulation(input: SimulationInput): SimulationResult {
 
   // Track 4 asset boxes and depletion
   let depletionAge: number | null = null;
+  let totalUnmetExpense = 0; // Cumulative expenses that couldn't be covered
   let taxableBal = taxableAssets;
   let nisaBal = nisaAssets;
   let idecoBal = idecoAssets;
@@ -248,6 +249,7 @@ export function runSimulation(input: SimulationInput): SimulationResult {
 
       preTaxExpense = totalWithdrawn;
       unmetExpense = remaining; // > 0 means assets couldn't cover full expenses
+      totalUnmetExpense += unmetExpense;
     }
 
     // Floor balances at 0 after retirement
@@ -297,11 +299,10 @@ export function runSimulation(input: SimulationInput): SimulationResult {
   const retireRow = rows.find(r => r.age === retireAge);
   const assetsAtRetirement = retireRow ? retireRow.startBalance : 0;
   const requiredAssets = rows.reduce((sum, r) => sum + r.presentValue, 0);
-  // When assets deplete, surplus is forced negative (shortage = requiredAssets - assetsAtRetirement)
-  // even if the PV-based calculation shows a positive number
+  // When assets deplete, use cumulative unmet expenses as the true shortage
   let surplus: number;
   if (depletionAge !== null) {
-    surplus = Math.min(assetsAtRetirement - requiredAssets, -1);
+    surplus = -totalUnmetExpense;
   } else {
     surplus = assetsAtRetirement - requiredAssets;
   }
