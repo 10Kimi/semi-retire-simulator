@@ -68,15 +68,17 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     currentAge,
     retireAge,
     deathAge,
-    currentAssets,
+    investmentAssets,
+    cashAssets,
     annualLivingExpense,
     legacyAmount,
     monthlyInvestment,
-    savingsGrowthRate,
+    monthlyCashSavings,
     savingsStartAge,
     savingsEndAge,
     preRetirementROI,
     postRetirementROI,
+    cashInterestRate,
     taxRate,
     inflationRate,
     reductionInterval,
@@ -91,6 +93,10 @@ export function runSimulation(input: SimulationInput): SimulationResult {
   const rows: AnnualRow[] = [];
   const currentYear = new Date().getFullYear();
 
+  // Track investment and cash balances separately
+  let investBal = investmentAssets;
+  let cashBal = cashAssets;
+
   for (let i = 0; i < totalYears; i++) {
     const age = currentAge + i;
     const year = currentYear + i;
@@ -99,31 +105,52 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     const isDead = age > deathAge;
     const monthFraction = isFirstRow ? remainingMonths / 12 : 1;
 
-    // L: Start balance
-    const startBalance = isFirstRow ? currentAssets : rows[i - 1].endBalance;
+    // L: Start balance (combined)
+    const startBalance = investBal + cashBal;
 
-    // M: Savings + negative one-time events
-    // Excel: M4 = D15*12*(1+0)/12*(12-MONTH), M5+ = D15*12*(1+D16) (flat, no compounding)
-    let savings = 0;
+    // M: Savings (investment + cash)
+    let investSavings = 0;
+    let cashSavings = 0;
     if (age >= savingsStartAge && age < savingsEndAge) {
       if (isFirstRow) {
-        savings = monthlyInvestment * 12 * monthFraction;
+        investSavings = monthlyInvestment * 12 * monthFraction;
+        cashSavings = monthlyCashSavings * 12 * monthFraction;
       } else {
-        savings = monthlyInvestment * 12 * (1 + savingsGrowthRate);
+        investSavings = monthlyInvestment * 12;
+        cashSavings = monthlyCashSavings * 12;
       }
     }
-    // Add negative one-time events to savings column
+    investBal += investSavings;
+    cashBal += cashSavings;
+
+    // Negative one-time events: withdraw from cash first
     const negativeOneTime = oneTimeEvents
       .filter(e => e.age === age && e.amount < 0)
-      .reduce((sum, e) => sum + e.amount, 0);
-    savings += negativeOneTime;
+      .reduce((sum, e) => sum + e.amount, 0); // negative value
+    if (negativeOneTime < 0) {
+      const withdrawal = -negativeOneTime;
+      const fromCash = Math.min(withdrawal, cashBal);
+      cashBal -= fromCash;
+      investBal -= (withdrawal - fromCash);
+    }
 
-    // N: Investment return
-    const roi = isRetired ? postRetirementROI : preRetirementROI;
-    const investmentReturn = startBalance * roi * monthFraction;
+    const savings = investSavings + cashSavings + negativeOneTime;
+
+    // N: Investment return (different rates for investment vs cash)
+    const investROI = isRetired ? postRetirementROI : preRetirementROI;
+    const investReturn = investBal * investROI * monthFraction;
+    const cashReturn = cashBal * cashInterestRate * monthFraction;
+    investBal += investReturn;
+    cashBal += cashReturn;
+    const investmentReturn = investReturn + cashReturn;
+
+    // Positive one-time events: add to cash
+    const positiveOneTime = oneTimeEvents
+      .filter(e => e.age === age && e.amount > 0)
+      .reduce((sum, e) => sum + e.amount, 0);
+    cashBal += positiveOneTime;
 
     // O: Living expense (with inflation and reduction)
-    // Excel: O4 = D11*AB4, O5+ = O_prev*(1+D25)*AB
     const rf = getReductionFactor(age, retireAge, reductionInterval, reductionRate);
     let livingExpense: number;
     if (isFirstRow) {
@@ -137,10 +164,6 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     for (const inc of retirementIncomes) {
       retirementIncome += calcRetirementIncome(inc, age, retireAge, isFirstRow);
     }
-    // Add positive one-time events to income column
-    const positiveOneTime = oneTimeEvents
-      .filter(e => e.age === age && e.amount > 0)
-      .reduce((sum, e) => sum + e.amount, 0);
     retirementIncome += positiveOneTime;
 
     // Q: Net expense (only after retirement)
@@ -151,17 +174,24 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     if (isDead) {
       preTaxExpense = 0;
     } else if (netExpense < 0) {
-      // Income exceeds expenses, "negative expense" passed through
+      // Income exceeds expenses — add surplus to cash
       preTaxExpense = netExpense;
+      cashBal -= netExpense; // netExpense is negative, so this adds to cash
     } else if (isRetired && netExpense >= 0) {
       preTaxExpense = netExpense / (1 - taxRate);
+      // Withdraw from cash first, then investment
+      const fromCash = Math.min(preTaxExpense, cashBal);
+      cashBal -= fromCash;
+      investBal -= (preTaxExpense - fromCash);
     }
 
-    // S: End balance
-    let endBalance = startBalance + savings + investmentReturn - preTaxExpense;
+    // Floor balances at 0 after retirement
     if (isRetired) {
-      endBalance = Math.max(0, endBalance);
+      investBal = Math.max(0, investBal);
+      cashBal = Math.max(0, cashBal);
     }
+
+    const endBalance = investBal + cashBal;
 
     // Present value placeholder (calculated in second pass)
     rows.push({

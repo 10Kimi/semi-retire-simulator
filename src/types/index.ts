@@ -19,19 +19,21 @@ export interface SimulationInput {
   deathAge: number;          // 死亡想定年齢
 
   // 2. リタイア計画
-  currentAssets: number;     // 現在の金融資産総額
+  investmentAssets: number;  // 現在の投資資産額
+  cashAssets: number;        // 現在の現金資産額
   annualLivingExpense: number; // リタイア後の生活費(年額)
   legacyAmount: number;      // 死亡時に残したい金額
 
-  // 3. 貯蓄
-  monthlyInvestment: number; // 毎月の投資可能額
-  savingsGrowthRate: number; // 年利(貯蓄成長率) e.g. 0.05
-  savingsStartAge: number;   // 貯蓄開始年齢
-  savingsEndAge: number;     // 貯蓄終了年齢
+  // 3. 毎月の積立
+  monthlyInvestment: number; // 毎月の投資額
+  monthlyCashSavings: number; // 毎月の現金貯蓄額
+  savingsStartAge: number;   // 積立開始年齢
+  savingsEndAge: number;     // 積立終了年齢
 
-  // 4. ROI
-  preRetirementROI: number;  // リタイア前ROI e.g. 0.03
-  postRetirementROI: number; // リタイア後ROI e.g. 0.05
+  // 4. ROI（利回り）
+  preRetirementROI: number;  // 投資 リタイア前ROI e.g. 0.05
+  postRetirementROI: number; // 投資 リタイア後ROI e.g. 0.03
+  cashInterestRate: number;  // 現金貯蓄 利率 e.g. 0.001
 
   // 5. 税金
   taxRate: number;           // セミリタイア期間の税率 e.g. 0.05
