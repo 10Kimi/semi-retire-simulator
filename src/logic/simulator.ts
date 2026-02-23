@@ -202,6 +202,7 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     // R: Withdrawal from 4 boxes
     // Order: 1.NISA(tax-free) → 2.iDeCo(60+, tax-free) → 3.Taxable(taxed) → 4.Cash(tax-free)
     let preTaxExpense = 0;
+    let unmetExpense = 0; // Track expenses that couldn't be covered
     if (isDead) {
       preTaxExpense = 0;
     } else if (netExpense < 0) {
@@ -213,14 +214,14 @@ export function runSimulation(input: SimulationInput): SimulationResult {
       let totalWithdrawn = 0;
 
       // 1. NISA (tax-free)
-      const fromNisa = Math.min(remaining, nisaBal);
+      const fromNisa = Math.min(remaining, Math.max(0, nisaBal));
       nisaBal -= fromNisa;
       remaining -= fromNisa;
       totalWithdrawn += fromNisa;
 
       // 2. iDeCo (60+ only, tax-free)
       if (age >= 60) {
-        const fromIdeco = Math.min(remaining, idecoBal);
+        const fromIdeco = Math.min(remaining, Math.max(0, idecoBal));
         idecoBal -= fromIdeco;
         remaining -= fromIdeco;
         totalWithdrawn += fromIdeco;
@@ -229,7 +230,7 @@ export function runSimulation(input: SimulationInput): SimulationResult {
       // 3. Taxable (taxed — need to withdraw extra to cover tax)
       if (remaining > 0) {
         const grossTaxable = remaining / (1 - investmentTaxRate);
-        const fromTaxable = Math.min(grossTaxable, taxableBal);
+        const fromTaxable = Math.min(grossTaxable, Math.max(0, taxableBal));
         taxableBal -= fromTaxable;
         // How much of netExpense did this cover?
         const netCovered = fromTaxable * (1 - investmentTaxRate);
@@ -239,17 +240,15 @@ export function runSimulation(input: SimulationInput): SimulationResult {
 
       // 4. Cash (last resort, tax-free)
       if (remaining > 0) {
-        const fromCash = Math.min(remaining, cashBal);
+        const fromCash = Math.min(remaining, Math.max(0, cashBal));
         cashBal -= fromCash;
         remaining -= fromCash;
         totalWithdrawn += fromCash;
       }
 
       preTaxExpense = totalWithdrawn;
+      unmetExpense = remaining; // > 0 means assets couldn't cover full expenses
     }
-
-    // Compute raw balance before flooring (for depletion detection)
-    const rawBalance = taxableBal + nisaBal + idecoBal + cashBal;
 
     // Floor balances at 0 after retirement
     if (isRetired) {
@@ -277,8 +276,8 @@ export function runSimulation(input: SimulationInput): SimulationResult {
       isDead,
     });
 
-    // Track depletion: raw balance went negative
-    if (depletionAge === null && isRetired && rawBalance < 0) {
+    // Track depletion: expenses couldn't be fully covered from all 4 boxes
+    if (depletionAge === null && isRetired && unmetExpense > 0.01) {
       depletionAge = age;
     }
   }
