@@ -102,7 +102,8 @@ export function runSimulation(input: SimulationInput): SimulationResult {
   const NISA_MONTHLY_CAP = 300000; // 月30万円 (年360万円)
   const NISA_CUMULATIVE_CAP = 18000000; // 累計1,800万円
 
-  // Track 4 asset boxes
+  // Track 4 asset boxes and depletion
+  let depletionAge: number | null = null;
   let taxableBal = taxableAssets;
   let nisaBal = nisaAssets;
   let idecoBal = idecoAssets;
@@ -247,6 +248,9 @@ export function runSimulation(input: SimulationInput): SimulationResult {
       preTaxExpense = totalWithdrawn;
     }
 
+    // Compute raw balance before flooring (for depletion detection)
+    const rawBalance = taxableBal + nisaBal + idecoBal + cashBal;
+
     // Floor balances at 0 after retirement
     if (isRetired) {
       taxableBal = Math.max(0, taxableBal);
@@ -272,6 +276,11 @@ export function runSimulation(input: SimulationInput): SimulationResult {
       isRetired,
       isDead,
     });
+
+    // Track depletion: raw balance went negative
+    if (depletionAge === null && isRetired && rawBalance < 0) {
+      depletionAge = age;
+    }
   }
 
   // Second pass: calculate present values (AK column)
@@ -297,20 +306,28 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     additionalMonthly = monthsUntilRetire > 0 ? -surplus / monthsUntilRetire : 0;
   }
 
-  let achievementScore: number;
-  if (requiredAssets < 0) {
-    // Special case: required assets negative means income exceeds expenses
-    achievementScore = 1.5;
+  let scorePercent: number;
+  if (depletionAge !== null) {
+    // Assets depleted: score based on how long they lasted
+    const yearsLasted = depletionAge - retireAge;
+    const totalRetirementYears = deathAge - retireAge;
+    scorePercent = totalRetirementYears > 0
+      ? Math.min((yearsLasted / totalRetirementYears) * 100, 99.9) // cap below 100
+      : 0;
+  } else if (requiredAssets < 0) {
+    scorePercent = 150;
   } else if (requiredAssets === 0) {
-    achievementScore = assetsAtRetirement > 0 ? 1.5 : 0;
+    scorePercent = assetsAtRetirement > 0 ? 150 : 0;
   } else {
-    achievementScore = assetsAtRetirement / requiredAssets;
+    scorePercent = Math.min(assetsAtRetirement / requiredAssets, 1.5) * 100;
   }
 
-  const scorePercent = Math.min(achievementScore, 1.5) * 100;
+  const achievementScore = scorePercent / 100;
 
   let message: string;
-  if (scorePercent >= 150) {
+  if (depletionAge !== null) {
+    message = `${depletionAge}歳で資産が枯渇します。計画の見直しが必要です。`;
+  } else if (scorePercent >= 150) {
     message = '余裕のリタイア計画です！';
   } else if (scorePercent >= 120) {
     message = 'かなり安心できる計画です。';
@@ -333,5 +350,6 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     achievementScore,
     scorePercent,
     message,
+    depletionAge,
   };
 }

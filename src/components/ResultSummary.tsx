@@ -19,10 +19,22 @@ export default function ResultSummary({ result }: Props) {
     additionalMonthly,
     scorePercent,
     message,
+    depletionAge,
   } = result;
 
   return (
     <div className="space-y-4">
+      {depletionAge !== null && (
+        <div className="bg-red-100 border border-red-300 rounded-lg p-3">
+          <div className="text-sm font-bold text-red-700">
+            {depletionAge}歳で資産が枯渇します
+          </div>
+          <div className="text-xs text-red-600 mt-1">
+            生活費の見直し、追加収入、またはリタイア時期の延期を検討してください。
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="bg-blue-50 rounded-lg p-3">
           <div className="text-xs text-blue-600 font-medium">リタイア時形成資産</div>

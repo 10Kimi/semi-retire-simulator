@@ -86,4 +86,5 @@ export interface SimulationResult {
   achievementScore: number;    // 達成度スコア
   scorePercent: number;        // 達成度パーセント (max 150%)
   message: string;             // 達成メッセージ
+  depletionAge: number | null; // 資産枯渇年齢 (null = 枯渇しない)
 }
