@@ -297,7 +297,14 @@ export function runSimulation(input: SimulationInput): SimulationResult {
   const retireRow = rows.find(r => r.age === retireAge);
   const assetsAtRetirement = retireRow ? retireRow.startBalance : 0;
   const requiredAssets = rows.reduce((sum, r) => sum + r.presentValue, 0);
-  const surplus = assetsAtRetirement - requiredAssets;
+  // When assets deplete, surplus is forced negative (shortage = requiredAssets - assetsAtRetirement)
+  // even if the PV-based calculation shows a positive number
+  let surplus: number;
+  if (depletionAge !== null) {
+    surplus = Math.min(assetsAtRetirement - requiredAssets, -1);
+  } else {
+    surplus = assetsAtRetirement - requiredAssets;
+  }
 
   let additionalMonthly = 0;
   if (surplus < 0) {
