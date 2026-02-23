@@ -110,19 +110,23 @@ export default function InputForm({ input, onChange }: Props) {
         <NumberField label="死亡想定年齢" value={input.deathAge} onChange={(v) => update('deathAge', v)} unit="歳" />
       </Section>
 
-      <Section title="2. リタイア計画">
-        <NumberField label="現在の投資資産額" value={input.investmentAssets / 10000} onChange={(v) => update('investmentAssets', v * 10000)} unit="万円" step={10} />
-        <NumberField label="現在の現金資産額" value={input.cashAssets / 10000} onChange={(v) => update('cashAssets', v * 10000)} unit="万円" step={10} />
+      <Section title="2. 現在の資産">
+        <NumberField label="課税口座" value={input.taxableAssets / 10000} onChange={(v) => update('taxableAssets', v * 10000)} unit="万円" step={10} />
+        <NumberField label="NISA口座" value={input.nisaAssets / 10000} onChange={(v) => update('nisaAssets', v * 10000)} unit="万円" step={10} />
+        <NumberField label="iDeCo口座" value={input.idecoAssets / 10000} onChange={(v) => update('idecoAssets', v * 10000)} unit="万円" step={10} />
+        <NumberField label="現金" value={input.cashAssets / 10000} onChange={(v) => update('cashAssets', v * 10000)} unit="万円" step={10} />
         <p className="text-sm text-gray-600 bg-gray-50 rounded px-3 py-2">
-          金融資産総額: <span className="font-bold">{((input.investmentAssets + input.cashAssets) / 10000).toLocaleString()}</span> 万円
+          金融資産総額: <span className="font-bold">{((input.taxableAssets + input.nisaAssets + input.idecoAssets + input.cashAssets) / 10000).toLocaleString()}</span> 万円
         </p>
         <NumberField label="リタイア後生活費(年額)" value={input.annualLivingExpense / 10000} onChange={(v) => update('annualLivingExpense', v * 10000)} unit="万円" step={1} />
         <NumberField label="死亡時に残したい金額" value={input.legacyAmount / 10000} onChange={(v) => update('legacyAmount', v * 10000)} unit="万円" step={10} />
       </Section>
 
       <Section title="3. 毎月の積立">
-        <NumberField label="毎月の投資額" value={input.monthlyInvestment / 10000} onChange={(v) => update('monthlyInvestment', v * 10000)} unit="万円" step={1} />
-        <NumberField label="毎月の現金貯蓄額" value={input.monthlyCashSavings / 10000} onChange={(v) => update('monthlyCashSavings', v * 10000)} unit="万円" step={1} />
+        <NumberField label="課税口座への積立額" value={input.monthlyTaxable / 10000} onChange={(v) => update('monthlyTaxable', v * 10000)} unit="万円" step={1} />
+        <NumberField label="NISA口座への積立額" value={input.monthlyNisa / 10000} onChange={(v) => update('monthlyNisa', v * 10000)} unit="万円" step={1} />
+        <NumberField label="iDeCoへの積立額" value={input.monthlyIdeco / 10000} onChange={(v) => update('monthlyIdeco', v * 10000)} unit="万円" step={1} />
+        <NumberField label="現金貯蓄額" value={input.monthlyCash / 10000} onChange={(v) => update('monthlyCash', v * 10000)} unit="万円" step={1} />
         <NumberField label="積立開始年齢" value={input.savingsStartAge} onChange={(v) => update('savingsStartAge', v)} unit="歳" />
         <NumberField label="積立終了年齢" value={input.savingsEndAge} onChange={(v) => update('savingsEndAge', v)} unit="歳" />
       </Section>
@@ -130,12 +134,12 @@ export default function InputForm({ input, onChange }: Props) {
       <Section title="4. ROI（利回り）" defaultOpen={false}>
         <PercentField label="投資 リタイア前ROI" value={input.preRetirementROI} onChange={(v) => update('preRetirementROI', v)} />
         <PercentField label="投資 リタイア後ROI" value={input.postRetirementROI} onChange={(v) => update('postRetirementROI', v)} />
-        <PercentField label="現金貯蓄 利率" value={input.cashInterestRate} onChange={(v) => update('cashInterestRate', v)} />
+        <PercentField label="現金利率" value={input.cashInterestRate} onChange={(v) => update('cashInterestRate', v)} />
       </Section>
 
       <Section title="5. 税金" defaultOpen={false}>
         <PercentField label="投資の取り崩し時税率" value={input.investmentTaxRate} onChange={(v) => update('investmentTaxRate', v)} />
-        <PercentField label="非課税投資の割合" value={input.taxFreeRatio} onChange={(v) => update('taxFreeRatio', v)} />
+        <p className="text-xs text-gray-500">※ 課税口座からの取り崩し時のみ適用。NISA・iDeCoは非課税。</p>
       </Section>
 
       <Section title="6. インフレ" defaultOpen={false}>

@@ -68,19 +68,22 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     currentAge,
     retireAge,
     deathAge,
-    investmentAssets,
+    taxableAssets,
+    nisaAssets,
+    idecoAssets,
     cashAssets,
     annualLivingExpense,
     legacyAmount,
-    monthlyInvestment,
-    monthlyCashSavings,
+    monthlyTaxable,
+    monthlyNisa,
+    monthlyIdeco,
+    monthlyCash,
     savingsStartAge,
     savingsEndAge,
     preRetirementROI,
     postRetirementROI,
     cashInterestRate,
     investmentTaxRate,
-    taxFreeRatio,
     inflationRate,
     reductionStartAge,
     reductionInterval,
@@ -91,13 +94,20 @@ export function runSimulation(input: SimulationInput): SimulationResult {
   } = input;
 
   const remainingMonths = 12 - currentMonth;
-  const totalYears = deathAge - currentAge + 1; // include death year
+  const totalYears = deathAge - currentAge + 1;
   const rows: AnnualRow[] = [];
   const currentYear = new Date().getFullYear();
 
-  // Track investment and cash balances separately
-  let investBal = investmentAssets;
+  // NISA constraints
+  const NISA_MONTHLY_CAP = 300000; // 月30万円 (年360万円)
+  const NISA_CUMULATIVE_CAP = 18000000; // 累計1,800万円
+
+  // Track 4 asset boxes
+  let taxableBal = taxableAssets;
+  let nisaBal = nisaAssets;
+  let idecoBal = idecoAssets;
   let cashBal = cashAssets;
+  let nisaCumulativeContribution = nisaAssets; // track cumulative NISA contributions
 
   for (let i = 0; i < totalYears; i++) {
     const age = currentAge + i;
@@ -108,43 +118,66 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     const monthFraction = isFirstRow ? remainingMonths / 12 : 1;
 
     // L: Start balance (combined)
-    const startBalance = investBal + cashBal;
+    const startBalance = taxableBal + nisaBal + idecoBal + cashBal;
 
-    // M: Savings (investment + cash)
-    let investSavings = 0;
-    let cashSavings = 0;
+    // M: Savings with NISA constraints
+    let taxableSav = 0;
+    let nisaSav = 0;
+    let idecoSav = 0;
+    let cashSav = 0;
+
     if (age >= savingsStartAge && age < savingsEndAge) {
-      if (isFirstRow) {
-        investSavings = monthlyInvestment * 12 * monthFraction;
-        cashSavings = monthlyCashSavings * 12 * monthFraction;
-      } else {
-        investSavings = monthlyInvestment * 12;
-        cashSavings = monthlyCashSavings * 12;
-      }
-    }
-    investBal += investSavings;
-    cashBal += cashSavings;
+      const mf = isFirstRow ? monthFraction : 1;
 
-    // Negative one-time events: withdraw from cash first
+      // NISA: apply monthly cap and cumulative cap
+      let effectiveMonthlyNisa = Math.min(monthlyNisa, NISA_MONTHLY_CAP);
+      let nisaAnnual = effectiveMonthlyNisa * 12 * mf;
+      // Check cumulative cap
+      if (nisaCumulativeContribution + nisaAnnual > NISA_CUMULATIVE_CAP) {
+        const nisaRoom = Math.max(0, NISA_CUMULATIVE_CAP - nisaCumulativeContribution);
+        const overflow = nisaAnnual - nisaRoom;
+        nisaAnnual = nisaRoom;
+        // Overflow goes to taxable
+        taxableSav += overflow;
+      }
+      nisaCumulativeContribution += nisaAnnual;
+      nisaSav = nisaAnnual;
+
+      taxableSav += monthlyTaxable * 12 * mf;
+      idecoSav = monthlyIdeco * 12 * mf;
+      cashSav = monthlyCash * 12 * mf;
+    }
+
+    taxableBal += taxableSav;
+    nisaBal += nisaSav;
+    idecoBal += idecoSav;
+    cashBal += cashSav;
+
+    // Negative one-time events: withdraw from cash first, then taxable
     const negativeOneTime = oneTimeEvents
       .filter(e => e.age === age && e.amount < 0)
-      .reduce((sum, e) => sum + e.amount, 0); // negative value
+      .reduce((sum, e) => sum + e.amount, 0);
     if (negativeOneTime < 0) {
-      const withdrawal = -negativeOneTime;
-      const fromCash = Math.min(withdrawal, cashBal);
-      cashBal -= fromCash;
-      investBal -= (withdrawal - fromCash);
+      let w = -negativeOneTime;
+      const fc = Math.min(w, cashBal); cashBal -= fc; w -= fc;
+      const ft = Math.min(w, taxableBal); taxableBal -= ft; w -= ft;
+      const fn = Math.min(w, nisaBal); nisaBal -= fn; w -= fn;
+      idecoBal -= w; // last resort
     }
 
-    const savings = investSavings + cashSavings + negativeOneTime;
+    const savings = taxableSav + nisaSav + idecoSav + cashSav + negativeOneTime;
 
-    // N: Investment return (different rates for investment vs cash)
+    // N: Investment return (ROI for investment accounts, cash rate for cash)
     const investROI = isRetired ? postRetirementROI : preRetirementROI;
-    const investReturn = investBal * investROI * monthFraction;
+    const taxableReturn = taxableBal * investROI * monthFraction;
+    const nisaReturn = nisaBal * investROI * monthFraction;
+    const idecoReturn = idecoBal * investROI * monthFraction;
     const cashReturn = cashBal * cashInterestRate * monthFraction;
-    investBal += investReturn;
+    taxableBal += taxableReturn;
+    nisaBal += nisaReturn;
+    idecoBal += idecoReturn;
     cashBal += cashReturn;
-    const investmentReturn = investReturn + cashReturn;
+    const investmentReturn = taxableReturn + nisaReturn + idecoReturn + cashReturn;
 
     // Positive one-time events: add to cash
     const positiveOneTime = oneTimeEvents
@@ -171,40 +204,65 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     // Q: Net expense (only after retirement)
     const netExpense = isRetired ? livingExpense - retirementIncome : 0;
 
-    // R: Pre-tax expense (cash = tax-free, investment = taxed)
+    // R: Withdrawal from 4 boxes
+    // Order: 1.NISA(tax-free) → 2.iDeCo(60+, tax-free) → 3.Taxable(taxed) → 4.Cash(tax-free)
     let preTaxExpense = 0;
     if (isDead) {
       preTaxExpense = 0;
     } else if (netExpense < 0) {
       // Income exceeds expenses — add surplus to cash
       preTaxExpense = netExpense;
-      cashBal -= netExpense; // netExpense is negative, so this adds to cash
+      cashBal -= netExpense;
     } else if (isRetired && netExpense >= 0) {
-      // Withdraw from cash first (no tax)
-      const fromCash = Math.min(netExpense, cashBal);
-      cashBal -= fromCash;
-      const remainingNeed = netExpense - fromCash;
+      let remaining = netExpense;
+      let totalWithdrawn = 0;
 
-      // Remaining from investment (with tax)
-      let investWithdrawal = 0;
-      if (remainingNeed > 0) {
-        const effectiveTaxRate = investmentTaxRate * (1 - taxFreeRatio);
-        investWithdrawal = remainingNeed / (1 - effectiveTaxRate);
-        investBal -= investWithdrawal;
+      // 1. NISA (tax-free)
+      const fromNisa = Math.min(remaining, nisaBal);
+      nisaBal -= fromNisa;
+      remaining -= fromNisa;
+      totalWithdrawn += fromNisa;
+
+      // 2. iDeCo (60+ only, tax-free)
+      if (age >= 60) {
+        const fromIdeco = Math.min(remaining, idecoBal);
+        idecoBal -= fromIdeco;
+        remaining -= fromIdeco;
+        totalWithdrawn += fromIdeco;
       }
 
-      preTaxExpense = fromCash + investWithdrawal;
+      // 3. Taxable (taxed — need to withdraw extra to cover tax)
+      if (remaining > 0) {
+        const grossTaxable = remaining / (1 - investmentTaxRate);
+        const fromTaxable = Math.min(grossTaxable, taxableBal);
+        taxableBal -= fromTaxable;
+        // How much of netExpense did this cover?
+        const netCovered = fromTaxable * (1 - investmentTaxRate);
+        remaining -= netCovered;
+        totalWithdrawn += fromTaxable;
+      }
+
+      // 4. Cash (last resort, tax-free)
+      if (remaining > 0) {
+        const fromCash = Math.min(remaining, cashBal);
+        cashBal -= fromCash;
+        remaining -= fromCash;
+        totalWithdrawn += fromCash;
+      }
+
+      preTaxExpense = totalWithdrawn;
     }
 
     // Floor balances at 0 after retirement
     if (isRetired) {
-      investBal = Math.max(0, investBal);
+      taxableBal = Math.max(0, taxableBal);
+      nisaBal = Math.max(0, nisaBal);
+      idecoBal = Math.max(0, idecoBal);
       cashBal = Math.max(0, cashBal);
     }
 
-    const endBalance = investBal + cashBal;
+    const endBalance = taxableBal + nisaBal + idecoBal + cashBal;
 
-    // Present value placeholder (calculated in second pass)
     rows.push({
       year,
       age,

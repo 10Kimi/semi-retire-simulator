@@ -18,26 +18,29 @@ export interface SimulationInput {
   retireAge: number;         // セミリタイア予定年齢
   deathAge: number;          // 死亡想定年齢
 
-  // 2. リタイア計画
-  investmentAssets: number;  // 現在の投資資産額
-  cashAssets: number;        // 現在の現金資産額
+  // 2. 現在の資産
+  taxableAssets: number;     // 課税口座
+  nisaAssets: number;        // NISA口座
+  idecoAssets: number;       // iDeCo口座
+  cashAssets: number;        // 現金
   annualLivingExpense: number; // リタイア後の生活費(年額)
   legacyAmount: number;      // 死亡時に残したい金額
 
   // 3. 毎月の積立
-  monthlyInvestment: number; // 毎月の投資額
-  monthlyCashSavings: number; // 毎月の現金貯蓄額
+  monthlyTaxable: number;    // 課税口座への積立額
+  monthlyNisa: number;       // NISA口座への積立額
+  monthlyIdeco: number;      // iDeCoへの積立額
+  monthlyCash: number;       // 現金貯蓄額
   savingsStartAge: number;   // 積立開始年齢
   savingsEndAge: number;     // 積立終了年齢
 
   // 4. ROI（利回り）
   preRetirementROI: number;  // 投資 リタイア前ROI e.g. 0.05
   postRetirementROI: number; // 投資 リタイア後ROI e.g. 0.03
-  cashInterestRate: number;  // 現金貯蓄 利率 e.g. 0.001
+  cashInterestRate: number;  // 現金利率 e.g. 0.001
 
   // 5. 税金
-  investmentTaxRate: number; // 投資の取り崩し時税率 e.g. 0.20
-  taxFreeRatio: number;      // 非課税投資の割合 e.g. 0 (NISA/iDeCo等)
+  investmentTaxRate: number; // 課税口座の取り崩し時税率 e.g. 0.20
 
   // 6. インフレ
   inflationRate: number;     // 想定インフレ率 e.g. 0.02
