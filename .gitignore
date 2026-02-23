@@ -28,9 +28,15 @@ dist-ssr
 
 # Test/debug files
 *.txt
+!requirements.txt
 test_sim.mjs
 excel_reference.py
 formulas_output.txt
+
+# Environment files (secrets)
+.env
+scripts/market/.env
+scripts/market/.venv/
 
 # Claude
 .claude/
