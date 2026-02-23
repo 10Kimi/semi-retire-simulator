@@ -93,9 +93,9 @@ function App() {
       </header>
 
       <main className="max-w-7xl mx-auto px-3 py-4 md:px-4 md:py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 md:gap-6">
           {/* Left: Input Form */}
-          <div className="lg:col-span-1">
+          <div className="xl:col-span-1">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
               <h2 className="text-sm font-bold text-gray-700 mb-3">入力パラメータ</h2>
               <InputForm input={input} onChange={setInput} />
@@ -103,7 +103,7 @@ function App() {
           </div>
 
           {/* Right: Results */}
-          <div className="lg:col-span-2 space-y-4 md:space-y-6">
+          <div className="xl:col-span-2 space-y-4 md:space-y-6">
             {/* Achievement Gauge */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
               <h2 className="text-sm font-bold text-gray-700 mb-3">達成度メーター</h2>
