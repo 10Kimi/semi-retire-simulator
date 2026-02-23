@@ -46,16 +46,16 @@ export default function ResultSummary({ result }: Props) {
         </div>
       </div>
 
-      <div className={`rounded-lg p-3 ${surplus >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-        <div className={`text-xs font-medium ${surplus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-          {surplus >= 0 ? '余裕額' : '不足額'}
+      <div className={`rounded-lg p-3 ${depletionAge !== null || surplus < 0 ? 'bg-red-50' : 'bg-green-50'}`}>
+        <div className={`text-xs font-medium ${depletionAge !== null || surplus < 0 ? 'text-red-600' : 'text-green-600'}`}>
+          {depletionAge !== null || surplus < 0 ? '不足額' : '余裕額'}
         </div>
-        <div className={`text-base md:text-lg font-bold ${surplus >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+        <div className={`text-base md:text-lg font-bold ${depletionAge !== null || surplus < 0 ? 'text-red-800' : 'text-green-800'}`}>
           {formatYen(Math.abs(surplus))}
         </div>
       </div>
 
-      {surplus < 0 && (
+      {(depletionAge !== null || surplus < 0) && (
         <div className="bg-orange-50 rounded-lg p-3">
           <div className="text-xs text-orange-600 font-medium">毎月の追加投資必要額</div>
           <div className="text-base md:text-lg font-bold text-orange-800">
