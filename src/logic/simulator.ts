@@ -79,7 +79,8 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     preRetirementROI,
     postRetirementROI,
     cashInterestRate,
-    taxRate,
+    investmentTaxRate,
+    taxFreeRatio,
     inflationRate,
     reductionInterval,
     reductionRate,
@@ -169,7 +170,7 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     // Q: Net expense (only after retirement)
     const netExpense = isRetired ? livingExpense - retirementIncome : 0;
 
-    // R: Pre-tax expense
+    // R: Pre-tax expense (cash = tax-free, investment = taxed)
     let preTaxExpense = 0;
     if (isDead) {
       preTaxExpense = 0;
@@ -178,11 +179,20 @@ export function runSimulation(input: SimulationInput): SimulationResult {
       preTaxExpense = netExpense;
       cashBal -= netExpense; // netExpense is negative, so this adds to cash
     } else if (isRetired && netExpense >= 0) {
-      preTaxExpense = netExpense / (1 - taxRate);
-      // Withdraw from cash first, then investment
-      const fromCash = Math.min(preTaxExpense, cashBal);
+      // Withdraw from cash first (no tax)
+      const fromCash = Math.min(netExpense, cashBal);
       cashBal -= fromCash;
-      investBal -= (preTaxExpense - fromCash);
+      const remainingNeed = netExpense - fromCash;
+
+      // Remaining from investment (with tax)
+      let investWithdrawal = 0;
+      if (remainingNeed > 0) {
+        const effectiveTaxRate = investmentTaxRate * (1 - taxFreeRatio);
+        investWithdrawal = remainingNeed / (1 - effectiveTaxRate);
+        investBal -= investWithdrawal;
+      }
+
+      preTaxExpense = fromCash + investWithdrawal;
     }
 
     // Floor balances at 0 after retirement

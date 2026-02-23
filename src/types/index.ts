@@ -36,7 +36,8 @@ export interface SimulationInput {
   cashInterestRate: number;  // 現金貯蓄 利率 e.g. 0.001
 
   // 5. 税金
-  taxRate: number;           // セミリタイア期間の税率 e.g. 0.05
+  investmentTaxRate: number; // 投資の取り崩し時税率 e.g. 0.20
+  taxFreeRatio: number;      // 非課税投資の割合 e.g. 0 (NISA/iDeCo等)
 
   // 6. インフレ
   inflationRate: number;     // 想定インフレ率 e.g. 0.02

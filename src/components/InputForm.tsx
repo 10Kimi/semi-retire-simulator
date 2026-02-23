@@ -134,7 +134,8 @@ export default function InputForm({ input, onChange }: Props) {
       </Section>
 
       <Section title="5. 税金" defaultOpen={false}>
-        <PercentField label="セミリタイア期間の税率" value={input.taxRate} onChange={(v) => update('taxRate', v)} />
+        <PercentField label="投資の取り崩し時税率" value={input.investmentTaxRate} onChange={(v) => update('investmentTaxRate', v)} />
+        <PercentField label="非課税投資の割合" value={input.taxFreeRatio} onChange={(v) => update('taxFreeRatio', v)} />
       </Section>
 
       <Section title="6. インフレ" defaultOpen={false}>
