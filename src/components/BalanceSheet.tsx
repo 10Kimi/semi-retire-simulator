@@ -13,7 +13,8 @@ function formatMoney(value: number): string {
 export default function BalanceSheet({ rows, retireAge }: Props) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-xs border-collapse">
+      <p className="text-xs text-gray-400 mb-1 md:hidden">← スクロールできます →</p>
+      <table className="w-full min-w-[600px] text-xs border-collapse">
         <thead>
           <tr className="bg-gray-100">
             <th className="px-2 py-1.5 text-center border border-gray-200 whitespace-nowrap">年</th>

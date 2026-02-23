@@ -68,7 +68,7 @@ export default function ResetPassword({ onSwitchToLogin }: Props) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white rounded py-2 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+            className="w-full bg-blue-600 text-white rounded py-3 md:py-2 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 min-h-[44px]"
           >
             {loading ? '送信中...' : 'リセットリンクを送信'}
           </button>

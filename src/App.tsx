@@ -72,28 +72,28 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+      <header className="bg-white border-b border-gray-200 px-3 py-2 md:px-4 md:py-3 flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-lg font-bold text-gray-800">
+          <h1 className="text-sm md:text-lg font-bold text-gray-800">
             セミリタイア ライフ・マネー・シミュレーション
           </h1>
-          <p className="text-xs text-gray-500">Semi-Retire Life & Money Simulator</p>
+          <p className="text-xs text-gray-500 hidden sm:block">Semi-Retire Life & Money Simulator</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-gray-600 hidden md:inline">
             {user.user_metadata?.full_name || user.email}
           </span>
           <button
             onClick={signOut}
-            className="text-xs text-gray-500 hover:text-gray-700 border border-gray-300 rounded px-2 py-1"
+            className="text-xs text-gray-500 hover:text-gray-700 border border-gray-300 rounded px-3 py-2 md:px-2 md:py-1 min-h-[44px] md:min-h-0"
           >
             ログアウト
           </button>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <main className="max-w-7xl mx-auto px-3 py-4 md:px-4 md:py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Left: Input Form */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
@@ -103,7 +103,7 @@ function App() {
           </div>
 
           {/* Right: Results */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 md:space-y-6">
             {/* Achievement Gauge */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
               <h2 className="text-sm font-bold text-gray-700 mb-3">達成度メーター</h2>
@@ -128,7 +128,7 @@ function App() {
                 <h2 className="text-sm font-bold text-gray-700">年次バランスシート</h2>
                 <button
                   onClick={() => setShowTable(!showTable)}
-                  className="text-xs text-blue-600 hover:text-blue-800"
+                  className="text-xs text-blue-600 hover:text-blue-800 min-h-[44px] flex items-center px-2"
                 >
                   {showTable ? '非表示' : '表示する'}
                 </button>

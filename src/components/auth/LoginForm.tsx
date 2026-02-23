@@ -60,14 +60,14 @@ export default function LoginForm({ onSwitchToRegister, onSwitchToReset }: Props
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white rounded py-2 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+            className="w-full bg-blue-600 text-white rounded py-3 md:py-2 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 min-h-[44px]"
           >
             {loading ? 'ログイン中...' : 'ログイン'}
           </button>
         </form>
 
         <div className="mt-4 text-center space-y-2">
-          <button onClick={onSwitchToReset} className="text-xs text-blue-600 hover:text-blue-800 block mx-auto">
+          <button onClick={onSwitchToReset} className="text-xs text-blue-600 hover:text-blue-800 block mx-auto py-2 min-h-[44px]">
             パスワードを忘れた方
           </button>
           <p className="text-xs text-gray-500">

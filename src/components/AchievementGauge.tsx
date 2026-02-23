@@ -15,7 +15,7 @@ export default function AchievementGauge({ scorePercent }: Props) {
 
   return (
     <div className="w-full">
-      <div className="relative h-6 bg-gray-200 rounded-full overflow-hidden">
+      <div className="relative h-8 md:h-6 bg-gray-200 rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${getColor()}`}
           style={{ width: `${barWidth}%` }}
