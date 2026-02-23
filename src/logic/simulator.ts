@@ -153,17 +153,11 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     idecoBal += idecoSav;
     cashBal += cashSav;
 
-    // Negative one-time events: withdraw from cash first, then taxable
+    // Negative one-time events: deduct from cash
     const negativeOneTime = oneTimeEvents
       .filter(e => e.age === age && e.amount < 0)
       .reduce((sum, e) => sum + e.amount, 0);
-    if (negativeOneTime < 0) {
-      let w = -negativeOneTime;
-      const fc = Math.min(w, cashBal); cashBal -= fc; w -= fc;
-      const ft = Math.min(w, taxableBal); taxableBal -= ft; w -= ft;
-      const fn = Math.min(w, nisaBal); nisaBal -= fn; w -= fn;
-      idecoBal -= w; // last resort
-    }
+    cashBal += negativeOneTime; // negativeOneTime is negative, so this subtracts
 
     const savings = taxableSav + nisaSav + idecoSav + cashSav + negativeOneTime;
 

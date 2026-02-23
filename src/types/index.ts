@@ -5,6 +5,7 @@ export interface OneTimeEvent {
 }
 
 export interface RetirementIncome {
+  name: string;
   monthlyAmount: number;
   startAge: number;
   endAge: number;

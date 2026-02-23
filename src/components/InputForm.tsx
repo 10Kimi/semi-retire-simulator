@@ -118,11 +118,14 @@ export default function InputForm({ input, onChange }: Props) {
         <p className="text-sm text-gray-600 bg-gray-50 rounded px-3 py-2">
           金融資産総額: <span className="font-bold">{((input.taxableAssets + input.nisaAssets + input.idecoAssets + input.cashAssets) / 10000).toLocaleString()}</span> 万円
         </p>
+      </Section>
+
+      <Section title="3. 生活設計">
         <NumberField label="リタイア後生活費(年額)" value={input.annualLivingExpense / 10000} onChange={(v) => update('annualLivingExpense', v * 10000)} unit="万円" step={1} />
         <NumberField label="死亡時に残したい金額" value={input.legacyAmount / 10000} onChange={(v) => update('legacyAmount', v * 10000)} unit="万円" step={10} />
       </Section>
 
-      <Section title="3. 毎月の積立">
+      <Section title="4. 毎月の積立">
         <NumberField label="課税口座への積立額" value={input.monthlyTaxable / 10000} onChange={(v) => update('monthlyTaxable', v * 10000)} unit="万円" step={1} />
         <NumberField label="NISA口座への積立額" value={input.monthlyNisa / 10000} onChange={(v) => update('monthlyNisa', v * 10000)} unit="万円" step={1} />
         <NumberField label="iDeCoへの積立額" value={input.monthlyIdeco / 10000} onChange={(v) => update('monthlyIdeco', v * 10000)} unit="万円" step={1} />
@@ -131,29 +134,30 @@ export default function InputForm({ input, onChange }: Props) {
         <NumberField label="積立終了年齢" value={input.savingsEndAge} onChange={(v) => update('savingsEndAge', v)} unit="歳" />
       </Section>
 
-      <Section title="4. ROI（利回り）" defaultOpen={false}>
+      <Section title="5. ROI（利回り）" defaultOpen={false}>
         <PercentField label="投資 リタイア前ROI" value={input.preRetirementROI} onChange={(v) => update('preRetirementROI', v)} />
         <PercentField label="投資 リタイア後ROI" value={input.postRetirementROI} onChange={(v) => update('postRetirementROI', v)} />
         <PercentField label="現金利率" value={input.cashInterestRate} onChange={(v) => update('cashInterestRate', v)} />
       </Section>
 
-      <Section title="5. 税金" defaultOpen={false}>
+      <Section title="6. 税金" defaultOpen={false}>
         <PercentField label="投資の取り崩し時税率" value={input.investmentTaxRate} onChange={(v) => update('investmentTaxRate', v)} />
         <p className="text-xs text-gray-500">※ 課税口座からの取り崩し時のみ適用。NISA・iDeCoは非課税。</p>
       </Section>
 
-      <Section title="6. インフレ" defaultOpen={false}>
+      <Section title="7. インフレ" defaultOpen={false}>
         <PercentField label="想定インフレ率" value={input.inflationRate} onChange={(v) => update('inflationRate', v)} />
       </Section>
 
-      <Section title="7. 生活費減少" defaultOpen={false}>
+      <Section title="8. 生活費減少" defaultOpen={false}>
         <NumberField label="減額開始年齢" value={input.reductionStartAge} onChange={(v) => update('reductionStartAge', v)} unit="歳" />
         <NumberField label="減額間隔" value={input.reductionInterval} onChange={(v) => update('reductionInterval', v)} unit="年" />
         <PercentField label="減少率" value={input.reductionRate} onChange={(v) => update('reductionRate', v)} />
       </Section>
 
-      <Section title="8. 一時収支" defaultOpen={false}>
+      <Section title="9. 一時収支" defaultOpen={false}>
         <p className="text-xs text-gray-500 mb-2">正の金額 = 収入、負の金額 = 支出</p>
+        <p className="text-xs text-gray-400 mb-2">※ 一時収支は現金に反映されます</p>
         <div className="space-y-2">
           {input.oneTimeEvents.map((event, i) => (
             <div key={i} className="flex flex-col gap-2 md:flex-row md:items-center md:flex-wrap">
@@ -190,11 +194,21 @@ export default function InputForm({ input, onChange }: Props) {
         </div>
       </Section>
 
-      <Section title="9. リタイア後収入" defaultOpen={false}>
+      <Section title="10. リタイア後収入" defaultOpen={false}>
         <div className="space-y-4">
           {input.retirementIncomes.map((inc, i) => (
             <div key={i} className="border border-gray-100 rounded p-3 bg-gray-50 space-y-2">
               <div className="text-xs font-semibold text-gray-600">収入 {i + 1}</div>
+              <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-2">
+                <label className="text-xs text-gray-600 min-w-[70px] md:min-w-[100px]">名前</label>
+                <input
+                  type="text"
+                  placeholder="例: 年金、配当"
+                  value={inc.name}
+                  onChange={(e) => updateRetirementIncome(i, 'name', e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-2 text-sm w-full md:w-36 min-h-[44px] md:min-h-0"
+                />
+              </div>
               <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-2">
                 <label className="text-xs text-gray-600 min-w-[70px] md:min-w-[100px]">月額</label>
                 <div className="flex items-center gap-2">

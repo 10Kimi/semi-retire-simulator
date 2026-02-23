@@ -37,6 +37,7 @@ const defaultInput: SimulationInput = {
   reductionRate: 0.10,
   oneTimeEvents: Array.from({ length: 5 }, () => ({ name: '', amount: 0, age: 0 })),
   retirementIncomes: Array.from({ length: 5 }, () => ({
+    name: '',
     monthlyAmount: 0,
     startAge: 0,
     endAge: 0,
