@@ -36,6 +36,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             >
               リスク診断
             </Link>
+            <Link
+              to="/portfolio-diagnosis"
+              className={`text-xs md:text-sm px-2 py-1 md:px-3 md:py-1.5 rounded-md font-medium transition-colors ${
+                location.pathname.startsWith('/portfolio-diagnosis')
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
+              }`}
+            >
+              PF診断
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-3 shrink-0">

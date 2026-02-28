@@ -137,3 +137,48 @@ export async function loadCurrentMarketData(): Promise<MarketDataRecord | null> 
 
   return data as MarketDataRecord;
 }
+
+// ── Parsed Market Data for Portfolio Diagnosis ──
+
+export interface ParsedMarketData {
+  assetReturns: Record<string, number>;
+  assetRisks: Record<string, number>;
+  correlationMatrix: Record<string, Record<string, number>>;
+}
+
+/**
+ * market_data テーブルからPF診断に必要なパラメータを取得・パースして返す。
+ * データが無い場合は null を返す（呼び出し元がフォールバック値を使う）。
+ */
+export async function loadMarketDataForDiagnosis(): Promise<ParsedMarketData | null> {
+  const record = await loadCurrentMarketData();
+  if (!record) return null;
+
+  try {
+    const assetReturns = typeof record.asset_returns === 'string'
+      ? JSON.parse(record.asset_returns)
+      : record.asset_returns;
+
+    const assetRisks = typeof record.asset_risks === 'string'
+      ? JSON.parse(record.asset_risks)
+      : record.asset_risks;
+
+    const correlationMatrix = typeof record.correlation_matrix === 'string'
+      ? JSON.parse(record.correlation_matrix)
+      : record.correlation_matrix;
+
+    // 最低限のバリデーション: 各オブジェクトが空でないこと
+    if (
+      !assetReturns || Object.keys(assetReturns).length === 0 ||
+      !assetRisks || Object.keys(assetRisks).length === 0 ||
+      !correlationMatrix || Object.keys(correlationMatrix).length === 0
+    ) {
+      return null;
+    }
+
+    return { assetReturns, assetRisks, correlationMatrix };
+  } catch (e) {
+    console.error('Failed to parse market data for diagnosis:', e);
+    return null;
+  }
+}
