@@ -19,7 +19,7 @@ export default function RegisterForm({ onSwitchToLogin }: Props) {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const { error } = await signUp(name, email, password);
+    const { error } = await signUp(email, password);
     if (error) {
       setError(error.message);
     } else {
