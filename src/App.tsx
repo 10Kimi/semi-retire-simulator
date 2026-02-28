@@ -2,9 +2,10 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import AuthGatePage from './pages/AuthGatePage';
 import SimulatorPage from './pages/SimulatorPage';
-import AssessmentPage from './pages/AssessmentPage';
-import PortfolioDiagnosisPage from './pages/PortfolioDiagnosisPage';
-import PortfolioDiagnosisResultPage from './pages/PortfolioDiagnosisResultPage';
+// 有料版で復活予定
+// import AssessmentPage from './pages/AssessmentPage';
+// import PortfolioDiagnosisPage from './pages/PortfolioDiagnosisPage';
+// import PortfolioDiagnosisResultPage from './pages/PortfolioDiagnosisResultPage';
 
 function App() {
   const { user, loading } = useAuth();
@@ -32,9 +33,10 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<SimulatorPage />} />
-      <Route path="/assessment" element={<AssessmentPage />} />
-      <Route path="/portfolio-diagnosis" element={<PortfolioDiagnosisPage />} />
-      <Route path="/portfolio-diagnosis/result" element={<PortfolioDiagnosisResultPage />} />
+      {/* 有料版で復活予定 */}
+      {/* <Route path="/assessment" element={<AssessmentPage />} /> */}
+      {/* <Route path="/portfolio-diagnosis" element={<PortfolioDiagnosisPage />} /> */}
+      {/* <Route path="/portfolio-diagnosis/result" element={<PortfolioDiagnosisResultPage />} /> */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
