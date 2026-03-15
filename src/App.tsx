@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { useAuth } from './contexts/AuthContext';
 import AuthGatePage from './pages/AuthGatePage';
 import SimulatorPage from './pages/SimulatorPage';
@@ -13,32 +14,48 @@ function App() {
   // 読み込み中はローディング表示
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-sm text-gray-500">読み込み中...</p>
-      </div>
+      <>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <p className="text-sm text-gray-500">読み込み中...</p>
+        </div>
+        <Analytics />
+      </>
     );
   }
 
   // 未ログイン → 認証ゲート画面（マーケティングコピー + タブ切り替えフォーム）
   if (!user) {
-    return <AuthGatePage />;
+    return (
+      <>
+        <AuthGatePage />
+        <Analytics />
+      </>
+    );
   }
 
   // メール確認がまだの場合 → 確認を促す画面
   if (!user.email_confirmed_at) {
-    return <EmailConfirmationPending email={user.email ?? ''} />;
+    return (
+      <>
+        <EmailConfirmationPending email={user.email ?? ''} />
+        <Analytics />
+      </>
+    );
   }
 
   // ログイン済み＆メール確認済み → シミュレーターを表示
   return (
-    <Routes>
-      <Route path="/" element={<SimulatorPage />} />
-      {/* 有料版で復活予定 */}
-      {/* <Route path="/assessment" element={<AssessmentPage />} /> */}
-      {/* <Route path="/portfolio-diagnosis" element={<PortfolioDiagnosisPage />} /> */}
-      {/* <Route path="/portfolio-diagnosis/result" element={<PortfolioDiagnosisResultPage />} /> */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<SimulatorPage />} />
+        {/* 有料版で復活予定 */}
+        {/* <Route path="/assessment" element={<AssessmentPage />} /> */}
+        {/* <Route path="/portfolio-diagnosis" element={<PortfolioDiagnosisPage />} /> */}
+        {/* <Route path="/portfolio-diagnosis/result" element={<PortfolioDiagnosisResultPage />} /> */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <Analytics />
+    </>
   );
 }
 

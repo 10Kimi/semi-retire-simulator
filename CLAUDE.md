@@ -1,88 +1,57 @@
-# Claude Instructions for GTM Engineering Projects
+# セミリタイア・シミュレーター
 
-## Who I Am
+## プロジェクト概要
+セミリタイアの資金計画をシミュレーションするWebアプリ。
+元のExcelシミュレーター（V4.2）をWeb化し、フリーミアムモデルで提供する。
+「セミリタイア資産運用パッケージ」の中核プロダクト。
 
-I am a non-technical builder working on Go-To-Market (GTM) engineering topics. I do not have a coding background. I understand business concepts, sales, marketing, and growth — but I need help with the technical side.
+- 本番URL: https://fire.largogk.jp
+- パッケージ全体設計書: ../Docs/semi-retire-package-design-v4_4.docx
+- パッケージ全体の判断文脈: ../../CLAUDE.md
 
-## How Claude Should Communicate With Me
+## ターゲット像
+- セミリタイアに憧れているが「自分には無理」と思っている人
+- 世帯年収1,500万〜4,000万円の日本人サラリーマン・共働き夫婦
+- 投資はしている（or始めたい）が、運用方針に自信がない
+- 「とりあえず積み立て」で利回りの根拠がない
 
-### Always Explain What You're Doing
+## コアバリュー
+リスク許容度 → PF構成 → 想定利回り → セミリタイア到達年数
+この因果関係を一気通貫で提供する。
+「根拠のない利回りで狼狽売り → 計画破綻」を防ぐのが核心価値。
 
-- Before writing any code or making any change, briefly explain what it is and why
-- Use plain English. Avoid jargon. If a technical term must be used, define it immediately
-- Think of me as a smart, curious non-developer — not a beginner who needs to be talked down to
+## ドメイン用語
+- **投資許容度（Tolerance）**: リスクをどこまで受け入れられるか（心理面）
+- **投資余力（Capacity）**: 実際に投資に回せる金額（家計面）
+- **4資産クラス**: 課税口座・NISA・iDeCo・現金（取り崩し優先順位あり）
+- **認証ゲート**: 未認証ユーザーに価値提案→登録を促すページ
+- **ROI**: 無料版はユーザー手入力。有料版はリスク診断から自動導出
 
-### Use Analogies and Real-World Examples
+## 技術スタック
+- フロント: Vite + React + TypeScript
+- 認証・DB: Supabase（メール確認付き・日本語化済み）
+- ホスティング: Vercel
+- ドメイン: fire.largogk.jp（お名前.com DNS）
+- 決済（予定）: Stripe
 
-- Relate technical concepts to business or everyday concepts I already understand
-- Example: Instead of "this is an API call," say "this is like sending a request to a website and waiting for it to respond with data — similar to submitting a form and getting a confirmation email"
+## フォルダ構成
+- `reference/` — 元Excel V4.2、解析スクリプト、解析結果（加工前）
+- `src/logic/` — シミュレーション計算エンジン（Excel V4.2の再現）
+- `src/components/` — UIコンポーネント
+- `src/components/assessment/` — リスク診断系（有料版Phase 4）
+- `src/pages/` — ページ単位コンポーネント
+- `src/lib/` — Supabase接続
+- `scripts/market/` — 市場データ取得スクリプト
+- `supabase/` — DBマイグレーション
 
-### Show Your Work
+## 制約
+- Excel V4.2の計算ロジックを正確に再現すること
+- 無料版は計算エンジンをフル提供（出し惜しみしない）
+- 有料への導線は「機能制限」ではなく「判断基盤の提供」
+- コンサルへの導線は一切ない。ユーザーが全部自分でできる
+- 取り崩し優先順位: NISA → iDeCo（60歳以降）→ 課税口座 → 現金
 
-- Walk me through what each piece of code or configuration does, step by step
-- Add comments in any code you write (lines starting with // or #) explaining what each section does in plain English
-
-### Highlight the "So What"
-
-- Always connect technical steps to the business outcome
-- Example: "This script pulls lead data from HubSpot so your sales team sees updated contacts automatically — no manual exports needed"
-
-## Tips and Shortcuts to Help Me Move Faster
-
-### When I Ask for Something, Remind Me of Next Steps
-
-- After completing a task, always tell me what I should do next or what to watch out for
-- If there are common mistakes beginners make, flag them proactively
-
-### Suggest the Simplest Path First
-
-- Don't over-engineer. Start with the simplest solution that works
-- If there's a no-code or low-code alternative that's better for my skill level, mention it
-
-### Give Me Copy-Paste Ready Instructions
-
-- When I need to run something or configure something, give me the exact text to copy and paste
-- Label it clearly: "Copy and paste this exactly:" followed by the text in a code block
-
-## GTM Engineering Context
-
-### Topics I Work On
-
-- CRM integrations (HubSpot, Salesforce, etc.)
-- Lead routing and scoring
-- Sales and marketing automation
-- Data enrichment (tools like Clay, Apollo, Clearbit)
-- Outbound workflows and sequences
-- Website tracking and analytics (Google Tag Manager, GA4, etc.)
-- Revenue operations (RevOps) tooling
-- APIs that connect GTM tools together
-
-### My Goals
-
-- Automate repetitive GTM tasks
-- Connect tools so data flows between them without manual work
-- Build lightweight internal tools that help sales and marketing teams move faster
-- Understand enough about the technical layer to direct engineers or build simple things myself
-
-## Formatting Rules
-
-- Use bullet points and headers to keep responses scannable
-- Keep explanations short — I prefer 3 clear sentences over 1 paragraph of jargon
-- If code is involved, always include a plain-English summary above it
-- Use bold text to highlight the most important takeaway in each section
-
-## When I Get Stuck
-
-If I seem confused or ask a vague question:
-
-1. Ask me one clarifying question to understand what I'm actually trying to accomplish
-2. Reframe the problem in business terms before jumping to a solution
-3. Offer 2-3 simple options and explain the trade-offs in plain language
-
-### Example of the Tone I Want
-
-**Too technical:**
-"We'll instantiate a REST client, authenticate via OAuth2, and deserialize the JSON payload into a typed object."
-
-**Just right:**
-"We're going to connect to HubSpot's system, prove we have permission to access it (like logging in), and then grab the contact data in a format we can work with."
+## 現在のフェーズ
+- Phase 1-2 完了（無料版シミュレーター + 認証ゲート + コンテンツパイプライン）
+- 次の優先: Phase 3（ステップメール + note記事拡充 + X発信最適化）
+- 開発中: Phase 4（有料版リスク診断ツール）
