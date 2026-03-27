@@ -4,6 +4,7 @@ import { useAuth } from './contexts/AuthContext';
 import AuthGatePage from './pages/AuthGatePage';
 import SimulatorPage from './pages/SimulatorPage';
 import RiskSimplePage from './pages/RiskSimplePage';
+import PfDiagnosisSimplePage from './pages/PfDiagnosisSimplePage';
 // 有料版で復活予定
 // import AssessmentPage from './pages/AssessmentPage';
 // import PortfolioDiagnosisPage from './pages/PortfolioDiagnosisPage';
@@ -57,6 +58,7 @@ function App() {
       <Routes>
         <Route path="/" element={<SimulatorPage />} />
         <Route path="/risk" element={<RiskSimplePage />} />
+        <Route path="/pf" element={<PfDiagnosisSimplePage />} />
         {/* 有料版で復活予定 */}
         {/* <Route path="/assessment" element={<AssessmentPage />} /> */}
         {/* <Route path="/portfolio-diagnosis" element={<PortfolioDiagnosisPage />} /> */}
