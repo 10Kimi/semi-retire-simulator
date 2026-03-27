@@ -26,17 +26,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             >
               シミュレーション
             </Link>
-            {/* 有料版で復活予定: リスク診断 */}
-            {false && <Link
-              to="/assessment"
+            <Link
+              to="/risk"
               className={`text-xs md:text-sm px-2 py-1 md:px-3 md:py-1.5 rounded-md font-medium transition-colors ${
-                location.pathname === '/assessment'
+                location.pathname === '/risk'
                   ? 'bg-blue-50 text-blue-700'
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
               }`}
             >
               リスク診断
-            </Link>}
+            </Link>
             {/* 有料版で復活予定: PF診断 */}
             {false && <Link
               to="/portfolio-diagnosis"

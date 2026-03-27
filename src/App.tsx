@@ -3,6 +3,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { useAuth } from './contexts/AuthContext';
 import AuthGatePage from './pages/AuthGatePage';
 import SimulatorPage from './pages/SimulatorPage';
+import RiskSimplePage from './pages/RiskSimplePage';
 // 有料版で復活予定
 // import AssessmentPage from './pages/AssessmentPage';
 // import PortfolioDiagnosisPage from './pages/PortfolioDiagnosisPage';
@@ -23,31 +24,39 @@ function App() {
     );
   }
 
-  // 未ログイン → 認証ゲート画面（マーケティングコピー + タブ切り替えフォーム）
+  // /risk は認証不要（ページ内にメアドゲートあり）
+  // 未ログインでも /risk にはアクセス可
   if (!user) {
     return (
       <>
-        <AuthGatePage />
+        <Routes>
+          <Route path="/risk" element={<RiskSimplePage />} />
+          <Route path="*" element={<AuthGatePage />} />
+        </Routes>
         <Analytics />
       </>
     );
   }
 
-  // メール確認がまだの場合 → 確認を促す画面
+  // メール確認がまだの場合 → 確認を促す画面（ただし /risk は許可）
   if (!user.email_confirmed_at) {
     return (
       <>
-        <EmailConfirmationPending email={user.email ?? ''} />
+        <Routes>
+          <Route path="/risk" element={<RiskSimplePage />} />
+          <Route path="*" element={<EmailConfirmationPending email={user.email ?? ''} />} />
+        </Routes>
         <Analytics />
       </>
     );
   }
 
-  // ログイン済み＆メール確認済み → シミュレーターを表示
+  // ログイン済み＆メール確認済み → 全ルートにアクセス可
   return (
     <>
       <Routes>
         <Route path="/" element={<SimulatorPage />} />
+        <Route path="/risk" element={<RiskSimplePage />} />
         {/* 有料版で復活予定 */}
         {/* <Route path="/assessment" element={<AssessmentPage />} /> */}
         {/* <Route path="/portfolio-diagnosis" element={<PortfolioDiagnosisPage />} /> */}
