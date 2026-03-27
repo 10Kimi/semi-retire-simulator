@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { RiskSimpleResult } from '../../types/riskSimple';
 import { RISK_LEVEL_DEFS, getRiskLevelDef } from '../../logic/riskSimpleScoring';
 
@@ -23,6 +24,7 @@ function LevelBar({ level, label }: { level: number; label: string }) {
 
 export default function RiskResultDisplay({ result, onRetry }: Props) {
   const { capacityScore, toleranceScore, finalLevel, gapMessage, levelDef } = result;
+  const [showDetailedNotice, setShowDetailedNotice] = useState(false);
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -128,11 +130,16 @@ export default function RiskResultDisplay({ result, onRetry }: Props) {
           より正確なリスク許容度を判定します。
         </p>
         <button
-          disabled
-          className="px-6 py-2.5 bg-blue-200 text-blue-400 text-sm font-semibold rounded-lg cursor-not-allowed min-h-[44px]"
+          onClick={() => setShowDetailedNotice(true)}
+          className="px-6 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors min-h-[44px]"
         >
-          準備中
+          詳細版を試す
         </button>
+        {showDetailedNotice && (
+          <p className="mt-3 text-xs text-blue-700 bg-blue-100 rounded-lg px-4 py-2">
+            詳細版は近日公開予定です。公開時にメールでお知らせします。
+          </p>
+        )}
       </div>
 
       {/* やり直し */}
