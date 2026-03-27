@@ -1,12 +1,39 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import type { RiskAnswer } from '../../types/riskSimple';
+
+const STORAGE_KEY = 'risk_simple_answers';
+
+/** 回答データをlocalStorageに保存（OTP送信前に呼ぶ） */
+export function saveAnswersToStorage(answers: RiskAnswer[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
+  } catch { /* quota exceeded etc. — ignore */ }
+}
+
+/** localStorageから回答データを復元（マジックリンク着地時に呼ぶ） */
+export function loadAnswersFromStorage(): RiskAnswer[] | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as RiskAnswer[];
+  } catch {
+    return null;
+  }
+}
+
+/** 復元後にクリーンアップ */
+export function clearAnswersStorage() {
+  localStorage.removeItem(STORAGE_KEY);
+}
 
 interface Props {
+  answers: RiskAnswer[];
   onAuthenticated: () => void;
 }
 
-export default function RiskAuthGate({ onAuthenticated }: Props) {
+export default function RiskAuthGate({ answers, onAuthenticated }: Props) {
   const { user, signInWithOtp } = useAuth();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -23,7 +50,11 @@ export default function RiskAuthGate({ onAuthenticated }: Props) {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const { error } = await signInWithOtp(email);
+
+    // 回答をlocalStorageに保存してからOTP送信
+    saveAnswersToStorage(answers);
+
+    const { error } = await signInWithOtp(email, '/risk?show_result=1');
     if (error) {
       setError(error.message);
     } else {

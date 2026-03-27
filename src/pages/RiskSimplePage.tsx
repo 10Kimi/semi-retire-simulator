@@ -1,9 +1,14 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import RiskProgressBar from '../components/riskSimple/RiskProgressBar';
 import RiskQuestionStep from '../components/riskSimple/RiskQuestionStep';
 import RiskSectionTransition from '../components/riskSimple/RiskSectionTransition';
 import RiskAuthGate from '../components/riskSimple/RiskAuthGate';
+import {
+  loadAnswersFromStorage,
+  clearAnswersStorage,
+} from '../components/riskSimple/RiskAuthGate';
 import RiskResultDisplay from '../components/riskSimple/RiskResultDisplay';
 import {
   RISK_SIMPLE_QUESTIONS,
@@ -18,7 +23,8 @@ import type { RiskAnswer, RiskSimpleResult } from '../types/riskSimple';
 type Phase = 'questions' | 'section_transition' | 'auth_gate' | 'result';
 
 export default function RiskSimplePage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [phase, setPhase] = useState<Phase>('questions');
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -27,24 +33,41 @@ export default function RiskSimplePage() {
   );
   const [result, setResult] = useState<RiskSimpleResult | null>(null);
   const [saving, setSaving] = useState(false);
+  const [restored, setRestored] = useState(false);
 
   const currentQuestion = RISK_SIMPLE_QUESTIONS[questionIndex];
   const selectedAnswer = answers[questionIndex];
 
-  const handleSelect = useCallback(
-    (index: number, value: number) => {
-      setAnswers((prev) => {
-        const next = [...prev];
-        next[questionIndex] = {
-          questionId: currentQuestion.id,
-          selectedIndex: index,
-          value,
-        };
-        return next;
+  // マジックリンクから着地: ?show_result=1 + ログイン済み + localStorageに回答あり → 即結果表示
+  useEffect(() => {
+    if (authLoading || restored) return;
+    if (searchParams.get('show_result') !== '1') return;
+    if (!user) return;
+
+    const saved = loadAnswersFromStorage();
+    if (saved && saved.length === TOTAL_QUESTIONS) {
+      setRestored(true);
+      const res = calculateRiskSimpleResult(saved);
+      setResult(res);
+      setPhase('result');
+
+      // DB保存
+      setSaving(true);
+      saveRiskSimpleResult(
+        user.id,
+        res.capacityScore,
+        res.toleranceScore,
+        res.finalLevel,
+        saved
+      ).then(() => {
+        setSaving(false);
+        clearAnswersStorage();
       });
-    },
-    [questionIndex, currentQuestion]
-  );
+
+      // URLからクエリパラメータを除去
+      setSearchParams({}, { replace: true });
+    }
+  }, [authLoading, user, searchParams, restored, setSearchParams]);
 
   const showResult = useCallback(
     async (validAnswers: RiskAnswer[]) => {
@@ -66,6 +89,21 @@ export default function RiskSimplePage() {
       }
     },
     [user]
+  );
+
+  const handleSelect = useCallback(
+    (index: number, value: number) => {
+      setAnswers((prev) => {
+        const next = [...prev];
+        next[questionIndex] = {
+          questionId: currentQuestion.id,
+          selectedIndex: index,
+          value,
+        };
+        return next;
+      });
+    },
+    [questionIndex, currentQuestion]
   );
 
   const handleNext = useCallback(() => {
@@ -119,7 +157,19 @@ export default function RiskSimplePage() {
     setQuestionIndex(0);
     setAnswers(new Array(TOTAL_QUESTIONS).fill(null));
     setResult(null);
+    setRestored(false);
   }, []);
+
+  // マジックリンク着地中のローディング
+  if (authLoading && searchParams.get('show_result') === '1') {
+    return (
+      <Layout>
+        <main className="max-w-lg mx-auto px-4 py-20 text-center">
+          <p className="text-sm text-gray-500">ログインを確認中...</p>
+        </main>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -179,7 +229,10 @@ export default function RiskSimplePage() {
         )}
 
         {phase === 'auth_gate' && (
-          <RiskAuthGate onAuthenticated={handleAuthenticated} />
+          <RiskAuthGate
+            answers={answers.filter((a): a is RiskAnswer => a !== null)}
+            onAuthenticated={handleAuthenticated}
+          />
         )}
 
         {phase === 'result' && result && (

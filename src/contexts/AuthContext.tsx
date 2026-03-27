@@ -7,7 +7,7 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signInWithOtp: (email: string) => Promise<{ error: Error | null }>;
+  signInWithOtp: (email: string, redirectPath?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
 }
@@ -46,11 +46,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error as Error | null };
   };
 
-  const signInWithOtp = async (email: string) => {
+  const signInWithOtp = async (email: string, redirectPath?: string) => {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: window.location.origin + '/risk',
+        emailRedirectTo: window.location.origin + (redirectPath ?? '/risk'),
       },
     });
     return { error: error as Error | null };
