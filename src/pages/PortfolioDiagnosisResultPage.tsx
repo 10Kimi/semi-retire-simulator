@@ -52,7 +52,7 @@ export default function PortfolioDiagnosisResultPage() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h3 className="text-base font-bold text-gray-800 mb-4">
             {gapAnalysis.hasAssessment && assessedPortfolioAllocations
-              ? '現在のポートフォリオ vs 推奨ポートフォリオ'
+              ? '現在のポートフォリオ vs モデルポートフォリオ'
               : '現在の資産配分'}
           </h3>
 
@@ -64,7 +64,7 @@ export default function PortfolioDiagnosisResultPage() {
                 <AllocationChart allocations={diagnosisResult.allocations} />
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-600 text-center mb-2">推奨PF</div>
+                <div className="text-sm font-medium text-gray-600 text-center mb-2">モデルPF</div>
                 <AllocationChart allocations={assessedPortfolioAllocations} />
               </div>
             </div>
@@ -111,9 +111,9 @@ export default function PortfolioDiagnosisResultPage() {
         {/* 4. 比較テーブル（診断済みユーザーのみ） */}
         {gapAnalysis.hasAssessment && assessedPortfolioAllocations && improvements.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-base font-bold text-gray-800 mb-4">改善提案</h3>
+            <h3 className="text-base font-bold text-gray-800 mb-4">調整シミュレーション</h3>
             <p className="text-sm text-gray-600 mb-3">
-              推奨ポートフォリオに近づけるための調整（総資産: {diagnosisResult.totalAmount.toLocaleString()} 万円）
+              モデルポートフォリオに近づけるための調整（総資産: {diagnosisResult.totalAmount.toLocaleString()} 万円）
             </p>
 
             <div className="overflow-x-auto">
@@ -122,7 +122,7 @@ export default function PortfolioDiagnosisResultPage() {
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-2 text-gray-600 font-medium">資産クラス</th>
                     <th className="text-right py-2 text-gray-600 font-medium">現在</th>
-                    <th className="text-right py-2 text-gray-600 font-medium">推奨</th>
+                    <th className="text-right py-2 text-gray-600 font-medium">モデル</th>
                     <th className="text-right py-2 text-gray-600 font-medium">調整額</th>
                   </tr>
                 </thead>
@@ -151,7 +151,7 @@ export default function PortfolioDiagnosisResultPage() {
             {/* 売却・購入のサマリー */}
             <div className="mt-4 grid grid-cols-2 gap-3">
               <div className="bg-red-50 rounded-lg p-3">
-                <div className="text-xs text-red-600 font-medium">売却推奨</div>
+                <div className="text-xs text-red-600 font-medium">売却目安</div>
                 <div className="text-sm text-red-800 mt-1">
                   {improvements
                     .filter((i) => i.differenceAmount < 0)
@@ -160,7 +160,7 @@ export default function PortfolioDiagnosisResultPage() {
                 </div>
               </div>
               <div className="bg-green-50 rounded-lg p-3">
-                <div className="text-xs text-green-600 font-medium">購入推奨</div>
+                <div className="text-xs text-green-600 font-medium">購入目安</div>
                 <div className="text-sm text-green-800 mt-1">
                   {improvements
                     .filter((i) => i.differenceAmount > 0)

@@ -5,6 +5,7 @@ import AuthGatePage from './pages/AuthGatePage';
 import SimulatorPage from './pages/SimulatorPage';
 import RiskSimplePage from './pages/RiskSimplePage';
 import PfDiagnosisSimplePage from './pages/PfDiagnosisSimplePage';
+import MonthlyAdvisorPage from './pages/MonthlyAdvisorPage';
 // 有料版で復活予定
 // import AssessmentPage from './pages/AssessmentPage';
 // import PortfolioDiagnosisPage from './pages/PortfolioDiagnosisPage';
@@ -26,12 +27,13 @@ function App() {
   }
 
   // /risk は認証不要（ページ内にメアドゲートあり）
-  // 未ログインでも /risk にはアクセス可
+  // /ma は開発環境では認証不要（本番ではStripe連携後にゲート追加予定）
   if (!user) {
     return (
       <>
         <Routes>
           <Route path="/risk" element={<RiskSimplePage />} />
+          {import.meta.env.DEV && <Route path="/ma" element={<MonthlyAdvisorPage />} />}
           <Route path="*" element={<AuthGatePage />} />
         </Routes>
         <Analytics />
@@ -39,12 +41,13 @@ function App() {
     );
   }
 
-  // メール確認がまだの場合 → 確認を促す画面（ただし /risk は許可）
+  // メール確認がまだの場合 → 確認を促す画面（ただし /risk, /ma は許可）
   if (!user.email_confirmed_at) {
     return (
       <>
         <Routes>
           <Route path="/risk" element={<RiskSimplePage />} />
+          {import.meta.env.DEV && <Route path="/ma" element={<MonthlyAdvisorPage />} />}
           <Route path="*" element={<EmailConfirmationPending email={user.email ?? ''} />} />
         </Routes>
         <Analytics />
@@ -59,6 +62,7 @@ function App() {
         <Route path="/" element={<SimulatorPage />} />
         <Route path="/risk" element={<RiskSimplePage />} />
         <Route path="/pf" element={<PfDiagnosisSimplePage />} />
+        <Route path="/ma" element={<MonthlyAdvisorPage />} />
         {/* 有料版で復活予定 */}
         {/* <Route path="/assessment" element={<AssessmentPage />} /> */}
         {/* <Route path="/portfolio-diagnosis" element={<PortfolioDiagnosisPage />} /> */}

@@ -49,7 +49,7 @@ export default function ResultSummary({ result }: Props) {
 
       {/* Expected Return highlight */}
       <div className="bg-blue-50 rounded-xl p-4 mb-4 max-w-md mx-auto">
-        <div className="text-sm text-blue-700">推奨期待リターン</div>
+        <div className="text-sm text-blue-700">計算上の期待リターン</div>
         <div className="text-3xl font-bold text-blue-800">{result.portfolio.expectedReturn}%</div>
         <div className="text-xs text-blue-600">年率</div>
       </div>

@@ -54,7 +54,7 @@ export default function DisclaimerStep() {
             </p>
             <p>
               <span className="font-semibold">■</span>{' '}
-              推奨ポートフォリオ配分および期待リターンは、過去の市場データに基づく統計的な算出結果であり、将来のリターンを保証するものではありません。
+              モデルポートフォリオ配分および期待リターンは、過去の市場データに基づく統計的な算出結果であり、将来のリターンを保証するものではありません。
             </p>
             <p>
               <span className="font-semibold">■</span>{' '}

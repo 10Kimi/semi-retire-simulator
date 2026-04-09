@@ -35,7 +35,7 @@ export default function AssessmentResultPage() {
 
       {/* 6.2 Portfolio Allocation */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 className="text-base font-bold text-gray-800 mb-4">推奨ポートフォリオ配分</h2>
+        <h2 className="text-base font-bold text-gray-800 mb-4">モデルポートフォリオ配分</h2>
         <AllocationChart allocations={result.portfolio.allocations} />
         <div className="mt-4">
           <AllocationTable portfolio={result.portfolio} dataInfo={dataInfo} />

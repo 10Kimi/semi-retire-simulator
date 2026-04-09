@@ -82,7 +82,7 @@ export default function PortfolioDiagnosisPage() {
       // 4. ギャップ分析
       const gapAnalysis = analyzeGap(diagnosisResult, assessedRiskLevelKey ?? null);
 
-      // 5. 改善提案の算出（診断済みの場合のみ）
+      // 5. 調整シミュレーションの算出（診断済みの場合のみ）
       let improvements: DiagnosisNavigationState['improvements'] = [];
       let assessedPortfolioAllocations: AssetAllocation[] | null = null;
 

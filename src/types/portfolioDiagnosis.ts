@@ -30,12 +30,12 @@ export interface GapAnalysis {
   message: string;                            // 表示用メッセージ
 }
 
-// 改善提案（資産クラスごとの売買金額）
+// 調整シミュレーション（資産クラスごとの売買金額）
 export interface ImprovementSuggestion {
   assetKey: string;
   assetLabel: string;
   currentAmount: number;     // 現在の保有額（万円）
-  targetAmount: number;      // 推奨額（万円）
+  targetAmount: number;      // 目標額（万円）
   differenceAmount: number;  // 正=買い増し、負=売却
   currentPercent: number;
   targetPercent: number;

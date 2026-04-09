@@ -262,7 +262,7 @@ export function analyzeGap(
 }
 
 /**
- * 推奨PFとの差分から具体的な売買金額を算出
+ * モデルPFとの差分から具体的な売買金額を算出
  */
 export function calculateImprovements(
   holdings: HoldingAmounts,
