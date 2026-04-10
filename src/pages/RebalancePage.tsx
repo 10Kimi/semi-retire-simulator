@@ -6,6 +6,7 @@ import type { Holdings, TargetAllocation, DeviationItem, AdjustmentMode } from '
 import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, estimateMonthsToRebalance, getTotalAssets, formatCurrency } from '../lib/rb/logic';
 import { fetchTargetAllocation, saveTargetAllocation, fetchLatestSnapshot, saveSnapshot } from '../lib/rb/db';
 import MfImportFlow from '../components/rb/MfImportFlow';
+import AllocationDisclaimer from '../components/AllocationDisclaimer';
 
 type Step = 'input' | 'import' | 'target' | 'result';
 
@@ -279,12 +280,10 @@ export default function RebalancePage() {
                     <span className="text-slate-400">ボラティリティ</span>
                     <span className="text-orange-400 font-medium">{MODEL_META[selectedPreset].volatility}%</span>
                   </div>
-                  <p className="text-xs text-slate-500">期待リターンはGPIF第5期高成長実現ケースをベースとした計算上の目安です。</p>
-                  {selectedPreset >= 6 && (
-                    <p className="text-xs text-orange-400">このレベルでは株式資産への高集中が計算結果として示されています。集中投資には大きな価格変動リスクが伴います。</p>
-                  )}
                 </div>
               )}
+
+              <AllocationDisclaimer variant="dark" />
             </div>
 
             <div className="bg-slate-900 rounded-2xl p-4 mb-4">
@@ -469,9 +468,8 @@ export default function RebalancePage() {
               </button>
             </div>
 
-            <div className="text-center py-4 text-slate-500 text-xs space-y-1">
-              <p>※ この画面の表示はすべて計算結果です。最終的な投資判断はご自身でお願いします。</p>
-              <p>※ この配分は投資可能資産を対象とした計算結果です。生活費6ヶ月分程度の緊急資金は別途現金で確保することを前提としています。</p>
+            <div className="mb-4">
+              <AllocationDisclaimer variant="dark" />
             </div>
           </>
         )}

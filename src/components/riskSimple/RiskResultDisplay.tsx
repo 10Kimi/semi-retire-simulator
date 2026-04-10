@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { RiskSimpleResult } from '../../types/riskSimple';
 import { RISK_LEVEL_DEFS, getRiskLevelDef } from '../../logic/riskSimpleScoring';
 import { MODEL_ALLOCATIONS, MODEL_META, ASSET_CLASSES } from '../../lib/rb/types';
+import AllocationDisclaimer from '../AllocationDisclaimer';
 
 interface Props {
   result: RiskSimpleResult;
@@ -114,22 +115,9 @@ export default function RiskResultDisplay({ result, onRetry }: Props) {
             <span>リスク: {MODEL_META[finalLevel].volatility}%</span>
           </div>
         )}
-        <p className="text-xs text-gray-400 mt-2">
-          期待リターンはGPIF第5期高成長実現ケースをベースとした計算上の目安です。実際のリターンは異なる場合があります。
-        </p>
-        {finalLevel >= 6 && (
-          <p className="text-xs text-orange-600 mt-2">
-            このリスクレベルでは株式資産への高集中が計算結果として示されています。集中投資には大きな価格変動リスクが伴います。
-          </p>
-        )}
       </div>
 
-      {/* 注記 */}
-      <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
-        <p className="text-xs text-gray-500 leading-relaxed">
-          この配分は投資可能資産を対象とした計算結果です。生活費6ヶ月分程度の緊急資金は別途現金で確保することを前提としています。
-        </p>
-      </div>
+      <AllocationDisclaimer variant="light" />
 
       {/* Capacity vs Tolerance 詳細 */}
       {result.gapType !== 'balanced' && (
@@ -182,16 +170,13 @@ export default function RiskResultDisplay({ result, onRetry }: Props) {
       </div>
 
       {/* やり直し */}
-      <div className="text-center space-y-2">
+      <div className="text-center">
         <button
           onClick={onRetry}
           className="text-sm text-gray-500 hover:text-gray-700 underline"
         >
           もう一度診断する
         </button>
-        <p className="text-xs text-gray-400">
-          この画面の表示はすべて計算結果です。最終的な投資判断はご自身でお願いします。
-        </p>
       </div>
     </div>
   );
