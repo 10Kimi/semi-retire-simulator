@@ -159,12 +159,7 @@ export default function RebalancePage() {
           <MfImportFlow
             onImportComplete={(imported) => {
               setHoldings(imported);
-              if (hasExistingTarget) {
-                setDeviation(calculateDeviation(imported, target));
-                setStep('result');
-              } else {
-                setStep('target');
-              }
+              setStep('input');
             }}
             onCancel={() => setStep('input')}
           />
