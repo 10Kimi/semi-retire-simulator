@@ -162,3 +162,39 @@ export async function fetchSubmittedRequestTickers(userId: string): Promise<Set<
   }
   return new Set(data.map(r => r.ticker));
 }
+
+/** 緊急資金プロフィール */
+export interface RbProfile {
+  monthly_living_cost: number | null;
+  emergency_months: number;
+}
+
+/** 緊急資金設定を取得 */
+export async function fetchRbProfile(userId: string): Promise<RbProfile> {
+  const { data, error } = await supabase
+    .from('user_rb_profile')
+    .select('monthly_living_cost, emergency_months')
+    .eq('user_id', userId)
+    .single();
+
+  if (data) return data;
+  if (error?.code === 'PGRST116') {
+    // レコードなし → デフォルト
+    return { monthly_living_cost: null, emergency_months: 6 };
+  }
+  console.error('rb profile fetch error:', error);
+  return { monthly_living_cost: null, emergency_months: 6 };
+}
+
+/** 緊急資金設定を保存 */
+export async function saveRbProfile(userId: string, profile: RbProfile): Promise<void> {
+  const { error } = await supabase
+    .from('user_rb_profile')
+    .upsert({
+      user_id: userId,
+      monthly_living_cost: profile.monthly_living_cost,
+      emergency_months: profile.emergency_months,
+    }, { onConflict: 'user_id' });
+
+  if (error) console.error('rb profile save error:', error);
+}

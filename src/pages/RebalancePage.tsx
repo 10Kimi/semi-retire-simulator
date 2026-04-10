@@ -3,8 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import UserStatusBar from '../components/UserStatusBar';
 import { ASSET_CLASSES, MODEL_ALLOCATIONS, MODEL_META } from '../lib/rb/types';
 import type { Holdings, TargetAllocation, DeviationItem, AdjustmentMode } from '../lib/rb/types';
-import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, estimateMonthsToRebalance, getTotalAssets, formatCurrency } from '../lib/rb/logic';
-import { fetchTargetAllocation, saveTargetAllocation, fetchLatestSnapshot, saveSnapshot } from '../lib/rb/db';
+import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, estimateMonthsToRebalance, calculateEmergencyFund, applyEmergencyFund, getTotalAssets, formatCurrency } from '../lib/rb/logic';
+import { fetchTargetAllocation, saveTargetAllocation, fetchLatestSnapshot, saveSnapshot, fetchRbProfile, saveRbProfile } from '../lib/rb/db';
 import MfImportFlow from '../components/rb/MfImportFlow';
 import AllocationDisclaimer from '../components/AllocationDisclaimer';
 
@@ -51,13 +51,18 @@ export default function RebalancePage() {
   const [expandedHint, setExpandedHint] = useState<string | null>(null);
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
 
+  // 緊急資金設定
+  const [monthlyLivingCost, setMonthlyLivingCost] = useState<string>('');
+  const [emergencyMonths, setEmergencyMonths] = useState<number>(6);
+
   useEffect(() => {
     const load = async () => {
       if (!user) { setLoading(false); return; }
 
-      const [savedTarget, snapshot] = await Promise.all([
+      const [savedTarget, snapshot, profile] = await Promise.all([
         fetchTargetAllocation(user.id),
         fetchLatestSnapshot(user.id),
+        fetchRbProfile(user.id),
       ]);
 
       if (savedTarget) {
@@ -67,6 +72,10 @@ export default function RebalancePage() {
       if (snapshot) {
         setHoldings(snapshot.holdings);
       }
+      if (profile.monthly_living_cost != null) {
+        setMonthlyLivingCost(String(profile.monthly_living_cost));
+      }
+      setEmergencyMonths(profile.emergency_months);
       setLoading(false);
     };
     load();
@@ -80,7 +89,11 @@ export default function RebalancePage() {
     );
   }
 
-  const totalAssets = getTotalAssets(holdings);
+  const livingCostNum = parseInt(monthlyLivingCost.replace(/[^0-9]/g, '')) || 0;
+  const cashAmount = holdings['cash'] || 0;
+  const emergency = calculateEmergencyFund(cashAmount, livingCostNum || null, emergencyMonths);
+  const investableHoldings = applyEmergencyFund(holdings, livingCostNum || null, emergencyMonths);
+  const totalAssets = getTotalAssets(investableHoldings);
 
   const handleHoldingChange = (key: string, value: string) => {
     const num = parseInt(value.replace(/[^0-9]/g, '')) || 0;
@@ -104,10 +117,13 @@ export default function RebalancePage() {
   };
 
   const goToTarget = async () => {
-    // スナップショット保存
-    if (user) await saveSnapshot(user.id, holdings);
+    if (user) {
+      await Promise.all([
+        saveSnapshot(user.id, holdings),
+        saveRbProfile(user.id, { monthly_living_cost: livingCostNum || null, emergency_months: emergencyMonths }),
+      ]);
+    }
     if (hasExistingTarget) {
-      // 既に目標配分設定済み → 結果へ直接
       goToResult();
     } else {
       setStep('target');
@@ -115,15 +131,20 @@ export default function RebalancePage() {
   };
 
   const goToResult = async () => {
-    if (user) await saveTargetAllocation(user.id, target);
+    if (user) {
+      await Promise.all([
+        saveTargetAllocation(user.id, target),
+        saveRbProfile(user.id, { monthly_living_cost: livingCostNum || null, emergency_months: emergencyMonths }),
+      ]);
+    }
     setHasExistingTarget(true);
-    setDeviation(calculateDeviation(holdings, target));
+    setDeviation(calculateDeviation(investableHoldings, target));
     setStep('result');
   };
 
   const adjustmentItems = adjustMode === 'add'
-    ? calculateAddAdjustment(holdings, target, parseInt(monthlyAmount.replace(/[^0-9]/g, '')) || 0)
-    : calculateSellAdjustment(holdings, target);
+    ? calculateAddAdjustment(investableHoldings, target, parseInt(monthlyAmount.replace(/[^0-9]/g, '')) || 0)
+    : calculateSellAdjustment(investableHoldings, target);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
@@ -151,7 +172,7 @@ export default function RebalancePage() {
               <button
                 onClick={() => {
                   if (s.key === 'result' && hasExistingTarget) {
-                    setDeviation(calculateDeviation(holdings, target));
+                    setDeviation(calculateDeviation(investableHoldings, target));
                   }
                   setStep(s.key === 'input' ? 'input' : s.key);
                 }}
@@ -220,8 +241,54 @@ export default function RebalancePage() {
                 ))}
               </div>
 
+              {/* 緊急資金設定 */}
+              <div className="border-t border-slate-700 mt-4 pt-4">
+                <h3 className="text-xs text-slate-400 mb-3">緊急資金の設定（リバランス計算から除外）</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm">毎月の生活費（税込）</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={monthlyLivingCost}
+                      onChange={e => setMonthlyLivingCost(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="例: 300,000"
+                      className="w-40 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-right text-sm focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm">緊急避難枠</label>
+                    <select
+                      value={emergencyMonths}
+                      onChange={e => setEmergencyMonths(Number(e.target.value))}
+                      className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                    >
+                      <option value={3}>3ヶ月</option>
+                      <option value={6}>6ヶ月</option>
+                      <option value={12}>12ヶ月</option>
+                      <option value={24}>24ヶ月</option>
+                    </select>
+                  </div>
+                  {livingCostNum > 0 && (
+                    <div className="bg-slate-800/50 rounded-lg p-3 space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-400">緊急資金</span>
+                        <span className="text-orange-400">{formatCurrency(emergency.emergencyFund)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-400">投資可能な現金</span>
+                        <span className="text-emerald-400 font-medium">{formatCurrency(emergency.investableCash)}</span>
+                      </div>
+                      {cashAmount < emergency.emergencyFund && (
+                        <p className="text-xs text-red-400 mt-1">緊急資金が現金保有額を超えています</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="border-t border-slate-700 mt-4 pt-4 flex justify-between">
-                <span className="text-slate-400">合計</span>
+                <span className="text-slate-400">投資可能資産 合計</span>
                 <span className="text-lg font-bold text-emerald-400">{formatCurrency(totalAssets)}</span>
               </div>
             </div>
@@ -431,7 +498,7 @@ export default function RebalancePage() {
               )}
 
               {adjustMode === 'add' && monthlyAmount && (() => {
-                const months = estimateMonthsToRebalance(holdings, target, parseInt(monthlyAmount.replace(/[^0-9]/g, '')) || 0);
+                const months = estimateMonthsToRebalance(investableHoldings, target, parseInt(monthlyAmount.replace(/[^0-9]/g, '')) || 0);
                 if (months === 0) return <p className="text-xs text-emerald-400 text-center py-3">目標配分に到達しています</p>;
                 if (months != null) return (
                   <div className="bg-slate-800/50 rounded-lg px-4 py-3 mt-3 text-center">

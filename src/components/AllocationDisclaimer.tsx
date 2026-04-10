@@ -21,8 +21,7 @@ export default function AllocationDisclaimer({ variant = 'light' }: { variant?: 
       {open && (
         <div className={`px-4 pb-4 text-xs ${styles.text} leading-relaxed space-y-2`}>
           <p>
-            この配分は投資可能資産を対象とした計算結果です。
-            生活費6ヶ月分程度の緊急資金は別途現金で確保することを前提としています。
+            この配分は投資可能資産（現金保有額から緊急資金を除いた金額）を対象とした計算結果です。
           </p>
           <p>
             外貨資産のリターン・リスクは円ベースで計算しています。

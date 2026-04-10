@@ -1,6 +1,31 @@
 import { ASSET_CLASSES } from './types';
 import type { AssetClassKey, Holdings, TargetAllocation, DeviationItem, AdjustmentItem } from './types';
 
+/** 緊急資金を計算して投資可能な現金を返す */
+export function calculateEmergencyFund(
+  cashAmount: number,
+  monthlyLivingCost: number | null,
+  emergencyMonths: number,
+): { emergencyFund: number; investableCash: number } {
+  if (!monthlyLivingCost || monthlyLivingCost <= 0) {
+    return { emergencyFund: 0, investableCash: cashAmount };
+  }
+  const emergencyFund = monthlyLivingCost * emergencyMonths;
+  const investableCash = Math.max(0, cashAmount - emergencyFund);
+  return { emergencyFund, investableCash };
+}
+
+/** holdingsの現金を投資可能額に置き換えたコピーを返す */
+export function applyEmergencyFund(
+  holdings: Holdings,
+  monthlyLivingCost: number | null,
+  emergencyMonths: number,
+): Holdings {
+  const cashAmount = holdings['cash'] || 0;
+  const { investableCash } = calculateEmergencyFund(cashAmount, monthlyLivingCost, emergencyMonths);
+  return { ...holdings, cash: investableCash };
+}
+
 /** 乖離の色分け基準（仕様書 §5-2） */
 function getSeverity(absDeviation: number): DeviationItem['severity'] {
   if (absDeviation < 2) return 'ok';

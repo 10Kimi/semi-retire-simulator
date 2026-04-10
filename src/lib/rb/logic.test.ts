@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, getTotalAssets } from './logic';
+import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, getTotalAssets, calculateEmergencyFund, applyEmergencyFund } from './logic';
 import type { Holdings, TargetAllocation } from './types';
 
 const holdings: Holdings = {
@@ -93,5 +93,40 @@ describe('calculateSellAdjustment', () => {
   it('総資産0の場合は空配列', () => {
     const result = calculateSellAdjustment({}, target);
     expect(result).toHaveLength(0);
+  });
+});
+
+describe('calculateEmergencyFund', () => {
+  it('生活費×月数で緊急資金を計算する', () => {
+    const result = calculateEmergencyFund(5_000_000, 300_000, 6);
+    expect(result.emergencyFund).toBe(1_800_000);
+    expect(result.investableCash).toBe(3_200_000);
+  });
+
+  it('生活費がnullの場合は緊急資金0', () => {
+    const result = calculateEmergencyFund(5_000_000, null, 6);
+    expect(result.emergencyFund).toBe(0);
+    expect(result.investableCash).toBe(5_000_000);
+  });
+
+  it('緊急資金が現金を超える場合は投資可能額0', () => {
+    const result = calculateEmergencyFund(1_000_000, 300_000, 6);
+    expect(result.emergencyFund).toBe(1_800_000);
+    expect(result.investableCash).toBe(0);
+  });
+});
+
+describe('applyEmergencyFund', () => {
+  it('holdingsの現金を投資可能額に置き換える', () => {
+    const h: Holdings = { cash: 5_000_000, developed_equity: 3_000_000 };
+    const result = applyEmergencyFund(h, 300_000, 6);
+    expect(result.cash).toBe(3_200_000);
+    expect(result.developed_equity).toBe(3_000_000);
+  });
+
+  it('元のholdingsは変更しない', () => {
+    const h: Holdings = { cash: 5_000_000 };
+    applyEmergencyFund(h, 300_000, 6);
+    expect(h.cash).toBe(5_000_000);
   });
 });
