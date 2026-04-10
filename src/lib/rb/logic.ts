@@ -1,5 +1,5 @@
 import { ASSET_CLASSES } from './types';
-import type { AssetClassKey, Holdings, TargetAllocation, DeviationItem, AdjustmentItem, PeriodRebalanceResult } from './types';
+import type { AssetClassKey, Holdings, TargetAllocation, DeviationItem, AdjustmentItem, PeriodRebalanceResult, MonthlySnapshot } from './types';
 
 /** 緊急資金を計算して投資可能な現金を返す */
 export function calculateEmergencyFund(
@@ -252,6 +252,82 @@ function buildPeriodResult(
     sellItems, monthlyItems, totalDeficit, totalSurplus,
     requiredSellAmount, months, monthlyAmount,
   };
+}
+
+/** 月次リバランスシミュレーション */
+export function simulateMonthly(
+  holdings: Holdings,
+  target: TargetAllocation,
+  periodResult: PeriodRebalanceResult,
+): MonthlySnapshot[] {
+  const snapshots: MonthlySnapshot[] = [];
+  // 各クラスの現在額をコピー
+  const amounts: Record<string, number> = {};
+  ASSET_CLASSES.forEach(ac => { amounts[ac.key] = holdings[ac.key] || 0; });
+
+  // 売却マップ
+  const sellMap: Record<string, number> = {};
+  for (const item of periodResult.sellItems) {
+    sellMap[item.key] = Math.abs(item.amount);
+  }
+
+  // 積立マップ
+  const investMap: Record<string, number> = {};
+  for (const item of periodResult.monthlyItems) {
+    investMap[item.key] = item.amount;
+  }
+
+  const months = Math.max(periodResult.months, 1);
+
+  for (let month = 1; month <= months; month++) {
+    const ops: MonthlySnapshot['operations'] = [];
+
+    // 初月: 売却を反映
+    if (month === 1) {
+      for (const key of Object.keys(sellMap)) {
+        amounts[key] = Math.max(0, amounts[key] - sellMap[key]);
+      }
+    }
+
+    // 毎月: 積立を反映
+    for (const key of Object.keys(investMap)) {
+      amounts[key] = (amounts[key] || 0) + investMap[key];
+    }
+
+    // 月末の総資産と比率を計算
+    const totalAssets = ASSET_CLASSES.reduce((s, ac) => s + (amounts[ac.key] || 0), 0);
+
+    for (const ac of ASSET_CLASSES) {
+      const targetRatio = target[ac.key] || 0;
+      const ratio = totalAssets > 0 ? (amounts[ac.key] || 0) / totalAssets * 100 : 0;
+      let operationAmount = 0;
+      if (month === 1 && sellMap[ac.key]) {
+        operationAmount = -sellMap[ac.key];
+      }
+      if (investMap[ac.key]) {
+        operationAmount += investMap[ac.key];
+      }
+
+      ops.push({
+        key: ac.key,
+        label: ac.label,
+        operationAmount,
+        ratio: Math.round(ratio * 10) / 10,
+        reachedTarget: Math.abs(ratio - targetRatio) < 1,
+      });
+    }
+
+    snapshots.push({ month, operations: ops, totalAssets });
+  }
+
+  return snapshots;
+}
+
+/** 金額を万円単位でフォーマット */
+export function formatMan(amount: number): string {
+  const man = Math.round(amount / 10000);
+  if (man === 0) return '−';
+  return (man > 0 ? '+' : '') + man + '万';
 }
 
 /** 通貨フォーマット */

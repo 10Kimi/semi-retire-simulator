@@ -7,6 +7,7 @@ import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, es
 import { fetchTargetAllocation, saveTargetAllocation, fetchLatestSnapshot, saveSnapshot, fetchRbProfile, saveRbProfile } from '../lib/rb/db';
 import MfImportFlow from '../components/rb/MfImportFlow';
 import AllocationDisclaimer from '../components/AllocationDisclaimer';
+import MonthlyProjection from '../components/rb/MonthlyProjection';
 
 type Step = 'input' | 'import' | 'target' | 'result';
 
@@ -653,6 +654,14 @@ export default function RebalancePage() {
                           </p>
                         </div>
                       </div>
+                    )}
+
+                    {periodResult && periodResult.months > 0 && (
+                      <MonthlyProjection
+                        holdings={investableHoldings}
+                        target={target}
+                        periodResult={periodResult}
+                      />
                     )}
 
                     {!periodResult && (

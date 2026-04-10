@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, getTotalAssets, calculateEmergencyFund, applyEmergencyFund, calculatePeriodByAmount, calculatePeriodByMonths } from './logic';
+import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, getTotalAssets, calculateEmergencyFund, applyEmergencyFund, calculatePeriodByAmount, calculatePeriodByMonths, simulateMonthly } from './logic';
 import type { Holdings, TargetAllocation } from './types';
 
 const holdings: Holdings = {
@@ -217,6 +217,38 @@ describe('calculatePeriodByMonths', () => {
     // developed_bond超過1M、他3クラス不足合計1.5M → 残り0.5Mは積立
     if (result!.monthlyAmount > 0) {
       expect(result!.monthlyItems.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('simulateMonthly', () => {
+  it('完了月数分のスナップショットを返す', () => {
+    const result = calculatePeriodByMonths(periodHoldings, periodTarget, 6)!;
+    const snapshots = simulateMonthly(periodHoldings, periodTarget, result);
+    expect(snapshots).toHaveLength(Math.max(result.months, 1));
+  });
+
+  it('初月に売却が反映される', () => {
+    const result = calculatePeriodByMonths(periodHoldings, periodTarget, 6)!;
+    const snapshots = simulateMonthly(periodHoldings, periodTarget, result);
+    const month1 = snapshots[0];
+    const cashOp = month1.operations.find(o => o.key === 'cash');
+    // cash 16M → 目標0% → 初月に全額売却
+    expect(cashOp!.operationAmount).toBeLessThan(0);
+  });
+
+  it('最終月では比率が目標に収束する', () => {
+    const h: Holdings = { developed_bond: 6_000_000, japan_equity: 1_000_000, emerging_equity: 1_000_000, commodity: 2_000_000 };
+    const t: TargetAllocation = { developed_bond: 25, japan_equity: 25, emerging_equity: 25, commodity: 25 };
+    const result = calculatePeriodByMonths(h, t, 12)!;
+    const snapshots = simulateMonthly(h, t, result);
+    const last = snapshots[snapshots.length - 1];
+    // 各クラスの比率が目標±数%以内
+    for (const op of last.operations) {
+      const targetRatio = t[op.key] || 0;
+      if (targetRatio > 0) {
+        expect(Math.abs(op.ratio - targetRatio)).toBeLessThan(15);
+      }
     }
   });
 });

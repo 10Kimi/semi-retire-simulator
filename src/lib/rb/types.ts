@@ -74,3 +74,16 @@ export interface PeriodRebalanceResult {
   months: number;                    // 完了期間
   monthlyAmount: number;             // 毎月の積立額
 }
+
+/** 月次推移の1ヶ月分 */
+export interface MonthlySnapshot {
+  month: number;
+  operations: {
+    key: AssetClassKey;
+    label: string;
+    operationAmount: number; // マイナス=売却、プラス=積立、0=なし
+    ratio: number;           // 月末比率(%)
+    reachedTarget: boolean;
+  }[];
+  totalAssets: number;
+}
