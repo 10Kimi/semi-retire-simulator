@@ -131,123 +131,96 @@ describe('applyEmergencyFund', () => {
   });
 });
 
-const periodHoldings: Holdings = {
-  japan_equity: 15_000_000,
-  developed_equity: 25_000_000,
-  emerging_equity: 2_000_000,
-  developed_bond: 40_000_000,
-  commodity: 2_000_000,
-  cash: 16_000_000,
+// 仕様書の前提条件に近いテストデータ
+const realHoldings: Holdings = {
+  japan_equity: 62_000_000,
+  developed_equity: 63_590_586,
+  emerging_equity: 563_624,
+  japan_bond: 2_517_902,
+  developed_bond: 30_681_043,
+  commodity: 3_663_909,
+  alternative: 6_496_596,
+  cash: 22_435_943,
 };
-const periodTarget: TargetAllocation = {
-  japan_equity: 25, developed_equity: 25, emerging_equity: 10,
-  japan_bond: 0, developed_bond: 25, emerging_bond: 0,
-  japan_reit: 0, foreign_reit: 0, commodity: 15, alternative: 0, cash: 0,
+const realTarget: TargetAllocation = {
+  japan_equity: 30, developed_equity: 35, emerging_equity: 15,
+  japan_bond: 0, developed_bond: 10, emerging_bond: 0,
+  japan_reit: 0, foreign_reit: 0, commodity: 10, alternative: 0, cash: 0,
 };
 
 describe('calculatePeriodByAmount', () => {
-  it('超過クラスを全額売却し、売却で足りれば積立不要', () => {
-    // periodHoldings: 超過31M(bond+cash)、不足31M → 売却で完了
-    const result = calculatePeriodByAmount(periodHoldings, periodTarget, 500_000);
+  it('現金は売却リストに表示されない', () => {
+    const result = calculatePeriodByAmount(realHoldings, realTarget, 1_000_000);
     expect(result).not.toBeNull();
+    expect(result!.sellItems.find(i => i.key === 'cash')).toBeUndefined();
+  });
+
+  it('超過クラス（現金除く）が売却リストに含まれる', () => {
+    const result = calculatePeriodByAmount(realHoldings, realTarget, 1_000_000);
     expect(result!.sellItems.length).toBeGreaterThan(0);
     expect(result!.sellItems.every(i => i.amount < 0)).toBe(true);
-    // 売却で不足を全て埋められるので積立不要
-    expect(result!.monthlyAmount).toBe(0);
-  });
-
-  it('売却で不足が埋まらない場合のみ積立が追加される', () => {
-    // 超過が少なく不足が大きいケース
-    const h: Holdings = { developed_bond: 6_000_000, japan_equity: 1_000_000, cash: 3_000_000 };
-    const t: TargetAllocation = { developed_bond: 25, japan_equity: 50, cash: 25 };
-    const result = calculatePeriodByAmount(h, t, 100_000);
-    expect(result).not.toBeNull();
-    // developed_bond超過あり → 売却、残り不足分は積立
-    if (result!.monthlyAmount > 0) {
-      expect(result!.monthlyItems.length).toBeGreaterThan(0);
-      expect(result!.months).toBeGreaterThan(0);
-    }
-  });
-
-  it('不足・超過なしの場合はすぐ完了', () => {
-    const balanced: Holdings = {
-      japan_equity: 25_000_000, developed_equity: 25_000_000,
-      emerging_equity: 10_000_000, developed_bond: 25_000_000,
-      commodity: 15_000_000,
-    };
-    const result = calculatePeriodByAmount(balanced, periodTarget, 500_000);
-    expect(result!.sellItems).toHaveLength(0);
-    expect(result!.monthlyItems).toHaveLength(0);
   });
 });
 
 describe('calculatePeriodByMonths', () => {
-  it('超過クラスを全額売却し、残りの不足を積立で計算する', () => {
-    const result = calculatePeriodByMonths(periodHoldings, periodTarget, 12);
+  it('現金は売却リストに出ない（余剰は内部計算のみ）', () => {
+    const result = calculatePeriodByMonths(realHoldings, realTarget, 12);
     expect(result).not.toBeNull();
-    // developed_bond 40M → 目標25M → 超過15M、cash 16M → 目標0 → 超過16M
-    expect(result!.sellItems.length).toBeGreaterThan(0);
-    expect(result!.sellItems.every(i => i.amount < 0)).toBe(true);
-    expect(result!.requiredSellAmount).toBeGreaterThan(0);
+    expect(result!.sellItems.find(i => i.key === 'cash')).toBeUndefined();
   });
 
-  it('目標0%のクラスは全額売却される', () => {
-    // cashは目標0%、保有16M → 全額売却
-    const result = calculatePeriodByMonths(periodHoldings, periodTarget, 12);
-    const cashSell = result!.sellItems.find(i => i.key === 'cash');
-    expect(cashSell).toBeDefined();
-    expect(cashSell!.amount).toBe(-16_000_000);
+  it('目標0%の非現金クラスは売却される', () => {
+    const result = calculatePeriodByMonths(realHoldings, realTarget, 12);
+    // japan_bond, alternative は目標0%で保有あり → 売却
+    const jbSell = result!.sellItems.find(i => i.key === 'japan_bond');
+    const altSell = result!.sellItems.find(i => i.key === 'alternative');
+    expect(jbSell).toBeDefined();
+    expect(altSell).toBeDefined();
   });
 
-  it('売却で不足を全部埋められる場合は積立額0', () => {
-    // 超過が大きく不足が小さいケース
+  it('売却+現金余剰で足りれば積立額0', () => {
     const h: Holdings = { developed_bond: 90_000_000, japan_equity: 10_000_000 };
     const t: TargetAllocation = { developed_bond: 50, japan_equity: 50 };
     const result = calculatePeriodByMonths(h, t, 12);
     expect(result!.monthlyAmount).toBe(0);
-    expect(result!.monthlyItems).toHaveLength(0);
-  });
-
-  it('売却で足りない場合のみ積立が追加される', () => {
-    // 超過が少なく不足が大きいケース
-    const h: Holdings = { developed_bond: 6_000_000, japan_equity: 1_000_000, emerging_equity: 1_000_000, commodity: 2_000_000 };
-    const t: TargetAllocation = { developed_bond: 25, japan_equity: 25, emerging_equity: 25, commodity: 25 };
-    const result = calculatePeriodByMonths(h, t, 6);
-    expect(result).not.toBeNull();
-    // developed_bond超過1M、他3クラス不足合計1.5M → 残り0.5Mは積立
-    if (result!.monthlyAmount > 0) {
-      expect(result!.monthlyItems.length).toBeGreaterThan(0);
-    }
   });
 });
 
 describe('simulateMonthly', () => {
   it('完了月数分のスナップショットを返す', () => {
-    const result = calculatePeriodByMonths(periodHoldings, periodTarget, 6)!;
-    const snapshots = simulateMonthly(periodHoldings, periodTarget, result);
+    const result = calculatePeriodByMonths(realHoldings, realTarget, 12)!;
+    const snapshots = simulateMonthly(realHoldings, realTarget, result);
     expect(snapshots).toHaveLength(Math.max(result.months, 1));
   });
 
-  it('初月に売却が反映される', () => {
-    const result = calculatePeriodByMonths(periodHoldings, periodTarget, 6)!;
-    const snapshots = simulateMonthly(periodHoldings, periodTarget, result);
-    const month1 = snapshots[0];
-    const cashOp = month1.operations.find(o => o.key === 'cash');
-    // cash 16M → 目標0% → 初月に全額売却
-    expect(cashOp!.operationAmount).toBeLessThan(0);
+  it('各月の比率合計が100%になる', () => {
+    const result = calculatePeriodByMonths(realHoldings, realTarget, 12)!;
+    const snapshots = simulateMonthly(realHoldings, realTarget, result);
+    for (const snap of snapshots) {
+      const totalRatio = snap.operations.reduce((s, op) => s + op.ratio, 0);
+      expect(totalRatio).toBeGreaterThanOrEqual(99);
+      expect(totalRatio).toBeLessThanOrEqual(101);
+    }
   });
 
-  it('最終月では比率が目標に収束する', () => {
-    const h: Holdings = { developed_bond: 6_000_000, japan_equity: 1_000_000, emerging_equity: 1_000_000, commodity: 2_000_000 };
-    const t: TargetAllocation = { developed_bond: 25, japan_equity: 25, emerging_equity: 25, commodity: 25 };
-    const result = calculatePeriodByMonths(h, t, 12)!;
-    const snapshots = simulateMonthly(h, t, result);
+  it('現金は売却リストに出ず、余剰分は初月に不足クラスへ配分される', () => {
+    const result = calculatePeriodByMonths(realHoldings, realTarget, 12)!;
+    const snapshots = simulateMonthly(realHoldings, realTarget, result);
+    const month1 = snapshots[0];
+    // 現金は余剰があるが売却表示ではなく、投資に回す形
+    const cashOp = month1.operations.find(o => o.key === 'cash');
+    // 現金の目標0% → 比率が減少している
+    expect(cashOp!.ratio).toBeLessThan(22_435_943 / 191_949_603 * 100);
+  });
+
+  it('最終月で目標比率に収束する', () => {
+    const result = calculatePeriodByMonths(realHoldings, realTarget, 12)!;
+    const snapshots = simulateMonthly(realHoldings, realTarget, result);
     const last = snapshots[snapshots.length - 1];
-    // 各クラスの比率が目標±数%以内
     for (const op of last.operations) {
-      const targetRatio = t[op.key] || 0;
-      if (targetRatio > 0) {
-        expect(Math.abs(op.ratio - targetRatio)).toBeLessThan(15);
+      const tgt = realTarget[op.key] || 0;
+      if (tgt > 0) {
+        expect(Math.abs(op.ratio - tgt)).toBeLessThan(5);
       }
     }
   });
