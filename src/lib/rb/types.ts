@@ -56,10 +56,21 @@ export interface DeviationItem {
   severity: 'ok' | 'minor' | 'warning' | 'danger';
 }
 
-export type AdjustmentMode = 'add' | 'sell';
+export type AdjustmentMode = 'add' | 'sell' | 'period';
 
 export interface AdjustmentItem {
   key: AssetClassKey;
   label: string;
   amount: number; // 正=追加購入、負=売却
+}
+
+/** 期間指定リバランスの計算結果 */
+export interface PeriodRebalanceResult {
+  sellItems: AdjustmentItem[];       // 初月に売却（超過クラス）
+  monthlyItems: AdjustmentItem[];    // 毎月の積立配分
+  totalDeficit: number;              // 不足額合計
+  totalSurplus: number;              // 超過額合計
+  requiredSellAmount: number;        // 必要な売却額
+  months: number;                    // 完了期間
+  monthlyAmount: number;             // 毎月の積立額
 }

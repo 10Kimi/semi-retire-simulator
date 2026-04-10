@@ -1,5 +1,5 @@
 import { ASSET_CLASSES } from './types';
-import type { AssetClassKey, Holdings, TargetAllocation, DeviationItem, AdjustmentItem } from './types';
+import type { AssetClassKey, Holdings, TargetAllocation, DeviationItem, AdjustmentItem, PeriodRebalanceResult } from './types';
 
 /** 緊急資金を計算して投資可能な現金を返す */
 export function calculateEmergencyFund(
@@ -153,6 +153,111 @@ export function calculateSellAdjustment(
       return { key: ac.key as AssetClassKey, label: ac.label, amount: diff };
     })
     .filter(r => r.amount !== 0);
+}
+
+/** 期間指定リバランス — 毎月積立額から完了期間を計算 */
+export function calculatePeriodByAmount(
+  holdings: Holdings,
+  target: TargetAllocation,
+  monthlyAmount: number,
+): PeriodRebalanceResult | null {
+  if (monthlyAmount <= 0) return null;
+  return buildPeriodResult(holdings, target, monthlyAmount, null);
+}
+
+/** 期間指定リバランス — 完了期間から必要積立額を計算 */
+export function calculatePeriodByMonths(
+  holdings: Holdings,
+  target: TargetAllocation,
+  months: number,
+): PeriodRebalanceResult | null {
+  if (months <= 0) return null;
+  return buildPeriodResult(holdings, target, null, months);
+}
+
+function buildPeriodResult(
+  holdings: Holdings,
+  target: TargetAllocation,
+  inputMonthly: number | null,
+  inputMonths: number | null,
+): PeriodRebalanceResult {
+  const total = getTotalAssets(holdings);
+
+  // 各クラスの不足額・超過額を計算
+  const classData = ASSET_CLASSES.map(ac => {
+    const targetAmount = total * (target[ac.key] || 0) / 100;
+    const current = holdings[ac.key] || 0;
+    const diff = targetAmount - current;
+    return { key: ac.key, label: ac.label, diff };
+  });
+
+  const totalDeficit = classData.reduce((s, d) => s + Math.max(0, d.diff), 0);
+  const totalSurplus = classData.reduce((s, d) => s + Math.max(0, -d.diff), 0);
+
+  if (totalDeficit <= 0) {
+    return {
+      sellItems: [], monthlyItems: [], totalDeficit: 0, totalSurplus,
+      requiredSellAmount: 0, months: 0, monthlyAmount: inputMonthly ?? 0,
+    };
+  }
+
+  let months: number;
+  let monthlyAmount: number;
+
+  if (inputMonthly != null) {
+    // 積立額指定 → 期間を計算
+    monthlyAmount = inputMonthly;
+    const totalFromAccumulation = totalDeficit;
+    // 積立だけで埋められる期間
+    months = Math.ceil(totalFromAccumulation / monthlyAmount);
+  } else {
+    // 期間指定 → 積立額を計算
+    months = inputMonths!;
+    monthlyAmount = Math.ceil(totalDeficit / months);
+  }
+
+  // 積立合計
+  const totalAccumulation = monthlyAmount * months;
+
+  // 売却が必要な最小額（不足額 − 積立合計、0以上）
+  const requiredSellAmount = Math.max(0, totalDeficit - totalAccumulation);
+
+  // 売却アイテム（超過クラスから大きい順）
+  const sellItems: AdjustmentItem[] = [];
+  if (requiredSellAmount > 0) {
+    const surplusClasses = classData
+      .filter(d => d.diff < 0)
+      .sort((a, b) => a.diff - b.diff); // 超過が大きい順
+
+    let remaining = requiredSellAmount;
+    for (const cls of surplusClasses) {
+      if (remaining <= 0) break;
+      const sellAmount = Math.min(remaining, Math.abs(cls.diff));
+      sellItems.push({
+        key: cls.key as AssetClassKey,
+        label: cls.label,
+        amount: -Math.round(sellAmount),
+      });
+      remaining -= sellAmount;
+    }
+  }
+
+  // 毎月の積立配分（不足クラスに按分）
+  const deficitClasses = classData.filter(d => d.diff > 0);
+  const deficitTotal = deficitClasses.reduce((s, d) => s + d.diff, 0);
+
+  const monthlyItems: AdjustmentItem[] = deficitTotal > 0
+    ? deficitClasses.map(d => ({
+        key: d.key as AssetClassKey,
+        label: d.label,
+        amount: Math.round(monthlyAmount * (d.diff / deficitTotal)),
+      })).filter(i => i.amount > 0)
+    : [];
+
+  return {
+    sellItems, monthlyItems, totalDeficit, totalSurplus,
+    requiredSellAmount, months, monthlyAmount,
+  };
 }
 
 /** 通貨フォーマット */

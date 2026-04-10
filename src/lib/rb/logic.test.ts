@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, getTotalAssets, calculateEmergencyFund, applyEmergencyFund } from './logic';
+import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, getTotalAssets, calculateEmergencyFund, applyEmergencyFund, calculatePeriodByAmount, calculatePeriodByMonths } from './logic';
 import type { Holdings, TargetAllocation } from './types';
 
 const holdings: Holdings = {
@@ -128,5 +128,69 @@ describe('applyEmergencyFund', () => {
     const h: Holdings = { cash: 5_000_000 };
     applyEmergencyFund(h, 300_000, 6);
     expect(h.cash).toBe(5_000_000);
+  });
+});
+
+const periodHoldings: Holdings = {
+  japan_equity: 15_000_000,
+  developed_equity: 25_000_000,
+  emerging_equity: 2_000_000,
+  developed_bond: 40_000_000,
+  commodity: 2_000_000,
+  cash: 16_000_000,
+};
+const periodTarget: TargetAllocation = {
+  japan_equity: 25, developed_equity: 25, emerging_equity: 10,
+  japan_bond: 0, developed_bond: 25, emerging_bond: 0,
+  japan_reit: 0, foreign_reit: 0, commodity: 15, alternative: 0, cash: 0,
+};
+
+describe('calculatePeriodByAmount', () => {
+  it('積立額から完了期間を計算する', () => {
+    const result = calculatePeriodByAmount(periodHoldings, periodTarget, 500_000);
+    expect(result).not.toBeNull();
+    expect(result!.months).toBeGreaterThan(0);
+    expect(result!.monthlyAmount).toBe(500_000);
+    expect(result!.monthlyItems.length).toBeGreaterThan(0);
+    // 不足クラスにのみ積立配分
+    expect(result!.monthlyItems.every(i => i.amount > 0)).toBe(true);
+  });
+
+  it('積立だけで足りない場合は売却が発生する', () => {
+    // 大きな乖離 + 少額積立 + 期間指定ではないのでsellは出ない
+    const result = calculatePeriodByAmount(periodHoldings, periodTarget, 500_000);
+    expect(result).not.toBeNull();
+    // 積立額指定の場合は売却なし（期間が伸びるだけ）
+    expect(result!.sellItems).toHaveLength(0);
+  });
+
+  it('不足なしの場合は0ヶ月', () => {
+    const balanced: Holdings = {
+      japan_equity: 25_000_000, developed_equity: 25_000_000,
+      emerging_equity: 10_000_000, developed_bond: 25_000_000,
+      commodity: 15_000_000,
+    };
+    const result = calculatePeriodByAmount(balanced, periodTarget, 500_000);
+    expect(result!.months).toBe(0);
+  });
+});
+
+describe('calculatePeriodByMonths', () => {
+  it('完了期間から必要積立額を計算する', () => {
+    const result = calculatePeriodByMonths(periodHoldings, periodTarget, 12);
+    expect(result).not.toBeNull();
+    expect(result!.months).toBe(12);
+    expect(result!.monthlyAmount).toBeGreaterThan(0);
+  });
+
+  it('期間が短く積立だけでは足りない場合に売却が発生する', () => {
+    // 非常に短期間を指定
+    const result = calculatePeriodByMonths(periodHoldings, periodTarget, 1);
+    expect(result).not.toBeNull();
+    if (result!.requiredSellAmount > 0) {
+      expect(result!.sellItems.length).toBeGreaterThan(0);
+      // 売却は超過クラスから
+      expect(result!.sellItems.every(i => i.amount < 0)).toBe(true);
+    }
   });
 });

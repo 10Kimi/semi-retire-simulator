@@ -2,13 +2,37 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import UserStatusBar from '../components/UserStatusBar';
 import { ASSET_CLASSES, MODEL_ALLOCATIONS, MODEL_META } from '../lib/rb/types';
-import type { Holdings, TargetAllocation, DeviationItem, AdjustmentMode } from '../lib/rb/types';
-import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, estimateMonthsToRebalance, calculateEmergencyFund, applyEmergencyFund, getTotalAssets, formatCurrency } from '../lib/rb/logic';
+import type { Holdings, TargetAllocation, DeviationItem, AdjustmentItem, AdjustmentMode } from '../lib/rb/types';
+import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, estimateMonthsToRebalance, calculateEmergencyFund, applyEmergencyFund, calculatePeriodByAmount, calculatePeriodByMonths, getTotalAssets, formatCurrency } from '../lib/rb/logic';
 import { fetchTargetAllocation, saveTargetAllocation, fetchLatestSnapshot, saveSnapshot, fetchRbProfile, saveRbProfile } from '../lib/rb/db';
 import MfImportFlow from '../components/rb/MfImportFlow';
 import AllocationDisclaimer from '../components/AllocationDisclaimer';
 
 type Step = 'input' | 'import' | 'target' | 'result';
+
+function AdjustmentList({ items }: { items: AdjustmentItem[] }) {
+  return (
+    <div className="space-y-2">
+      {items.map(item => {
+        const isCash = item.key === 'cash';
+        let actionLabel: string;
+        if (isCash) {
+          actionLabel = item.amount > 0 ? '積み増し' : '投資に回す';
+        } else {
+          actionLabel = item.amount > 0 ? '追加' : '売却';
+        }
+        return (
+          <div key={item.key} className="bg-slate-800 rounded-lg px-4 py-3 flex justify-between items-center">
+            <span className="text-sm">{item.label}</span>
+            <span className={`text-sm font-medium ${item.amount > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {formatCurrency(item.amount)} {actionLabel}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 const SEVERITY_COLORS: Record<DeviationItem['severity'], string> = {
   ok: 'text-slate-400',
@@ -48,6 +72,9 @@ export default function RebalancePage() {
   const [deviation, setDeviation] = useState<DeviationItem[]>([]);
   const [adjustMode, setAdjustMode] = useState<AdjustmentMode>('add');
   const [monthlyAmount, setMonthlyAmount] = useState('');
+  const [periodMonthlyAmount, setPeriodMonthlyAmount] = useState('');
+  const [periodMonths, setPeriodMonths] = useState('');
+  const [periodLastChanged, setPeriodLastChanged] = useState<'amount' | 'months'>('amount');
   const [expandedHint, setExpandedHint] = useState<string | null>(null);
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
 
@@ -447,85 +474,169 @@ export default function RebalancePage() {
             <div className="bg-slate-900 rounded-2xl p-4 mb-4">
               <h2 className="text-sm text-slate-400 mb-3">調整計算</h2>
 
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                <button
-                  onClick={() => setAdjustMode('add')}
-                  className={`py-3 rounded-xl text-sm font-medium transition-all ${
-                    adjustMode === 'add'
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-slate-800 text-slate-400 border border-slate-700'
-                  }`}
-                >
-                  積立追加モード
-                </button>
-                <button
-                  onClick={() => setAdjustMode('sell')}
-                  className={`py-3 rounded-xl text-sm font-medium transition-all ${
-                    adjustMode === 'sell'
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-slate-800 text-slate-400 border border-slate-700'
-                  }`}
-                >
-                  売却ありモード
-                </button>
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                {([
+                  { key: 'add' as AdjustmentMode, label: '積立のみ' },
+                  { key: 'sell' as AdjustmentMode, label: '売却あり' },
+                  { key: 'period' as AdjustmentMode, label: '期間指定' },
+                ]).map(m => (
+                  <button
+                    key={m.key}
+                    onClick={() => setAdjustMode(m.key)}
+                    className={`py-3 rounded-xl text-sm font-medium transition-all ${
+                      adjustMode === m.key
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-slate-800 text-slate-400 border border-slate-700'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
               </div>
 
+              {/* 積立のみモード */}
               {adjustMode === 'add' && (
-                <div className="mb-4">
-                  <label className="text-sm text-slate-400 mb-2 block">今月の積立予定額（円）</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={monthlyAmount}
-                    onChange={e => setMonthlyAmount(e.target.value.replace(/[^0-9]/g, ''))}
-                    placeholder="例: 500,000"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-lg focus:border-emerald-500 focus:outline-none"
-                  />
-                </div>
-              )}
+                <>
+                  <div className="mb-4">
+                    <label className="text-sm text-slate-400 mb-2 block">今月の積立予定額（円）</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={monthlyAmount}
+                      onChange={e => setMonthlyAmount(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="例: 500,000"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-lg focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
 
-              {adjustmentItems.length > 0 && (
-                <div className="space-y-2">
-                  {adjustmentItems.map(item => {
-                    const isCash = item.key === 'cash';
-                    let actionLabel: string;
-                    if (isCash) {
-                      actionLabel = item.amount > 0 ? '積み増し' : '投資に回す';
-                    } else {
-                      actionLabel = item.amount > 0 ? '追加' : '売却';
-                    }
-                    return (
-                      <div key={item.key} className="bg-slate-800 rounded-lg px-4 py-3 flex justify-between items-center">
-                        <span className="text-sm">{item.label}</span>
-                        <span className={`text-sm font-medium ${item.amount > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {formatCurrency(item.amount)} {actionLabel}
-                        </span>
+                  {adjustmentItems.length > 0 && (
+                    <AdjustmentList items={adjustmentItems} />
+                  )}
+
+                  {monthlyAmount && (() => {
+                    const months = estimateMonthsToRebalance(investableHoldings, target, parseInt(monthlyAmount.replace(/[^0-9]/g, '')) || 0);
+                    if (months === 0) return <p className="text-xs text-emerald-400 text-center py-3">目標配分に到達しています</p>;
+                    if (months != null) return (
+                      <div className="bg-slate-800/50 rounded-lg px-4 py-3 mt-3 text-center">
+                        <p className="text-sm text-slate-300">
+                          このペースで約 <span className="text-emerald-400 font-bold text-lg">{months}</span> ヶ月後にリバランス完了（計算上の目安）
+                        </p>
                       </div>
                     );
-                  })}
-                </div>
+                    return null;
+                  })()}
+
+                  {!monthlyAmount && (
+                    <p className="text-xs text-slate-500 text-center py-4">積立予定額を入力すると計算結果を表示します</p>
+                  )}
+                </>
               )}
 
-              {adjustMode === 'add' && monthlyAmount && (() => {
-                const months = estimateMonthsToRebalance(investableHoldings, target, parseInt(monthlyAmount.replace(/[^0-9]/g, '')) || 0);
-                if (months === 0) return <p className="text-xs text-emerald-400 text-center py-3">目標配分に到達しています</p>;
-                if (months != null) return (
-                  <div className="bg-slate-800/50 rounded-lg px-4 py-3 mt-3 text-center">
-                    <p className="text-sm text-slate-300">
-                      このペースで約 <span className="text-emerald-400 font-bold text-lg">{months}</span> ヶ月後にリバランス完了（計算上の目安）
-                    </p>
-                  </div>
+              {/* 売却ありモード */}
+              {adjustMode === 'sell' && (
+                <>
+                  {adjustmentItems.length > 0
+                    ? <AdjustmentList items={adjustmentItems} />
+                    : <p className="text-xs text-slate-500 text-center py-4">調整不要です</p>
+                  }
+                </>
+              )}
+
+              {/* 期間指定モード */}
+              {adjustMode === 'period' && (() => {
+                const pMonthly = parseInt(periodMonthlyAmount.replace(/[^0-9]/g, '')) || 0;
+                const pMonths = parseInt(periodMonths.replace(/[^0-9]/g, '')) || 0;
+                const periodResult = periodLastChanged === 'amount' && pMonthly > 0
+                  ? calculatePeriodByAmount(investableHoldings, target, pMonthly)
+                  : periodLastChanged === 'months' && pMonths > 0
+                    ? calculatePeriodByMonths(investableHoldings, target, pMonths)
+                    : null;
+
+                const completionDate = periodResult && periodResult.months > 0
+                  ? (() => {
+                      const d = new Date();
+                      d.setMonth(d.getMonth() + periodResult.months);
+                      return d.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' });
+                    })()
+                  : null;
+
+                return (
+                  <>
+                    <div className="space-y-3 mb-4">
+                      <div>
+                        <label className="text-sm text-slate-400 mb-1 block">毎月の積立予定額（円）</label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={periodMonthlyAmount}
+                          onChange={e => {
+                            setPeriodMonthlyAmount(e.target.value.replace(/[^0-9]/g, ''));
+                            setPeriodLastChanged('amount');
+                          }}
+                          placeholder="例: 500,000"
+                          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-lg focus:border-emerald-500 focus:outline-none"
+                        />
+                        {periodLastChanged === 'amount' && periodResult && periodResult.months > 0 && (
+                          <p className="text-xs text-slate-400 mt-1">→ 完了まで約 {periodResult.months} ヶ月</p>
+                        )}
+                      </div>
+                      <div className="text-center text-slate-600 text-xs">または</div>
+                      <div>
+                        <label className="text-sm text-slate-400 mb-1 block">完了希望期間（ヶ月）</label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={periodMonths}
+                          onChange={e => {
+                            setPeriodMonths(e.target.value.replace(/[^0-9]/g, ''));
+                            setPeriodLastChanged('months');
+                          }}
+                          placeholder="例: 12"
+                          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-lg focus:border-emerald-500 focus:outline-none"
+                        />
+                        {periodLastChanged === 'months' && periodResult && periodResult.monthlyAmount > 0 && (
+                          <p className="text-xs text-slate-400 mt-1">→ 必要積立額 約 {formatCurrency(periodResult.monthlyAmount)}/月</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {periodResult && periodResult.months === 0 && (
+                      <p className="text-xs text-emerald-400 text-center py-3">目標配分に到達しています</p>
+                    )}
+
+                    {periodResult && periodResult.months > 0 && (
+                      <div className="space-y-4">
+                        <h4 className="text-sm text-slate-300 font-medium">今月の操作（計算上の目安）</h4>
+
+                        {periodResult.sellItems.length > 0 && (
+                          <div>
+                            <p className="text-xs text-red-400 mb-2">売却（初月のみ）</p>
+                            <AdjustmentList items={periodResult.sellItems} />
+                          </div>
+                        )}
+
+                        {periodResult.monthlyItems.length > 0 && (
+                          <div>
+                            <p className="text-xs text-emerald-400 mb-2">積立（毎月）</p>
+                            <AdjustmentList items={periodResult.monthlyItems} />
+                          </div>
+                        )}
+
+                        <div className="bg-slate-800/50 rounded-lg px-4 py-3 text-center">
+                          <p className="text-sm text-slate-300">
+                            完了予定：<span className="text-emerald-400 font-bold">{periodResult.months}ヶ月後</span>
+                            {completionDate && <span className="text-slate-500">（{completionDate}）</span>}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {!periodResult && (
+                      <p className="text-xs text-slate-500 text-center py-4">積立額または完了期間を入力すると計算結果を表示します</p>
+                    )}
+                  </>
                 );
-                return null;
               })()}
-
-              {adjustMode === 'add' && !monthlyAmount && (
-                <p className="text-xs text-slate-500 text-center py-4">積立予定額を入力すると計算結果を表示します</p>
-              )}
-
-              {adjustMode === 'sell' && adjustmentItems.length === 0 && (
-                <p className="text-xs text-slate-500 text-center py-4">調整不要です</p>
-              )}
             </div>
 
             {/* ナビゲーション */}

@@ -36,6 +36,10 @@ export default function AllocationDisclaimer({ variant = 'light' }: { variant?: 
             集中投資には大きな価格変動リスクが伴います。
           </p>
           <p>
+            売却は税コストを最小化するため初月に一括で行う計算結果です。
+            NISAや特定口座の税制に応じてご自身で判断してください。
+          </p>
+          <p>
             この画面の表示はすべて計算結果です。最終的な投資判断はご自身でお願いします。
           </p>
         </div>
