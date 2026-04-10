@@ -66,13 +66,17 @@ export interface AdjustmentItem {
 
 /** 期間指定リバランスの計算結果 */
 export interface PeriodRebalanceResult {
-  sellItems: AdjustmentItem[];       // 初月に売却（超過クラス）
+  sellItems: AdjustmentItem[];       // 売却クラス（期間で分散）
   monthlyItems: AdjustmentItem[];    // 毎月の積立配分
   totalDeficit: number;              // 不足額合計
   totalSurplus: number;              // 超過額合計
-  requiredSellAmount: number;        // 必要な売却額
+  requiredSellAmount: number;        // 売却総額（現金除く）
+  cashSurplus: number;               // 現金余剰額
   months: number;                    // 完了期間
-  monthlyAmount: number;             // 毎月の積立額
+  monthlyAmount: number;             // 毎月の追加積立額（売却・現金取り崩し後に必要な分）
+  monthlySellContribution: number;   // 毎月の売却充当額（requiredSellAmount / months）
+  monthlyCashContribution: number;   // 毎月の現金取り崩し額（cashSurplus / months）
+  monthlyTotal: number;              // 毎月の操作合計（売却充当 + 現金取り崩し + 追加積立）
 }
 
 /** 月次推移の1ヶ月分 */

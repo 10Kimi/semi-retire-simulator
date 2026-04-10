@@ -619,8 +619,23 @@ export default function RebalancePage() {
                           placeholder="例: 12"
                           className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-lg focus:border-emerald-500 focus:outline-none"
                         />
-                        {periodLastChanged === 'months' && periodResult && periodResult.monthlyAmount > 0 && (
-                          <p className="text-xs text-slate-400 mt-1">→ 必要積立額 約 {formatCurrency(periodResult.monthlyAmount)}/月</p>
+                        {periodLastChanged === 'months' && periodResult && periodResult.months > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {periodResult.monthlyAmount > 0
+                              ? <p className="text-xs text-slate-300">→ 毎月 {formatCurrency(periodResult.monthlyAmount)} の追加積立が必要です</p>
+                              : <p className="text-xs text-emerald-400">→ 売却資金と現金の取り崩しでリバランス完了できます（追加積立不要）</p>
+                            }
+                            <div className="text-xs text-slate-500 space-y-0.5 pl-2">
+                              <p>毎月の操作合計：{formatCurrency(periodResult.monthlyTotal)}</p>
+                              {periodResult.monthlySellContribution > 0 && (
+                                <p>  売却資金の充当：{formatCurrency(periodResult.monthlySellContribution)}</p>
+                              )}
+                              {periodResult.monthlyCashContribution > 0 && (
+                                <p>  現金の取り崩し：{formatCurrency(periodResult.monthlyCashContribution)}</p>
+                              )}
+                              <p>  追加積立：{periodResult.monthlyAmount > 0 ? formatCurrency(periodResult.monthlyAmount) : '不要'}</p>
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>

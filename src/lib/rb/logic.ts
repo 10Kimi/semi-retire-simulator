@@ -215,7 +215,9 @@ function buildPeriodResult(
     return {
       sellItems: [], monthlyItems: [],
       totalDeficit: 0, totalSurplus,
-      requiredSellAmount: 0, months: 0, monthlyAmount: inputMonthly ?? 0,
+      requiredSellAmount: 0, cashSurplus: 0,
+      months: 0, monthlyAmount: inputMonthly ?? 0,
+      monthlySellContribution: 0, monthlyCashContribution: 0, monthlyTotal: 0,
     };
   }
 
@@ -258,10 +260,16 @@ function buildPeriodResult(
     }
   }
 
+  const monthlySellContribution = months > 0 ? Math.round(requiredSellAmount / months) : 0;
+  const monthlyCashContribution = months > 0 ? Math.round(cashSurplus / months) : 0;
+  const monthlyTotal = monthlySellContribution + monthlyCashContribution + monthlyAmount;
+
   return {
     sellItems, monthlyItems,
     totalDeficit: totalShortfall, totalSurplus,
-    requiredSellAmount, months, monthlyAmount,
+    requiredSellAmount, cashSurplus,
+    months, monthlyAmount,
+    monthlySellContribution, monthlyCashContribution, monthlyTotal,
   };
 }
 
