@@ -194,7 +194,22 @@ function buildPeriodResult(
   const totalDeficit = classData.reduce((s, d) => s + Math.max(0, d.diff), 0);
   const totalSurplus = classData.reduce((s, d) => s + Math.max(0, -d.diff), 0);
 
-  if (totalDeficit <= 0) {
+  // 超過クラスは全額売却（目標0%のクラスも含む）
+  const sellItems: AdjustmentItem[] = classData
+    .filter(d => d.diff < 0)
+    .sort((a, b) => a.diff - b.diff) // 超過が大きい順
+    .map(d => ({
+      key: d.key as AssetClassKey,
+      label: d.label,
+      amount: -Math.round(Math.abs(d.diff)),
+    }));
+
+  const requiredSellAmount = sellItems.reduce((s, i) => s + Math.abs(i.amount), 0);
+
+  // 売却で埋められない不足額
+  const remainingShortfall = Math.max(0, totalDeficit - requiredSellAmount);
+
+  if (totalDeficit <= 0 && requiredSellAmount <= 0) {
     return {
       sellItems: [], monthlyItems: [], totalDeficit: 0, totalSurplus,
       requiredSellAmount: 0, months: 0, monthlyAmount: inputMonthly ?? 0,
@@ -203,61 +218,29 @@ function buildPeriodResult(
 
   let months: number;
   let monthlyAmount: number;
-  let requiredSellAmount: number;
 
-  if (inputMonthly != null && inputMonths != null) {
-    // 両方指定（期間指定モード: 期間と積立額が確定）
-    months = inputMonths;
+  if (remainingShortfall <= 0) {
+    // 売却だけで完了
+    months = 1;
+    monthlyAmount = 0;
+  } else if (inputMonthly != null) {
+    // 積立額指定 → 残りの不足を積立で埋める期間を計算
     monthlyAmount = inputMonthly;
-    const totalAccumulation = monthlyAmount * months;
-    requiredSellAmount = Math.max(0, totalDeficit - totalAccumulation);
+    months = Math.ceil(remainingShortfall / monthlyAmount);
   } else if (inputMonths != null) {
-    // 期間指定 → 積立だけで足りるか計算、足りなければ売却
+    // 期間指定 → 残りの不足を期間で割って積立額を計算
     months = inputMonths;
-    // まず売却なしで必要な積立額を計算
-    monthlyAmount = Math.ceil(totalDeficit / months);
-    // 超過額を売却に回せば積立額を減らせる
-    const sellable = Math.min(totalSurplus, totalDeficit);
-    const deficitAfterSell = totalDeficit - sellable;
-    if (deficitAfterSell > 0) {
-      monthlyAmount = Math.ceil(deficitAfterSell / months);
-    } else {
-      monthlyAmount = 0;
-    }
-    const totalAccumulation = monthlyAmount * months;
-    requiredSellAmount = Math.max(0, totalDeficit - totalAccumulation);
+    monthlyAmount = Math.ceil(remainingShortfall / months);
   } else {
-    // 積立額指定 → 期間を計算（売却なし、期間が伸びるだけ）
-    monthlyAmount = inputMonthly!;
-    months = Math.ceil(totalDeficit / monthlyAmount);
-    requiredSellAmount = 0;
-  }
-
-  // 売却アイテム（超過クラスから大きい順）
-  const sellItems: AdjustmentItem[] = [];
-  if (requiredSellAmount > 0) {
-    const surplusClasses = classData
-      .filter(d => d.diff < 0)
-      .sort((a, b) => a.diff - b.diff); // 超過が大きい順
-
-    let remaining = requiredSellAmount;
-    for (const cls of surplusClasses) {
-      if (remaining <= 0) break;
-      const sellAmount = Math.min(remaining, Math.abs(cls.diff));
-      sellItems.push({
-        key: cls.key as AssetClassKey,
-        label: cls.label,
-        amount: -Math.round(sellAmount),
-      });
-      remaining -= sellAmount;
-    }
+    months = 0;
+    monthlyAmount = 0;
   }
 
   // 毎月の積立配分（不足クラスに按分）
   const deficitClasses = classData.filter(d => d.diff > 0);
   const deficitTotal = deficitClasses.reduce((s, d) => s + d.diff, 0);
 
-  const monthlyItems: AdjustmentItem[] = deficitTotal > 0
+  const monthlyItems: AdjustmentItem[] = monthlyAmount > 0 && deficitTotal > 0
     ? deficitClasses.map(d => ({
         key: d.key as AssetClassKey,
         label: d.label,
