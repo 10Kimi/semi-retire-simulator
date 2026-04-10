@@ -52,6 +52,24 @@ export function calculateDeviation(
   });
 }
 
+/** 積立追加モードでリバランス完了までの推定月数を計算 */
+export function estimateMonthsToRebalance(
+  holdings: Holdings,
+  target: TargetAllocation,
+  monthlyAmount: number,
+): number | null {
+  if (monthlyAmount <= 0) return null;
+  const total = getTotalAssets(holdings);
+  // 不足額の合計（目標比率に対して足りない分）
+  const totalDeficit = ASSET_CLASSES.reduce((sum, ac) => {
+    const targetAmount = total * (target[ac.key] || 0) / 100;
+    const current = holdings[ac.key] || 0;
+    return sum + Math.max(0, targetAmount - current);
+  }, 0);
+  if (totalDeficit <= 0) return 0;
+  return Math.ceil(totalDeficit / monthlyAmount);
+}
+
 /** 調整計算 — 積立追加モード（仕様書 §4-2） */
 export function calculateAddAdjustment(
   holdings: Holdings,

@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import UserStatusBar from '../components/UserStatusBar';
 import { ASSET_CLASSES, MODEL_ALLOCATIONS } from '../lib/rb/types';
 import type { Holdings, TargetAllocation, DeviationItem, AdjustmentMode } from '../lib/rb/types';
-import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, getTotalAssets, formatCurrency } from '../lib/rb/logic';
+import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, estimateMonthsToRebalance, getTotalAssets, formatCurrency } from '../lib/rb/logic';
 import { fetchTargetAllocation, saveTargetAllocation, fetchLatestSnapshot, saveSnapshot } from '../lib/rb/db';
 import MfImportFlow from '../components/rb/MfImportFlow';
 
@@ -404,6 +404,19 @@ export default function RebalancePage() {
                   ))}
                 </div>
               )}
+
+              {adjustMode === 'add' && monthlyAmount && (() => {
+                const months = estimateMonthsToRebalance(holdings, target, parseInt(monthlyAmount.replace(/[^0-9]/g, '')) || 0);
+                if (months === 0) return <p className="text-xs text-emerald-400 text-center py-3">目標配分に到達しています</p>;
+                if (months != null) return (
+                  <div className="bg-slate-800/50 rounded-lg px-4 py-3 mt-3 text-center">
+                    <p className="text-sm text-slate-300">
+                      このペースで約 <span className="text-emerald-400 font-bold text-lg">{months}</span> ヶ月後にリバランス完了（計算上の目安）
+                    </p>
+                  </div>
+                );
+                return null;
+              })()}
 
               {adjustMode === 'add' && !monthlyAmount && (
                 <p className="text-xs text-slate-500 text-center py-4">積立予定額を入力すると計算結果を表示します</p>
