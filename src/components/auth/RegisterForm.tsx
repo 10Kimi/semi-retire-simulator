@@ -8,7 +8,6 @@ interface Props {
 
 export default function RegisterForm({ onSwitchToLogin }: Props) {
   const { signUp } = useAuth();
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -56,16 +55,6 @@ export default function RegisterForm({ onSwitchToLogin }: Props) {
               {error}
             </div>
           )}
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">お名前</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-            />
-          </div>
           <div>
             <label className="block text-sm text-gray-700 mb-1">メールアドレス</label>
             <input

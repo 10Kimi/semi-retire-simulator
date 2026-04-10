@@ -10,6 +10,7 @@ import {
   clearAnswersStorage,
 } from '../components/riskSimple/RiskAuthGate';
 import RiskResultDisplay from '../components/riskSimple/RiskResultDisplay';
+import NicknameModal from '../components/NicknameModal';
 import {
   RISK_SIMPLE_QUESTIONS,
   CAPACITY_QUESTIONS,
@@ -34,6 +35,7 @@ export default function RiskSimplePage() {
   const [result, setResult] = useState<RiskSimpleResult | null>(null);
   const [saving, setSaving] = useState(false);
   const [restored, setRestored] = useState(false);
+  const [showNicknameModal, setShowNicknameModal] = useState(false);
 
   const currentQuestion = RISK_SIMPLE_QUESTIONS[questionIndex];
   const selectedAnswer = answers[questionIndex];
@@ -50,6 +52,9 @@ export default function RiskSimplePage() {
       const res = calculateRiskSimpleResult(saved);
       setResult(res);
       setPhase('result');
+      if (!user.user_metadata?.full_name && !user.user_metadata?.nickname_skipped) {
+        setShowNicknameModal(true);
+      }
 
       // DB保存
       setSaving(true);
@@ -74,6 +79,9 @@ export default function RiskSimplePage() {
       const res = calculateRiskSimpleResult(validAnswers);
       setResult(res);
       setPhase('result');
+      if (user && !user.user_metadata?.full_name && !user.user_metadata?.nickname_skipped) {
+        setShowNicknameModal(true);
+      }
 
       // Save to DB if logged in
       if (user) {
@@ -243,6 +251,9 @@ export default function RiskSimplePage() {
               </p>
             )}
             <RiskResultDisplay result={result} onRetry={handleRetry} />
+            {showNicknameModal && (
+              <NicknameModal onDone={() => setShowNicknameModal(false)} />
+            )}
           </>
         )}
       </main>
