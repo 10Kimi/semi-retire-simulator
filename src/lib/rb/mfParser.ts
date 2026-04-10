@@ -2,23 +2,14 @@ import * as XLSX from 'xlsx';
 
 /** MFエクセルから解析した1銘柄の情報 */
 export interface MfHolding {
-  section: string;       // MFセクション名（株式（現物）, 投資信託, 預金・現金・暗号資産, 債券, 年金）
+  section: string;       // MFセクション名
   name: string;          // 銘柄名
   ticker: string;        // 銘柄コード/ティッカー（ない場合は空）
   amount: number;        // 評価額（円）
 }
 
-/** MFエクセルのセクションヘッダーパターン */
-const SECTION_HEADERS = [
-  '株式（現物）',
-  '投資信託',
-  '預金・現金・暗号資産',
-  '債券',
-  '年金',
-];
-
-/** セクションの合計行パターン */
-const SUMMARY_SECTIONS = new Set(['預金・現金・暗号資産', '債券', '年金']);
+/** セクションヘッダーとして認識する文字列 */
+const SECTION_MARKERS = ['預金・現金・暗号資産', '株式（現物）', '投資信託', '債券', '年金'];
 
 /**
  * MFエクスポートExcelを解析して銘柄一覧を返す
@@ -30,7 +21,7 @@ export function parseMfExcel(data: ArrayBuffer): MfHolding[] {
 
   const holdings: MfHolding[] = [];
   let currentSection = '';
-  let headerRow: (string | number | null)[] = [];
+  let sectionTotal = 0;
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -39,96 +30,161 @@ export function parseMfExcel(data: ArrayBuffer): MfHolding[] {
     const firstCell = String(row[0] ?? '').trim();
 
     // セクションヘッダーの検出
-    const matchedSection = SECTION_HEADERS.find(s => firstCell.includes(s));
+    const matchedSection = SECTION_MARKERS.find(s => firstCell === s);
     if (matchedSection) {
       currentSection = matchedSection;
-      headerRow = [];
+      sectionTotal = 0;
       continue;
     }
 
     if (!currentSection) continue;
 
-    // ヘッダー行の検出（「銘柄名」「保有金額」等を含む行）
-    if (hasHeaderKeyword(row)) {
-      headerRow = row;
-      continue;
-    }
-
-    // 合計セクション（預金・債券・年金）: 合計行を探す
-    if (SUMMARY_SECTIONS.has(currentSection)) {
-      if (firstCell === '合計' || firstCell.includes('合計')) {
-        const amount = findAmount(row);
-        if (amount > 0) {
-          holdings.push({
-            section: currentSection,
-            name: currentSection,
-            ticker: '',
-            amount,
-          });
-        }
-        currentSection = ''; // セクション終了
+    // 合計行の検出（「合計：28,435,943円」形式）
+    if (firstCell.startsWith('合計')) {
+      sectionTotal = parseYenString(firstCell);
+      // 預金は合計行のみで処理
+      if (currentSection === '預金・現金・暗号資産' && sectionTotal > 0) {
+        holdings.push({ section: currentSection, name: '預金・現金・暗号資産', ticker: '', amount: sectionTotal });
+        currentSection = '';
       }
       continue;
     }
 
-    // 株式（現物）・投資信託: 個別銘柄行を解析
-    if (headerRow.length === 0) continue;
-    if (firstCell === '合計' || firstCell.includes('合計')) {
-      currentSection = ''; // セクション終了
+    // --- セクション別の個別行解析 ---
+
+    if (currentSection === '株式（現物）') {
+      const parsed = parseStockRow(row);
+      if (parsed) holdings.push({ section: currentSection, ...parsed });
       continue;
     }
 
-    const parsed = parseHoldingRow(row, headerRow, currentSection);
-    if (parsed && parsed.amount > 0) {
-      holdings.push(parsed);
+    if (currentSection === '投資信託') {
+      const parsed = parseFundRow(row);
+      if (parsed) holdings.push({ section: currentSection, ...parsed });
+      continue;
+    }
+
+    if (currentSection === '債券') {
+      const parsed = parseBondRow(row);
+      if (parsed) holdings.push({ section: currentSection, ...parsed });
+      continue;
+    }
+
+    if (currentSection === '年金') {
+      const parsed = parsePensionRow(row);
+      if (parsed) holdings.push({ section: currentSection, ...parsed });
+      continue;
     }
   }
 
   return holdings;
 }
 
-function hasHeaderKeyword(row: (string | number | null)[]): boolean {
-  const text = row.map(c => String(c ?? '')).join('');
-  return text.includes('銘柄名') || text.includes('銘柄コード') || text.includes('保有金額') || text.includes('評価額');
-}
+/**
+ * 株式（現物）の行を解析
+ * 日本株: [銘柄コード(数値), 銘柄名, 数量, 取得単価, 現在値, 評価額, ...]
+ * 米国株: [ティッカー(文字列), 銘柄名, 数量, 取得単価, 現在値, 評価額, ...]
+ */
+function parseStockRow(row: (string | number | null)[]): { name: string; ticker: string; amount: number } | null {
+  if (row.length < 6) return null;
 
-function parseHoldingRow(
-  row: (string | number | null)[],
-  headerRow: (string | number | null)[],
-  section: string,
-): MfHolding | null {
-  const colIndex = (keyword: string) =>
-    headerRow.findIndex(h => String(h ?? '').includes(keyword));
+  const col0 = row[0];
+  const col1 = row[1];
 
-  const nameIdx = colIndex('銘柄名');
-  const tickerIdx = colIndex('銘柄コード') !== -1 ? colIndex('銘柄コード') : colIndex('ティッカー');
-  const amountIdx = colIndex('評価額') !== -1 ? colIndex('評価額') : colIndex('保有金額');
+  // ヘッダー行やnull行をスキップ
+  if (col0 == null || col1 == null) return null;
+  const col0Str = String(col0).trim();
+  if (!col0Str || col0Str === '変更' || col0Str === '削除') return null;
 
-  if (nameIdx === -1 || amountIdx === -1) return null;
-
-  const name = String(row[nameIdx] ?? '').trim();
+  // 銘柄コード（数値=日本株、文字列=米国株）
+  const ticker = col0Str;
+  const name = String(col1).trim();
   if (!name) return null;
 
-  const ticker = tickerIdx !== -1 ? String(row[tickerIdx] ?? '').trim() : '';
-  const amount = parseNumber(row[amountIdx]);
+  // 評価額は「円」付き文字列を探す（5番目のカラム付近）
+  const amount = findYenAmount(row, 5);
+  if (amount <= 0) return null;
 
-  return { section, name, ticker, amount };
+  return { name, ticker, amount };
 }
 
-function findAmount(row: (string | number | null)[]): number {
-  // 合計行の数値セルを探す（最も大きい数値を採用）
-  let maxAmount = 0;
-  for (const cell of row) {
-    const num = parseNumber(cell);
-    if (num > maxAmount) maxAmount = num;
+/**
+ * 投資信託の行を解析
+ * [ファンド名, 口数, 取得基準, 現在基準, 評価額, ...]
+ */
+function parseFundRow(row: (string | number | null)[]): { name: string; ticker: string; amount: number } | null {
+  if (row.length < 5) return null;
+
+  const col0 = row[0];
+  if (col0 == null) return null;
+  const name = String(col0).trim();
+  if (!name || name === '変更' || name === '削除') return null;
+
+  // 口数（2番目）が数値でなければヘッダー行
+  if (typeof row[1] !== 'number') return null;
+
+  const amount = findYenAmount(row, 4);
+  if (amount <= 0) return null;
+
+  return { name, ticker: '', amount };
+}
+
+/**
+ * 債券の行を解析
+ * [銘柄名, 評価額, 保有金融機関, ...]
+ */
+function parseBondRow(row: (string | number | null)[]): { name: string; ticker: string; amount: number } | null {
+  if (row.length < 2) return null;
+
+  const col0 = row[0];
+  if (col0 == null) return null;
+  const name = String(col0).trim();
+  if (!name || name === '銘柄名') return null;
+
+  const amount = findYenAmount(row, 1);
+  if (amount <= 0) return null;
+
+  return { name, ticker: '', amount };
+}
+
+/**
+ * 年金の行を解析
+ * [名称, 取得価額, 現在価値, 評価損益, ...]
+ */
+function parsePensionRow(row: (string | number | null)[]): { name: string; ticker: string; amount: number } | null {
+  if (row.length < 3) return null;
+
+  const col0 = row[0];
+  if (col0 == null) return null;
+  const name = String(col0).trim();
+  if (!name || name === '名称') return null;
+
+  // 現在価値（3番目のカラム）
+  const amount = findYenAmount(row, 2);
+  if (amount <= 0) return null;
+
+  return { name, ticker: '', amount };
+}
+
+/** 「1,234,567円」形式の文字列から数値を抽出 */
+function parseYenString(s: string): number {
+  const match = s.match(/[\d,]+/);
+  if (!match) return 0;
+  return parseInt(match[0].replace(/,/g, ''), 10) || 0;
+}
+
+/** row[startIdx]以降から「○○円」形式の値を探す */
+function findYenAmount(row: (string | number | null)[], startIdx: number): number {
+  for (let i = startIdx; i < row.length; i++) {
+    const cell = row[i];
+    if (cell == null) continue;
+    const s = String(cell);
+    if (s.includes('円')) {
+      // マイナス付き「-78,546円」にも対応
+      const cleaned = s.replace(/[^0-9,-]/g, '');
+      const num = parseInt(cleaned.replace(/,/g, ''), 10);
+      if (!isNaN(num) && num > 0) return num;
+    }
   }
-  return maxAmount;
-}
-
-function parseNumber(cell: string | number | null | undefined): number {
-  if (cell == null) return 0;
-  if (typeof cell === 'number') return Math.round(cell);
-  const cleaned = String(cell).replace(/[,，円¥\s]/g, '');
-  const num = parseInt(cleaned, 10);
-  return isNaN(num) ? 0 : num;
+  return 0;
 }
