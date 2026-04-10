@@ -245,17 +245,23 @@ export default function RebalancePage() {
           <>
             <div className="bg-slate-900 rounded-2xl p-4 mb-4">
               <h2 className="text-sm text-slate-400 mb-4">モデル配分プリセット（計算上の参考値）</h2>
-              <div className="grid grid-cols-5 gap-2 mb-4">
-                {[1, 2, 3, 4, 5].map(lv => (
+              <div className="grid grid-cols-4 gap-2 mb-4">
+                {[
+                  { lv: 1, label: '超保守' },
+                  { lv: 2, label: '保守' },
+                  { lv: 3, label: 'やや保守' },
+                  { lv: 4, label: 'バランス' },
+                  { lv: 5, label: 'やや積極' },
+                  { lv: 6, label: '積極' },
+                  { lv: 7, label: '超積極' },
+                ].map(({ lv, label }) => (
                   <button
                     key={lv}
                     onClick={() => applyPreset(lv)}
                     className="py-2 rounded-xl text-sm font-medium bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 transition-colors"
                   >
                     <div>Lv{lv}</div>
-                    <div className="text-xs opacity-70 mt-0.5">
-                      {lv === 1 ? '保守' : lv === 2 ? 'やや保守' : lv === 3 ? '中立' : lv === 4 ? 'やや積極' : '積極'}
-                    </div>
+                    <div className="text-xs opacity-70 mt-0.5">{label}</div>
                   </button>
                 ))}
               </div>

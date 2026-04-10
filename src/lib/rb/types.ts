@@ -15,13 +15,15 @@ export const ASSET_CLASSES = [
 
 export type AssetClassKey = (typeof ASSET_CLASSES)[number]['key'];
 
-// リスクレベル別モデル配分（仕様書 §3-2）
+// リスクレベル別モデル配分（リスク診断7段階に対応）
 export const MODEL_ALLOCATIONS: Record<number, Record<AssetClassKey, number>> = {
-  1: { japan_equity: 5, developed_equity: 10, emerging_equity: 0, japan_bond: 20, developed_bond: 30, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 5, alternative: 0, cash: 30 },
-  2: { japan_equity: 10, developed_equity: 20, emerging_equity: 5, japan_bond: 15, developed_bond: 25, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 5, alternative: 0, cash: 20 },
-  3: { japan_equity: 15, developed_equity: 30, emerging_equity: 5, japan_bond: 10, developed_bond: 15, emerging_bond: 0, japan_reit: 2.5, foreign_reit: 2.5, commodity: 5, alternative: 0, cash: 15 },
-  4: { japan_equity: 20, developed_equity: 35, emerging_equity: 10, japan_bond: 5, developed_bond: 10, emerging_bond: 0, japan_reit: 2.5, foreign_reit: 2.5, commodity: 5, alternative: 0, cash: 10 },
-  5: { japan_equity: 25, developed_equity: 40, emerging_equity: 15, japan_bond: 0, developed_bond: 5, emerging_bond: 0, japan_reit: 2.5, foreign_reit: 2.5, commodity: 5, alternative: 0, cash: 5 },
+  1: { japan_equity: 0, developed_equity: 5, emerging_equity: 0, japan_bond: 25, developed_bond: 30, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 5, alternative: 0, cash: 35 },
+  2: { japan_equity: 5, developed_equity: 10, emerging_equity: 0, japan_bond: 20, developed_bond: 25, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 5, alternative: 0, cash: 35 },
+  3: { japan_equity: 10, developed_equity: 20, emerging_equity: 5, japan_bond: 15, developed_bond: 20, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 5, alternative: 0, cash: 25 },
+  4: { japan_equity: 15, developed_equity: 30, emerging_equity: 5, japan_bond: 10, developed_bond: 15, emerging_bond: 0, japan_reit: 2.5, foreign_reit: 2.5, commodity: 5, alternative: 0, cash: 15 },
+  5: { japan_equity: 20, developed_equity: 35, emerging_equity: 10, japan_bond: 5, developed_bond: 10, emerging_bond: 0, japan_reit: 2.5, foreign_reit: 2.5, commodity: 5, alternative: 0, cash: 10 },
+  6: { japan_equity: 25, developed_equity: 40, emerging_equity: 15, japan_bond: 0, developed_bond: 5, emerging_bond: 0, japan_reit: 2.5, foreign_reit: 2.5, commodity: 5, alternative: 0, cash: 5 },
+  7: { japan_equity: 25, developed_equity: 45, emerging_equity: 20, japan_bond: 0, developed_bond: 0, emerging_bond: 0, japan_reit: 2.5, foreign_reit: 2.5, commodity: 5, alternative: 0, cash: 0 },
 };
 
 export interface Holdings {
