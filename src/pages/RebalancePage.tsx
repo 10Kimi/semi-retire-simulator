@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import UserStatusBar from '../components/UserStatusBar';
 import { ASSET_CLASSES, MODEL_ALLOCATIONS, MODEL_META } from '../lib/rb/types';
 import type { Holdings, TargetAllocation, DeviationItem, AdjustmentItem, AdjustmentMode } from '../lib/rb/types';
-import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, estimateMonthsToRebalance, calculateEmergencyFund, applyEmergencyFund, calculatePeriodByAmount, calculatePeriodByMonths, simulateMonthly, getTotalAssets, formatCurrency } from '../lib/rb/logic';
+import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, estimateMonthsToRebalance, calculateEmergencyFund, applyEmergencyFund, calculatePeriodByAmount, calculatePeriodByMonths, simulateMonthly, getTotalAssets, formatCurrency, formatThousands } from '../lib/rb/logic';
 import { fetchTargetAllocation, saveTargetAllocation, fetchLatestSnapshot, saveSnapshot, fetchRbProfile, saveRbProfile } from '../lib/rb/db';
 import MfImportFlow from '../components/rb/MfImportFlow';
 import AllocationDisclaimer from '../components/AllocationDisclaimer';
@@ -26,7 +26,7 @@ function AdjustmentList({ items }: { items: AdjustmentItem[] }) {
           <div key={item.key} className="bg-slate-800 rounded-lg px-4 py-3 flex justify-between items-center">
             <span className="text-sm">{item.label}</span>
             <span className={`text-sm font-medium ${item.amount > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              {formatCurrency(item.amount)} {actionLabel}
+              {formatThousands(item.amount)} {actionLabel}
             </span>
           </div>
         );
@@ -622,18 +622,18 @@ export default function RebalancePage() {
                         {periodLastChanged === 'months' && periodResult && periodResult.months > 0 && (
                           <div className="mt-2 space-y-1">
                             {periodResult.monthlyAmount > 0
-                              ? <p className="text-xs text-slate-300">→ 毎月 {formatCurrency(periodResult.monthlyAmount)} の追加積立が必要です</p>
+                              ? <p className="text-xs text-slate-300">→ 毎月 {formatThousands(periodResult.monthlyAmount)} の追加積立が必要です</p>
                               : <p className="text-xs text-emerald-400">→ 売却資金と現金の取り崩しでリバランス完了できます（追加積立不要）</p>
                             }
                             <div className="text-xs text-slate-500 space-y-0.5 pl-2">
-                              <p>毎月の操作合計：{formatCurrency(periodResult.monthlyTotal)}</p>
+                              <p>毎月の操作合計：{formatThousands(periodResult.monthlyTotal)}</p>
                               {periodResult.monthlySellContribution > 0 && (
-                                <p>  売却資金の充当：{formatCurrency(periodResult.monthlySellContribution)}</p>
+                                <p>  売却資金の充当：{formatThousands(periodResult.monthlySellContribution)}</p>
                               )}
                               {periodResult.monthlyCashContribution > 0 && (
-                                <p>  現金の取り崩し：{formatCurrency(periodResult.monthlyCashContribution)}</p>
+                                <p>  現金の取り崩し：{formatThousands(periodResult.monthlyCashContribution)}</p>
                               )}
-                              <p>  追加積立：{periodResult.monthlyAmount > 0 ? formatCurrency(periodResult.monthlyAmount) : '不要'}</p>
+                              <p>  追加積立：{periodResult.monthlyAmount > 0 ? formatThousands(periodResult.monthlyAmount) : '不要'}</p>
                             </div>
                           </div>
                         )}

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ASSET_CLASSES } from '../../lib/rb/types';
 import type { Holdings, TargetAllocation, PeriodRebalanceResult } from '../../lib/rb/types';
-import { simulateMonthly, formatMan } from '../../lib/rb/logic';
+import { simulateMonthly, formatThousands } from '../../lib/rb/logic';
 
 interface Props {
   holdings: Holdings;
@@ -145,7 +145,7 @@ export default function MonthlyProjection({ holdings, target, periodResult }: Pr
                           <td key={`${snap.month}-op`} className={`text-center py-2 px-1 ${
                             op.operationAmount > 0 ? 'text-emerald-400' : op.operationAmount < 0 ? 'text-red-400' : 'text-slate-600'
                           }`}>
-                            {formatMan(op.operationAmount)}
+                            {formatThousands(op.operationAmount)}
                           </td>,
                           <td key={`${snap.month}-r`} className="text-center py-2 px-1 text-slate-400">
                             {op.ratio}%{op.reachedTarget ? ' ✓' : ''}
