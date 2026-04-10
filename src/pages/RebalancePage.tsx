@@ -486,14 +486,23 @@ export default function RebalancePage() {
 
               {adjustmentItems.length > 0 && (
                 <div className="space-y-2">
-                  {adjustmentItems.map(item => (
-                    <div key={item.key} className="bg-slate-800 rounded-lg px-4 py-3 flex justify-between items-center">
-                      <span className="text-sm">{item.label}</span>
-                      <span className={`text-sm font-medium ${item.amount > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {item.amount > 0 ? `${formatCurrency(item.amount)} 追加` : `${formatCurrency(item.amount)} 売却`}
-                      </span>
-                    </div>
-                  ))}
+                  {adjustmentItems.map(item => {
+                    const isCash = item.key === 'cash';
+                    let actionLabel: string;
+                    if (isCash) {
+                      actionLabel = item.amount > 0 ? '積み増し' : '投資に回す';
+                    } else {
+                      actionLabel = item.amount > 0 ? '追加' : '売却';
+                    }
+                    return (
+                      <div key={item.key} className="bg-slate-800 rounded-lg px-4 py-3 flex justify-between items-center">
+                        <span className="text-sm">{item.label}</span>
+                        <span className={`text-sm font-medium ${item.amount > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {formatCurrency(item.amount)} {actionLabel}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
