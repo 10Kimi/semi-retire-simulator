@@ -1,6 +1,7 @@
 import { supabase } from '../supabase';
 import { ASSET_CLASSES } from './types';
 import type { AssetClassKey, Holdings, TargetAllocation } from './types';
+import type { FundMasterEntry } from './allocator';
 
 /** 目標配分を取得 */
 export async function fetchTargetAllocation(userId: string): Promise<TargetAllocation | null> {
@@ -100,4 +101,64 @@ export async function fetchSnapshotDates(userId: string): Promise<string[]> {
   // 重複排除
   const dates = [...new Set(data.map(r => r.snapshot_date))];
   return dates;
+}
+
+/** fund_masterの全レコードを取得 */
+export async function fetchFundMaster(): Promise<FundMasterEntry[]> {
+  const { data, error } = await supabase
+    .from('fund_master')
+    .select('ticker, fund_name, asset_class, ratio');
+
+  if (error) {
+    console.error('fund_master fetch error:', error);
+    return [];
+  }
+  return data ?? [];
+}
+
+/** 登録リクエストを送信 */
+export async function submitFundRequest(
+  userId: string,
+  ticker: string,
+  fundName: string,
+  suggestedAssetClass: string,
+): Promise<boolean> {
+  // 重複チェック
+  const { data: existing } = await supabase
+    .from('fund_master_requests')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('ticker', ticker)
+    .limit(1);
+
+  if (existing && existing.length > 0) return false; // 既に送信済み
+
+  const { error } = await supabase
+    .from('fund_master_requests')
+    .insert({
+      ticker,
+      fund_name: fundName,
+      suggested_asset_class: suggestedAssetClass,
+      user_id: userId,
+    });
+
+  if (error) {
+    console.error('fund request submit error:', error);
+    return false;
+  }
+  return true;
+}
+
+/** ユーザーの送信済みリクエストのtickerセットを取得 */
+export async function fetchSubmittedRequestTickers(userId: string): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('fund_master_requests')
+    .select('ticker')
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('fund requests fetch error:', error);
+    return new Set();
+  }
+  return new Set(data.map(r => r.ticker));
 }

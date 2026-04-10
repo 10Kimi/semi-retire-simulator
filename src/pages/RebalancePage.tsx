@@ -5,8 +5,9 @@ import { ASSET_CLASSES, MODEL_ALLOCATIONS } from '../lib/rb/types';
 import type { Holdings, TargetAllocation, DeviationItem, AdjustmentMode } from '../lib/rb/types';
 import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, getTotalAssets, formatCurrency } from '../lib/rb/logic';
 import { fetchTargetAllocation, saveTargetAllocation, fetchLatestSnapshot, saveSnapshot } from '../lib/rb/db';
+import MfImportFlow from '../components/rb/MfImportFlow';
 
-type Step = 'input' | 'target' | 'result';
+type Step = 'input' | 'import' | 'target' | 'result';
 
 const SEVERITY_COLORS: Record<DeviationItem['severity'], string> = {
   ok: 'text-slate-400',
@@ -143,7 +144,7 @@ export default function RebalancePage() {
             <div key={s.key} className="flex items-center gap-2">
               {i > 0 && <div className="w-6 h-px bg-slate-700" />}
               <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                step === s.key
+                step === s.key || (step === 'import' && s.key === 'input')
                   ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'
                   : 'bg-slate-800 text-slate-500'
               }`}>
@@ -153,9 +154,33 @@ export default function RebalancePage() {
           ))}
         </div>
 
+        {/* MFエクセル取り込み */}
+        {step === 'import' && (
+          <MfImportFlow
+            onImportComplete={(imported) => {
+              setHoldings(imported);
+              if (hasExistingTarget) {
+                setDeviation(calculateDeviation(imported, target));
+                setStep('result');
+              } else {
+                setStep('target');
+              }
+            }}
+            onCancel={() => setStep('input')}
+          />
+        )}
+
         {/* STEP 1: 残高入力 */}
         {step === 'input' && (
           <>
+            {/* MFインポートボタン */}
+            <button
+              onClick={() => setStep('import')}
+              className="w-full py-3 mb-4 bg-slate-800 border border-slate-700 rounded-2xl text-sm text-slate-300 hover:bg-slate-700 flex items-center justify-center gap-2"
+            >
+              <span>📁</span> MoneyForwardのExcelから取り込む
+            </button>
+
             <div className="bg-slate-900 rounded-2xl p-4 mb-4">
               <h2 className="text-sm text-slate-400 mb-4">アセットクラス別 保有額（円）</h2>
               <div className="space-y-3">
