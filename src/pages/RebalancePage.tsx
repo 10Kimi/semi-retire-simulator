@@ -137,19 +137,26 @@ export default function RebalancePage() {
         {/* ステップインジケーター */}
         <div className="flex items-center gap-2 mb-6">
           {[
-            { key: 'input', label: '残高入力' },
-            { key: 'target', label: '目標配分' },
-            { key: 'result', label: '乖離・調整' },
+            { key: 'input' as Step, label: '残高入力' },
+            { key: 'target' as Step, label: '目標配分' },
+            { key: 'result' as Step, label: '乖離・調整' },
           ].map((s, i) => (
             <div key={s.key} className="flex items-center gap-2">
               {i > 0 && <div className="w-6 h-px bg-slate-700" />}
-              <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+              <button
+                onClick={() => {
+                  if (s.key === 'result' && hasExistingTarget) {
+                    setDeviation(calculateDeviation(holdings, target));
+                  }
+                  setStep(s.key === 'input' ? 'input' : s.key);
+                }}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 step === s.key || (step === 'import' && s.key === 'input')
                   ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'
-                  : 'bg-slate-800 text-slate-500'
+                  : 'bg-slate-800 text-slate-500 hover:text-slate-300'
               }`}>
                 {s.label}
-              </div>
+              </button>
             </div>
           ))}
         </div>
