@@ -680,6 +680,13 @@ export default function RebalancePage() {
                               {completionDate && <span className="text-slate-500">（{completionDate}）</span>}
                             </p>
                           </div>
+
+                          {periodResult.months > 3 && (
+                            <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg px-4 py-3">
+                              <p className="text-sm text-blue-300 mb-1">📊 月次投資アドバイザーについて</p>
+                              <p className="text-xs text-blue-400/70">リバランス期間中は /rb の計画を優先してください。完了後、/ma の月次最適化が有効になります。</p>
+                            </div>
+                          )}
                         </div>
                       );
                     })()}
