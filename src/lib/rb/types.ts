@@ -15,15 +15,26 @@ export const ASSET_CLASSES = [
 
 export type AssetClassKey = (typeof ASSET_CLASSES)[number]['key'];
 
-// リスクレベル別モデル配分（リスク診断7段階に対応）
+// リスクレベル別モデル配分（GPIF高成長ケースベース・効率的フロンティア計算結果）
 export const MODEL_ALLOCATIONS: Record<number, Record<AssetClassKey, number>> = {
-  1: { japan_equity: 0, developed_equity: 5, emerging_equity: 0, japan_bond: 25, developed_bond: 30, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 5, alternative: 0, cash: 35 },
-  2: { japan_equity: 5, developed_equity: 10, emerging_equity: 0, japan_bond: 20, developed_bond: 25, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 5, alternative: 0, cash: 35 },
-  3: { japan_equity: 10, developed_equity: 20, emerging_equity: 5, japan_bond: 15, developed_bond: 20, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 5, alternative: 0, cash: 25 },
-  4: { japan_equity: 15, developed_equity: 30, emerging_equity: 5, japan_bond: 10, developed_bond: 15, emerging_bond: 0, japan_reit: 2.5, foreign_reit: 2.5, commodity: 5, alternative: 0, cash: 15 },
-  5: { japan_equity: 20, developed_equity: 35, emerging_equity: 10, japan_bond: 5, developed_bond: 10, emerging_bond: 0, japan_reit: 2.5, foreign_reit: 2.5, commodity: 5, alternative: 0, cash: 10 },
-  6: { japan_equity: 25, developed_equity: 40, emerging_equity: 15, japan_bond: 0, developed_bond: 5, emerging_bond: 0, japan_reit: 2.5, foreign_reit: 2.5, commodity: 5, alternative: 0, cash: 5 },
-  7: { japan_equity: 25, developed_equity: 45, emerging_equity: 20, japan_bond: 0, developed_bond: 0, emerging_bond: 0, japan_reit: 2.5, foreign_reit: 2.5, commodity: 5, alternative: 0, cash: 0 },
+  1: { japan_equity: 5, developed_equity: 5, emerging_equity: 0, japan_bond: 80, developed_bond: 5, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 5, alternative: 0, cash: 0 },
+  2: { japan_equity: 10, developed_equity: 10, emerging_equity: 5, japan_bond: 40, developed_bond: 25, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 10, alternative: 0, cash: 0 },
+  3: { japan_equity: 15, developed_equity: 15, emerging_equity: 5, japan_bond: 5, developed_bond: 45, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 15, alternative: 0, cash: 0 },
+  4: { japan_equity: 25, developed_equity: 25, emerging_equity: 10, japan_bond: 0, developed_bond: 25, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 15, alternative: 0, cash: 0 },
+  5: { japan_equity: 30, developed_equity: 35, emerging_equity: 15, japan_bond: 0, developed_bond: 10, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 10, alternative: 0, cash: 0 },
+  6: { japan_equity: 15, developed_equity: 45, emerging_equity: 40, japan_bond: 0, developed_bond: 0, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 0, alternative: 0, cash: 0 },
+  7: { japan_equity: 0, developed_equity: 0, emerging_equity: 100, japan_bond: 0, developed_bond: 0, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 0, alternative: 0, cash: 0 },
+};
+
+// リスクレベル別メタデータ
+export const MODEL_META: Record<number, { name: string; expectedReturn: number; volatility: number; sharpe: number }> = {
+  1: { name: '超保守型',   expectedReturn: 3.8, volatility: 3.1,  sharpe: 0.75 },
+  2: { name: '保守型',     expectedReturn: 5.0, volatility: 6.2,  sharpe: 0.57 },
+  3: { name: 'やや保守型', expectedReturn: 5.9, volatility: 8.9,  sharpe: 0.49 },
+  4: { name: 'バランス型', expectedReturn: 6.7, volatility: 12.1, sharpe: 0.43 },
+  5: { name: 'やや積極型', expectedReturn: 7.3, volatility: 15.1, sharpe: 0.39 },
+  6: { name: '積極型',     expectedReturn: 8.2, volatility: 19.9, sharpe: 0.33 },
+  7: { name: '超積極型',   expectedReturn: 8.5, volatility: 24.0, sharpe: 0.29 },
 };
 
 export interface Holdings {

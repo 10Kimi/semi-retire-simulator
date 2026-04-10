@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import UserStatusBar from '../components/UserStatusBar';
-import { ASSET_CLASSES, MODEL_ALLOCATIONS } from '../lib/rb/types';
+import { ASSET_CLASSES, MODEL_ALLOCATIONS, MODEL_META } from '../lib/rb/types';
 import type { Holdings, TargetAllocation, DeviationItem, AdjustmentMode } from '../lib/rb/types';
 import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, estimateMonthsToRebalance, getTotalAssets, formatCurrency } from '../lib/rb/logic';
 import { fetchTargetAllocation, saveTargetAllocation, fetchLatestSnapshot, saveSnapshot } from '../lib/rb/db';
@@ -48,6 +48,7 @@ export default function RebalancePage() {
   const [adjustMode, setAdjustMode] = useState<AdjustmentMode>('add');
   const [monthlyAmount, setMonthlyAmount] = useState('');
   const [expandedHint, setExpandedHint] = useState<string | null>(null);
+  const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -95,7 +96,10 @@ export default function RebalancePage() {
 
   const applyPreset = (riskLevel: number) => {
     const preset = MODEL_ALLOCATIONS[riskLevel];
-    if (preset) setTarget({ ...preset });
+    if (preset) {
+      setTarget({ ...preset });
+      setSelectedPreset(riskLevel);
+    }
   };
 
   const goToTarget = async () => {
@@ -246,25 +250,41 @@ export default function RebalancePage() {
             <div className="bg-slate-900 rounded-2xl p-4 mb-4">
               <h2 className="text-sm text-slate-400 mb-4">モデル配分プリセット（計算上の参考値）</h2>
               <div className="grid grid-cols-4 gap-2 mb-4">
-                {[
-                  { lv: 1, label: '超保守' },
-                  { lv: 2, label: '保守' },
-                  { lv: 3, label: 'やや保守' },
-                  { lv: 4, label: 'バランス' },
-                  { lv: 5, label: 'やや積極' },
-                  { lv: 6, label: '積極' },
-                  { lv: 7, label: '超積極' },
-                ].map(({ lv, label }) => (
-                  <button
-                    key={lv}
-                    onClick={() => applyPreset(lv)}
-                    className="py-2 rounded-xl text-sm font-medium bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 transition-colors"
-                  >
-                    <div>Lv{lv}</div>
-                    <div className="text-xs opacity-70 mt-0.5">{label}</div>
-                  </button>
-                ))}
+                {[1, 2, 3, 4, 5, 6, 7].map(lv => {
+                  const meta = MODEL_META[lv];
+                  return (
+                    <button
+                      key={lv}
+                      onClick={() => applyPreset(lv)}
+                      className={`py-2 rounded-xl text-sm font-medium transition-colors ${
+                        selectedPreset === lv
+                          ? 'bg-emerald-600 text-white border border-emerald-500'
+                          : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
+                      }`}
+                    >
+                      <div>Lv{lv}</div>
+                      <div className="text-xs opacity-70 mt-0.5">{meta.name}</div>
+                    </button>
+                  );
+                })}
               </div>
+
+              {selectedPreset && (
+                <div className="bg-slate-800/50 rounded-lg p-3 mb-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">期待リターン（計算上の目安）</span>
+                    <span className="text-emerald-400 font-medium">{MODEL_META[selectedPreset].expectedReturn}%</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">ボラティリティ</span>
+                    <span className="text-orange-400 font-medium">{MODEL_META[selectedPreset].volatility}%</span>
+                  </div>
+                  <p className="text-xs text-slate-500">期待リターンはGPIF第5期高成長実現ケースをベースとした計算上の目安です。</p>
+                  {selectedPreset >= 6 && (
+                    <p className="text-xs text-orange-400">このレベルでは株式資産への高集中が計算結果として示されています。集中投資には大きな価格変動リスクが伴います。</p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="bg-slate-900 rounded-2xl p-4 mb-4">
@@ -449,8 +469,9 @@ export default function RebalancePage() {
               </button>
             </div>
 
-            <div className="text-center py-4 text-slate-500 text-xs">
-              ※ 本ツールの出力は計算結果の表示であり、投資の目安としてご利用ください
+            <div className="text-center py-4 text-slate-500 text-xs space-y-1">
+              <p>※ この画面の表示はすべて計算結果です。最終的な投資判断はご自身でお願いします。</p>
+              <p>※ この配分は投資可能資産を対象とした計算結果です。生活費6ヶ月分程度の緊急資金は別途現金で確保することを前提としています。</p>
             </div>
           </>
         )}

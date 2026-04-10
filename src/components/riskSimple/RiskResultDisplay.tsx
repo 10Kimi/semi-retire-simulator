@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { RiskSimpleResult } from '../../types/riskSimple';
 import { RISK_LEVEL_DEFS, getRiskLevelDef } from '../../logic/riskSimpleScoring';
+import { MODEL_ALLOCATIONS, MODEL_META, ASSET_CLASSES } from '../../lib/rb/types';
 
 interface Props {
   result: RiskSimpleResult;
@@ -92,6 +93,44 @@ export default function RiskResultDisplay({ result, onRetry }: Props) {
         </div>
       </div>
 
+      {/* モデル配分 */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <h3 className="text-sm font-bold text-gray-800 mb-3">
+          Lv{finalLevel} {levelDef.name} のモデル配分（計算上の参考値）
+        </h3>
+        <div className="space-y-1.5 mb-3">
+          {ASSET_CLASSES
+            .filter(ac => (MODEL_ALLOCATIONS[finalLevel]?.[ac.key] ?? 0) > 0)
+            .map(ac => (
+              <div key={ac.key} className="flex justify-between text-sm px-2 py-1.5 bg-gray-50 rounded">
+                <span className="text-gray-700">{ac.label}</span>
+                <span className="font-medium text-gray-800">{MODEL_ALLOCATIONS[finalLevel][ac.key]}%</span>
+              </div>
+            ))}
+        </div>
+        {MODEL_META[finalLevel] && (
+          <div className="flex gap-4 text-xs text-gray-500 border-t border-gray-100 pt-3">
+            <span>期待リターン: {MODEL_META[finalLevel].expectedReturn}%</span>
+            <span>リスク: {MODEL_META[finalLevel].volatility}%</span>
+          </div>
+        )}
+        <p className="text-xs text-gray-400 mt-2">
+          期待リターンはGPIF第5期高成長実現ケースをベースとした計算上の目安です。実際のリターンは異なる場合があります。
+        </p>
+        {finalLevel >= 6 && (
+          <p className="text-xs text-orange-600 mt-2">
+            このリスクレベルでは株式資産への高集中が計算結果として示されています。集中投資には大きな価格変動リスクが伴います。
+          </p>
+        )}
+      </div>
+
+      {/* 注記 */}
+      <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
+        <p className="text-xs text-gray-500 leading-relaxed">
+          この配分は投資可能資産を対象とした計算結果です。生活費6ヶ月分程度の緊急資金は別途現金で確保することを前提としています。
+        </p>
+      </div>
+
       {/* Capacity vs Tolerance 詳細 */}
       {result.gapType !== 'balanced' && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -143,13 +182,16 @@ export default function RiskResultDisplay({ result, onRetry }: Props) {
       </div>
 
       {/* やり直し */}
-      <div className="text-center">
+      <div className="text-center space-y-2">
         <button
           onClick={onRetry}
           className="text-sm text-gray-500 hover:text-gray-700 underline"
         >
           もう一度診断する
         </button>
+        <p className="text-xs text-gray-400">
+          この画面の表示はすべて計算結果です。最終的な投資判断はご自身でお願いします。
+        </p>
       </div>
     </div>
   );
