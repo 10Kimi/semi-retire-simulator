@@ -632,11 +632,11 @@ export default function RebalancePage() {
                     {periodResult && periodResult.months > 0 && (() => {
                       const snapshots = simulateMonthly(investableHoldings, target, periodResult);
                       const month1 = snapshots[0];
-                      const sellOps = month1.operations
+                      const sellOps: AdjustmentItem[] = month1.operations
                         .filter(o => o.operationAmount < 0)
                         .sort((a, b) => a.operationAmount - b.operationAmount)
                         .map(o => ({ key: o.key, label: o.label, amount: o.operationAmount }));
-                      const buyOps = month1.operations
+                      const buyOps: AdjustmentItem[] = month1.operations
                         .filter(o => o.operationAmount > 0)
                         .sort((a, b) => b.operationAmount - a.operationAmount)
                         .map(o => ({ key: o.key, label: o.label, amount: o.operationAmount }));
