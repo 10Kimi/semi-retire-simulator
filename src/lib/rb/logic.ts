@@ -363,13 +363,13 @@ export function simulateMonthly(
   return snapshots;
 }
 
-/** 金額を千円単位でフォーマット（操作欄用） */
+/** 金額を千円単位に丸めてフォーマット（操作欄用） */
 export function formatThousands(amount: number): string {
-  const thousands = Math.round(amount / 1000);
-  if (thousands === 0) return '−';
-  const abs = Math.abs(thousands);
-  const formatted = '¥' + abs.toLocaleString('ja-JP') + '千円';
-  return (thousands > 0 ? '+' : '-') + formatted;
+  const rounded = Math.round(amount / 1000) * 1000;
+  if (rounded === 0) return '−';
+  const abs = Math.abs(rounded);
+  const formatted = '¥' + abs.toLocaleString('ja-JP');
+  return (rounded > 0 ? '+' : '-') + formatted;
 }
 
 /** 通貨フォーマット */
