@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import UserStatusBar from '../components/UserStatusBar';
 import type { Indicators, UserMaSettings, MarketMode, AllocationResult } from '../lib/ma/types';
 import { fetchLatestIndicators, fetchUserSettings, updateReserveBalance, updateUserSettings } from '../lib/ma/db';
 import { calculateAllocation, formatCurrency, getCapeMultiplier } from '../lib/ma/logic';
@@ -105,11 +106,14 @@ export default function MonthlyAdvisorPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
       <div className="max-w-2xl mx-auto px-4 py-6">
         {/* ヘッダー */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-            📊 月次投資配分（計算）
-          </h1>
-          <p className="text-slate-400 text-sm mt-1">{currentDate}</p>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              📊 月次投資配分（計算）
+            </h1>
+            <p className="text-slate-400 text-sm mt-1">{currentDate}</p>
+          </div>
+          <UserStatusBar variant="dark" />
         </div>
 
         {/* 待機資金残高 */}

@@ -1,8 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import UserStatusBar from './UserStatusBar';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { user, signOut } = useAuth();
   const location = useLocation();
 
   return (
@@ -48,17 +47,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </Link>
           </nav>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <span className="text-sm text-gray-600 hidden md:inline">
-            {user?.user_metadata?.full_name || user?.email}
-          </span>
-          <button
-            onClick={signOut}
-            className="text-xs text-gray-500 hover:text-gray-700 border border-gray-300 rounded px-3 py-2 md:px-2 md:py-1 min-h-[44px] md:min-h-0"
-          >
-            ログアウト
-          </button>
-        </div>
+        <UserStatusBar variant="light" />
       </header>
       {children}
     </div>
