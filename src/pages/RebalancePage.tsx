@@ -77,6 +77,7 @@ export default function RebalancePage() {
   const [periodLastChanged, setPeriodLastChanged] = useState<'amount' | 'months'>('amount');
   const [expandedHint, setExpandedHint] = useState<string | null>(null);
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
+  const [showTargetUpdateBanner, setShowTargetUpdateBanner] = useState(false);
 
   // 緊急資金設定
   const [monthlyLivingCost, setMonthlyLivingCost] = useState<string>('');
@@ -95,6 +96,16 @@ export default function RebalancePage() {
       if (savedTarget) {
         setTarget(savedTarget);
         setHasExistingTarget(true);
+        // 旧モデル配分の検知: 現在のモデル配分と一致するか確認
+        const matchesAnyPreset = Object.keys(MODEL_ALLOCATIONS).some(lv => {
+          const preset = MODEL_ALLOCATIONS[Number(lv)];
+          return ASSET_CLASSES.every(ac =>
+            Math.abs((savedTarget[ac.key] || 0) - (preset[ac.key] || 0)) < 0.01
+          );
+        });
+        if (!matchesAnyPreset) {
+          setShowTargetUpdateBanner(true);
+        }
       }
       if (snapshot) {
         setHoldings(snapshot.holdings);
@@ -228,6 +239,19 @@ export default function RebalancePage() {
         {/* STEP 1: 残高入力 */}
         {step === 'input' && (
           <>
+            {/* 目標配分更新バナー */}
+            {showTargetUpdateBanner && (
+              <div className="bg-amber-900/30 border border-amber-500/50 rounded-2xl p-4 mb-4">
+                <p className="text-sm text-amber-200 mb-2">モデル配分が更新されました。目標配分を再設定してください。</p>
+                <button
+                  onClick={() => { setShowTargetUpdateBanner(false); setStep('target'); }}
+                  className="text-xs text-amber-400 hover:text-amber-300 underline"
+                >
+                  目標配分を再設定する
+                </button>
+              </div>
+            )}
+
             {/* MFインポートボタン */}
             <button
               onClick={() => setStep('import')}

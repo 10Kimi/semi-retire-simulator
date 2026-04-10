@@ -176,21 +176,27 @@ describe('calculatePeriodByAmount', () => {
 });
 
 describe('calculatePeriodByMonths', () => {
-  it('完了期間から必要積立額を計算する', () => {
+  it('完了期間から必要積立額または売却を計算する', () => {
     const result = calculatePeriodByMonths(periodHoldings, periodTarget, 12);
     expect(result).not.toBeNull();
     expect(result!.months).toBe(12);
-    expect(result!.monthlyAmount).toBeGreaterThan(0);
+    // 超過額で不足を埋められる場合は売却のみ（積立0）、そうでなければ積立あり
+    expect(result!.monthlyAmount >= 0).toBe(true);
+    expect(result!.totalDeficit).toBeGreaterThan(0);
   });
 
-  it('期間が短く積立だけでは足りない場合に売却が発生する', () => {
-    // 非常に短期間を指定
+  it('超過クラスがある場合に売却が発生する', () => {
+    const result = calculatePeriodByMonths(periodHoldings, periodTarget, 12);
+    expect(result).not.toBeNull();
+    // periodHoldingsはdeveloped_bond 40Mが超過しているので売却が発生
+    expect(result!.requiredSellAmount).toBeGreaterThan(0);
+    expect(result!.sellItems.length).toBeGreaterThan(0);
+    expect(result!.sellItems.every(i => i.amount < 0)).toBe(true);
+  });
+
+  it('期間が短い場合も正しく計算する', () => {
     const result = calculatePeriodByMonths(periodHoldings, periodTarget, 1);
     expect(result).not.toBeNull();
-    if (result!.requiredSellAmount > 0) {
-      expect(result!.sellItems.length).toBeGreaterThan(0);
-      // 売却は超過クラスから
-      expect(result!.sellItems.every(i => i.amount < 0)).toBe(true);
-    }
+    expect(result!.months).toBe(1);
   });
 });

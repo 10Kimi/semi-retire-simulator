@@ -8,7 +8,7 @@ export const ASSET_CLASSES = [
   { key: 'emerging_bond', label: '新興国債券', hint: '新興国債券ETF・投信等' },
   { key: 'japan_reit', label: '国内REIT', hint: 'J-REIT・国内REIT投信等' },
   { key: 'foreign_reit', label: '外国REIT', hint: '外国REIT ETF・投信等' },
-  { key: 'commodity', label: 'コモディティ', hint: '金ETF・農産物ETF・商品ファンド等' },
+  { key: 'commodity', label: 'ゴールド', hint: '金ETF・ゴールドファンド等' },
   { key: 'alternative', label: 'オルタナティブ', hint: 'カバードコール系ETF（JEPI・QYLD等）・ヘッジファンド等' },
   { key: 'cash', label: '現金・預金', hint: '銀行預金・MRF・外貨預金・証券口座現金等' },
 ] as const;

@@ -203,24 +203,35 @@ function buildPeriodResult(
 
   let months: number;
   let monthlyAmount: number;
+  let requiredSellAmount: number;
 
-  if (inputMonthly != null) {
-    // 積立額指定 → 期間を計算
+  if (inputMonthly != null && inputMonths != null) {
+    // 両方指定（期間指定モード: 期間と積立額が確定）
+    months = inputMonths;
     monthlyAmount = inputMonthly;
-    const totalFromAccumulation = totalDeficit;
-    // 積立だけで埋められる期間
-    months = Math.ceil(totalFromAccumulation / monthlyAmount);
-  } else {
-    // 期間指定 → 積立額を計算
-    months = inputMonths!;
+    const totalAccumulation = monthlyAmount * months;
+    requiredSellAmount = Math.max(0, totalDeficit - totalAccumulation);
+  } else if (inputMonths != null) {
+    // 期間指定 → 積立だけで足りるか計算、足りなければ売却
+    months = inputMonths;
+    // まず売却なしで必要な積立額を計算
     monthlyAmount = Math.ceil(totalDeficit / months);
+    // 超過額を売却に回せば積立額を減らせる
+    const sellable = Math.min(totalSurplus, totalDeficit);
+    const deficitAfterSell = totalDeficit - sellable;
+    if (deficitAfterSell > 0) {
+      monthlyAmount = Math.ceil(deficitAfterSell / months);
+    } else {
+      monthlyAmount = 0;
+    }
+    const totalAccumulation = monthlyAmount * months;
+    requiredSellAmount = Math.max(0, totalDeficit - totalAccumulation);
+  } else {
+    // 積立額指定 → 期間を計算（売却なし、期間が伸びるだけ）
+    monthlyAmount = inputMonthly!;
+    months = Math.ceil(totalDeficit / monthlyAmount);
+    requiredSellAmount = 0;
   }
-
-  // 積立合計
-  const totalAccumulation = monthlyAmount * months;
-
-  // 売却が必要な最小額（不足額 − 積立合計、0以上）
-  const requiredSellAmount = Math.max(0, totalDeficit - totalAccumulation);
 
   // 売却アイテム（超過クラスから大きい順）
   const sellItems: AdjustmentItem[] = [];
