@@ -183,35 +183,31 @@ function buildPeriodResult(
 ): PeriodRebalanceResult {
   const total = getTotalAssets(holdings);
 
-  // Step2: 目標金額
+  // 目標金額
   const targetAmounts: Record<string, number> = {};
   ASSET_CLASSES.forEach(ac => {
     targetAmounts[ac.key] = total * (target[ac.key] || 0) / 100;
   });
 
-  // Step3: 超過・不足を分離（現金は売却リストに出さない）
-  const excessMap: Record<string, number> = {};   // 売却額
-  const shortfallMap: Record<string, number> = {}; // 不足額
+  // 超過・不足を分離（現金は売却リストに出さない）
+  const sellPlan: Record<string, number> = {};  // 売却総額（期間で分散する）
+  const shortfallMap: Record<string, number> = {};
+  let cashSurplus = 0;
 
   for (const ac of ASSET_CLASSES) {
     const current = holdings[ac.key] || 0;
     const tgt = targetAmounts[ac.key] || 0;
     const diff = current - tgt;
     if (ac.key === 'cash') {
-      // 現金超過は内部計算のみ（売却リストに出さない）
-      if (diff > 0) excessMap['cash'] = diff;
+      if (diff > 0) cashSurplus = diff;
     } else if (diff > 0) {
-      excessMap[ac.key] = diff;
+      sellPlan[ac.key] = diff;
     } else if (diff < 0) {
       shortfallMap[ac.key] = Math.abs(diff);
     }
   }
 
-  // Step4: 売却総額（現金除く）+ 現金余剰で不足を賄えるか
-  const totalSellNonCash = Object.entries(excessMap)
-    .filter(([k]) => k !== 'cash')
-    .reduce((s, [, v]) => s + v, 0);
-  const cashSurplus = excessMap['cash'] || 0;
+  const totalSellNonCash = Object.values(sellPlan).reduce((s, v) => s + v, 0);
   const totalShortfall = Object.values(shortfallMap).reduce((a, b) => a + b, 0);
   const totalSurplus = totalSellNonCash + cashSurplus;
 
@@ -223,38 +219,34 @@ function buildPeriodResult(
     };
   }
 
-  // Step5: 売却アイテム（現金除く超過クラス、超過額の大きい順）
-  const sellItems: AdjustmentItem[] = Object.entries(excessMap)
-    .filter(([k]) => k !== 'cash')
+  // 売却アイテム（現金除く、期間全体の総額として表示）
+  const sellItems: AdjustmentItem[] = Object.entries(sellPlan)
     .sort((a, b) => b[1] - a[1])
     .map(([k, v]) => {
       const ac = ASSET_CLASSES.find(a => a.key === k)!;
       return { key: k as AssetClassKey, label: ac.label, amount: -Math.round(v) };
     });
 
-  const requiredSellAmount = sellItems.reduce((s, i) => s + Math.abs(i.amount), 0);
+  const requiredSellAmount = totalSellNonCash;
 
-  // 売却 + 現金余剰で埋められない不足額
+  // 売却+現金余剰で埋められない不足額 → 積立が必要
   const remainingShortfall = Math.max(0, totalShortfall - totalSurplus);
 
   let months: number;
   let monthlyAmount: number;
 
-  if (remainingShortfall <= 0) {
-    months = 1;
-    monthlyAmount = 0;
-  } else if (inputMonthly != null) {
+  if (inputMonthly != null) {
     monthlyAmount = inputMonthly;
-    months = Math.ceil(remainingShortfall / monthlyAmount);
+    months = remainingShortfall > 0 ? Math.ceil(remainingShortfall / monthlyAmount) : (inputMonths ?? 12);
   } else if (inputMonths != null) {
     months = inputMonths;
-    monthlyAmount = Math.ceil(remainingShortfall / months);
+    monthlyAmount = remainingShortfall > 0 ? Math.ceil(remainingShortfall / months) : 0;
   } else {
-    months = 0;
+    months = 12;
     monthlyAmount = 0;
   }
 
-  // 毎月の積立配分（不足クラスに按分）
+  // 毎月の積立配分（初期表示用、実際のシミュレーションでは動的按分）
   const monthlyItems: AdjustmentItem[] = [];
   if (monthlyAmount > 0 && totalShortfall > 0) {
     for (const [k, deficit] of Object.entries(shortfallMap)) {
@@ -273,7 +265,7 @@ function buildPeriodResult(
   };
 }
 
-/** 月次リバランスシミュレーション */
+/** 月次リバランスシミュレーション（売却を期間全体に分散） */
 export function simulateMonthly(
   holdings: Holdings,
   target: TargetAllocation,
@@ -285,66 +277,47 @@ export function simulateMonthly(
     targetAmounts[ac.key] = total * (target[ac.key] || 0) / 100;
   });
 
-  // 超過マップ（現金含む、内部計算用）
-  const excessMap: Record<string, number> = {};
-  for (const ac of ASSET_CLASSES) {
-    const diff = (holdings[ac.key] || 0) - (targetAmounts[ac.key] || 0);
-    if (diff > 0) excessMap[ac.key] = diff;
-  }
-
-  // 売却マップ（現金除く）
-  const sellMap: Record<string, number> = {};
-  for (const item of periodResult.sellItems) {
-    sellMap[item.key] = Math.abs(item.amount);
-  }
-
-  const cashSurplus = excessMap['cash'] || 0;
   const months = Math.max(periodResult.months, 1);
-  const snapshots: MonthlySnapshot[] = [];
 
-  // 各クラスの額をコピー
+  // 毎月の売却額（総額 ÷ 期間で分散）
+  const monthlySellMap: Record<string, number> = {};
+  for (const item of periodResult.sellItems) {
+    monthlySellMap[item.key] = Math.abs(item.amount) / months;
+  }
+
+  // 現金余剰も期間で分散して積立原資に加算
+  const cashCurrent = holdings['cash'] || 0;
+  const cashTarget = targetAmounts['cash'] || 0;
+  const cashSurplus = Math.max(0, cashCurrent - cashTarget);
+  const monthlyCashContribution = cashSurplus / months;
+
+  const snapshots: MonthlySnapshot[] = [];
   const amounts: Record<string, number> = {};
   ASSET_CLASSES.forEach(ac => { amounts[ac.key] = holdings[ac.key] || 0; });
 
   for (let month = 1; month <= months; month++) {
     const monthOps: Record<string, number> = {};
 
-    if (month === 1) {
-      // 初月: 売却（現金除く超過クラス）を実行
-      for (const [key, sellAmt] of Object.entries(sellMap)) {
-        amounts[key] = Math.max(0, amounts[key] - sellAmt);
-        monthOps[key] = (monthOps[key] || 0) - sellAmt;
-      }
-
-      // 初月: 売却資金 + 現金余剰を不足クラスに配分
-      const firstMonthFund = Object.values(sellMap).reduce((s, v) => s + v, 0) + cashSurplus;
-      if (firstMonthFund > 0) {
-        // 現金を減らす（余剰分を投資に回す）
-        if (cashSurplus > 0) {
-          amounts['cash'] -= cashSurplus;
-          monthOps['cash'] = (monthOps['cash'] || 0) - cashSurplus;
-        }
-
-        // 不足クラスに按分
-        const shortfalls: { key: string; deficit: number }[] = [];
-        for (const ac of ASSET_CLASSES) {
-          const deficit = Math.max(0, (targetAmounts[ac.key] || 0) - amounts[ac.key]);
-          if (deficit > 0) shortfalls.push({ key: ac.key, deficit });
-        }
-        const totalSF = shortfalls.reduce((s, d) => s + d.deficit, 0);
-        if (totalSF > 0) {
-          const allocFund = Math.min(firstMonthFund, totalSF);
-          for (const sf of shortfalls) {
-            const alloc = Math.round(allocFund * (sf.deficit / totalSF));
-            amounts[sf.key] += alloc;
-            monthOps[sf.key] = (monthOps[sf.key] || 0) + alloc;
-          }
-        }
-      }
+    // 1. 超過クラスを (超過額 ÷ months) ずつ売却
+    let monthSellTotal = 0;
+    for (const [key, monthlySell] of Object.entries(monthlySellMap)) {
+      const sell = Math.round(monthlySell);
+      amounts[key] = Math.max(0, amounts[key] - sell);
+      monthOps[key] = -sell;
+      monthSellTotal += sell;
     }
 
-    // 毎月: 積立を不足クラスにリアルタイム按分
-    if (periodResult.monthlyAmount > 0) {
+    // 2. 現金から毎月の取り崩し（操作欄には出さない、内部で減算のみ）
+    const cashContrib = Math.round(monthlyCashContribution);
+    if (cashContrib > 0) {
+      amounts['cash'] = Math.max(0, amounts['cash'] - cashContrib);
+    }
+
+    // 3. 今月の積立原資 = 月次積立額 + 今月の売却総額 + 現金取り崩し
+    const monthlySource = periodResult.monthlyAmount + monthSellTotal + cashContrib;
+
+    // 4. 不足クラスに按分して積立
+    if (monthlySource > 0) {
       const shortfalls: { key: string; deficit: number }[] = [];
       for (const ac of ASSET_CLASSES) {
         const deficit = Math.max(0, (targetAmounts[ac.key] || 0) - amounts[ac.key]);
@@ -353,26 +326,28 @@ export function simulateMonthly(
       const totalSF = shortfalls.reduce((s, d) => s + d.deficit, 0);
       if (totalSF > 0) {
         for (const sf of shortfalls) {
-          const alloc = Math.round(periodResult.monthlyAmount * (sf.deficit / totalSF));
+          const alloc = Math.round(monthlySource * (sf.deficit / totalSF));
           amounts[sf.key] += alloc;
           monthOps[sf.key] = (monthOps[sf.key] || 0) + alloc;
         }
       }
     }
 
-    // 月末スナップショット
+    // 月末スナップショット（現金は操作欄に出さない）
     const monthTotal = ASSET_CLASSES.reduce((s, ac) => s + (amounts[ac.key] || 0), 0);
-    const ops: MonthlySnapshot['operations'] = ASSET_CLASSES.map(ac => {
-      const targetRatio = target[ac.key] || 0;
-      const ratio = monthTotal > 0 ? (amounts[ac.key] || 0) / monthTotal * 100 : 0;
-      return {
-        key: ac.key,
-        label: ac.label,
-        operationAmount: Math.round(monthOps[ac.key] || 0),
-        ratio: Math.round(ratio * 10) / 10,
-        reachedTarget: Math.abs(ratio - targetRatio) < 1,
-      };
-    });
+    const ops: MonthlySnapshot['operations'] = ASSET_CLASSES
+      .filter(ac => ac.key !== 'cash')
+      .map(ac => {
+        const targetRatio = target[ac.key] || 0;
+        const ratio = monthTotal > 0 ? (amounts[ac.key] || 0) / monthTotal * 100 : 0;
+        return {
+          key: ac.key,
+          label: ac.label,
+          operationAmount: Math.round(monthOps[ac.key] || 0),
+          ratio: Math.round(ratio * 10) / 10,
+          reachedTarget: Math.abs(ratio - targetRatio) < 1,
+        };
+      });
 
     snapshots.push({ month, operations: ops, totalAssets: monthTotal });
   }

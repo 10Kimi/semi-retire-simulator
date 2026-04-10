@@ -23,9 +23,10 @@ export default function MonthlyProjection({ holdings, target, periodResult }: Pr
     [holdings, target, periodResult],
   );
 
-  // アクティブなクラス（操作があるか保有がある）
+  // アクティブなクラス（現金除外、操作があるか保有がある）
   const activeClasses = useMemo(() => {
     return ASSET_CLASSES.filter(ac => {
+      if (ac.key === 'cash') return false;
       const hasTarget = (target[ac.key] || 0) > 0;
       const hasHolding = (holdings[ac.key] || 0) > 0;
       return hasTarget || hasHolding;
