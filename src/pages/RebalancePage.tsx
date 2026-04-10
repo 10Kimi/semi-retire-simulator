@@ -629,32 +629,45 @@ export default function RebalancePage() {
                       <p className="text-xs text-emerald-400 text-center py-3">目標配分に到達しています</p>
                     )}
 
-                    {periodResult && periodResult.months > 0 && (
-                      <div className="space-y-4">
-                        <h4 className="text-sm text-slate-300 font-medium">今月の操作（計算上の目安）</h4>
+                    {periodResult && periodResult.months > 0 && (() => {
+                      const snapshots = simulateMonthly(investableHoldings, target, periodResult);
+                      const month1 = snapshots[0];
+                      const sellOps = month1.operations
+                        .filter(o => o.operationAmount < 0)
+                        .sort((a, b) => a.operationAmount - b.operationAmount)
+                        .map(o => ({ key: o.key, label: o.label, amount: o.operationAmount }));
+                      const buyOps = month1.operations
+                        .filter(o => o.operationAmount > 0)
+                        .sort((a, b) => b.operationAmount - a.operationAmount)
+                        .map(o => ({ key: o.key, label: o.label, amount: o.operationAmount }));
 
-                        {periodResult.sellItems.length > 0 && (
-                          <div>
-                            <p className="text-xs text-red-400 mb-2">売却（初月のみ）</p>
-                            <AdjustmentList items={periodResult.sellItems} />
+                      return (
+                        <div className="space-y-4">
+                          <h4 className="text-sm text-slate-300 font-medium">今月の操作（計算上の目安）</h4>
+
+                          {sellOps.length > 0 && (
+                            <div>
+                              <p className="text-xs text-red-400 mb-2">売却（毎月・分散）</p>
+                              <AdjustmentList items={sellOps} />
+                            </div>
+                          )}
+
+                          {buyOps.length > 0 && (
+                            <div>
+                              <p className="text-xs text-emerald-400 mb-2">積立（毎月）</p>
+                              <AdjustmentList items={buyOps} />
+                            </div>
+                          )}
+
+                          <div className="bg-slate-800/50 rounded-lg px-4 py-3 text-center">
+                            <p className="text-sm text-slate-300">
+                              完了予定：<span className="text-emerald-400 font-bold">{periodResult.months}ヶ月後</span>
+                              {completionDate && <span className="text-slate-500">（{completionDate}）</span>}
+                            </p>
                           </div>
-                        )}
-
-                        {periodResult.monthlyItems.length > 0 && (
-                          <div>
-                            <p className="text-xs text-emerald-400 mb-2">積立（毎月）</p>
-                            <AdjustmentList items={periodResult.monthlyItems} />
-                          </div>
-                        )}
-
-                        <div className="bg-slate-800/50 rounded-lg px-4 py-3 text-center">
-                          <p className="text-sm text-slate-300">
-                            完了予定：<span className="text-emerald-400 font-bold">{periodResult.months}ヶ月後</span>
-                            {completionDate && <span className="text-slate-500">（{completionDate}）</span>}
-                          </p>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {periodResult && periodResult.months > 0 && (
                       <MonthlyProjection
