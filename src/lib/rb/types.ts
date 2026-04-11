@@ -1,29 +1,31 @@
-// 11アセットクラス
+// 13アセットクラス（My Index定義）
 export const ASSET_CLASSES = [
-  { key: 'japan_equity', label: '国内株式', hint: '日本個別株・国内株式ETF・国内株式投信の合計' },
-  { key: 'developed_equity', label: '先進国株式', hint: '米国株・欧州株・VTI・先進国株式投信等' },
-  { key: 'emerging_equity', label: '新興国株式', hint: '新興国株式ETF・投信等' },
-  { key: 'japan_bond', label: '国内債券', hint: '国内債券ETF・個人向け国債・国内債券投信等' },
-  { key: 'developed_bond', label: '先進国債券', hint: 'BND・先進国債券投信・外国債券等' },
-  { key: 'emerging_bond', label: '新興国債券', hint: '新興国債券ETF・投信等' },
-  { key: 'japan_reit', label: '国内REIT', hint: 'J-REIT・国内REIT投信等' },
-  { key: 'foreign_reit', label: '外国REIT', hint: '外国REIT ETF・投信等' },
-  { key: 'commodity', label: 'ゴールド', hint: '金ETF・ゴールドファンド等' },
-  { key: 'alternative', label: 'オルタナティブ', hint: 'カバードコール系ETF（JEPI・QYLD等）・ヘッジファンド等' },
-  { key: 'cash', label: '現金・預金', hint: '銀行預金・MRF・外貨預金・証券口座現金等' },
+  { key: 'cash', label: '現金', hint: '銀行預金・MRF・外貨預金・証券口座現金等' },
+  { key: 'japan_equity', label: '日本株', hint: '日本個別株・国内株式ETF・国内株式投信の合計' },
+  { key: 'us_equity', label: '米国株', hint: 'S&P500・VTI・米国個別株等' },
+  { key: 'developed_equity', label: '先進国株（米・日除く）', hint: '欧州株・先進国株式投信（米国除く）等' },
+  { key: 'emerging_equity', label: 'エマージング株', hint: '新興国株式ETF・投信等' },
+  { key: 'japan_bond', label: '日本債券', hint: '国内債券ETF・個人向け国債等' },
+  { key: 'developed_bond', label: '先進国債券', hint: 'BND・先進国債券投信・米国債等' },
+  { key: 'emerging_bond', label: 'エマージング債', hint: '新興国債券ETF・投信等' },
+  { key: 'japan_reit', label: '日本REIT', hint: 'J-REIT・国内REIT投信等' },
+  { key: 'developed_reit', label: '先進国REIT', hint: '先進国REIT ETF・投信等' },
+  { key: 'emerging_reit', label: 'エマージングREIT', hint: '新興国REIT ETF・投信等' },
+  { key: 'commodity', label: 'コモディティ', hint: '農産物ETF・商品ファンド等' },
+  { key: 'gold', label: '金', hint: '金ETF・ゴールドファンド等' },
 ] as const;
 
 export type AssetClassKey = (typeof ASSET_CLASSES)[number]['key'];
 
 // リスクレベル別モデル配分（GPIF高成長ケースベース・効率的フロンティア計算結果）
 export const MODEL_ALLOCATIONS: Record<number, Record<AssetClassKey, number>> = {
-  1: { japan_equity: 5, developed_equity: 5, emerging_equity: 0, japan_bond: 80, developed_bond: 5, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 5, alternative: 0, cash: 0 },
-  2: { japan_equity: 10, developed_equity: 10, emerging_equity: 5, japan_bond: 40, developed_bond: 25, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 10, alternative: 0, cash: 0 },
-  3: { japan_equity: 15, developed_equity: 15, emerging_equity: 5, japan_bond: 5, developed_bond: 45, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 15, alternative: 0, cash: 0 },
-  4: { japan_equity: 25, developed_equity: 25, emerging_equity: 10, japan_bond: 0, developed_bond: 25, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 15, alternative: 0, cash: 0 },
-  5: { japan_equity: 30, developed_equity: 35, emerging_equity: 15, japan_bond: 0, developed_bond: 10, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 10, alternative: 0, cash: 0 },
-  6: { japan_equity: 15, developed_equity: 45, emerging_equity: 40, japan_bond: 0, developed_bond: 0, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 0, alternative: 0, cash: 0 },
-  7: { japan_equity: 0, developed_equity: 0, emerging_equity: 100, japan_bond: 0, developed_bond: 0, emerging_bond: 0, japan_reit: 0, foreign_reit: 0, commodity: 0, alternative: 0, cash: 0 },
+  1: { cash: 0, japan_equity: 5, us_equity: 5, developed_equity: 0, emerging_equity: 0, japan_bond: 80, developed_bond: 5, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 5 },
+  2: { cash: 0, japan_equity: 10, us_equity: 10, developed_equity: 0, emerging_equity: 5, japan_bond: 40, developed_bond: 25, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 10 },
+  3: { cash: 0, japan_equity: 15, us_equity: 15, developed_equity: 0, emerging_equity: 5, japan_bond: 5, developed_bond: 45, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 15 },
+  4: { cash: 0, japan_equity: 25, us_equity: 25, developed_equity: 0, emerging_equity: 10, japan_bond: 0, developed_bond: 25, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 15 },
+  5: { cash: 0, japan_equity: 30, us_equity: 35, developed_equity: 0, emerging_equity: 15, japan_bond: 0, developed_bond: 10, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 10 },
+  6: { cash: 0, japan_equity: 15, us_equity: 45, developed_equity: 0, emerging_equity: 40, japan_bond: 0, developed_bond: 0, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 0 },
+  7: { cash: 0, japan_equity: 0, us_equity: 0, developed_equity: 0, emerging_equity: 100, japan_bond: 0, developed_bond: 0, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 0 },
 };
 
 // リスクレベル別メタデータ

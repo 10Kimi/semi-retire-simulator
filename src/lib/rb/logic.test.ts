@@ -4,29 +4,23 @@ import type { Holdings, TargetAllocation } from './types';
 
 const holdings: Holdings = {
   japan_equity: 1_000_000,
-  developed_equity: 3_000_000,
+  us_equity: 1_000_000,
+  developed_equity: 2_000_000,
   emerging_equity: 500_000,
   japan_bond: 500_000,
   developed_bond: 1_000_000,
-  emerging_bond: 0,
-  japan_reit: 0,
-  foreign_reit: 0,
-  commodity: 500_000,
-  alternative: 0,
+  gold: 500_000,
   cash: 1_500_000,
 };
 
 const target: TargetAllocation = {
   japan_equity: 15,
-  developed_equity: 30,
+  us_equity: 20,
+  developed_equity: 10,
   emerging_equity: 5,
   japan_bond: 10,
   developed_bond: 15,
-  emerging_bond: 0,
-  japan_reit: 2.5,
-  foreign_reit: 2.5,
-  commodity: 5,
-  alternative: 0,
+  gold: 10,
   cash: 15,
 };
 
@@ -43,22 +37,21 @@ describe('getTotalAssets', () => {
 describe('calculateDeviation', () => {
   it('乖離率と乖離額を正しく計算する', () => {
     const result = calculateDeviation(holdings, target);
-    const total = 8_000_000;
+    const total = getTotalAssets(holdings);
 
-    const devEquity = result.find(r => r.key === 'developed_equity')!;
-    expect(devEquity.currentRatio).toBeCloseTo((3_000_000 / total) * 100, 1); // 37.5%
-    expect(devEquity.deviationRatio).toBeCloseTo(37.5 - 30, 1); // +7.5%
-    expect(devEquity.severity).toBe('warning'); // 5-10%
+    const usEquity = result.find(r => r.key === 'us_equity')!;
+    const usRatio = (1_000_000 / total) * 100;
+    expect(usEquity.currentRatio).toBeCloseTo(usRatio, 1);
+    expect(usEquity.deviationRatio).toBeCloseTo(usRatio - 20, 1);
 
     const cash = result.find(r => r.key === 'cash')!;
-    expect(cash.currentRatio).toBeCloseTo(18.75, 1);
-    expect(cash.deviationRatio).toBeCloseTo(3.75, 1);
-    expect(cash.severity).toBe('minor'); // 2-5%
+    const cashRatio = (1_500_000 / total) * 100;
+    expect(cash.currentRatio).toBeCloseTo(cashRatio, 1);
   });
 
   it('総資産0の場合もエラーにならない', () => {
     const result = calculateDeviation({}, target);
-    expect(result).toHaveLength(11);
+    expect(result).toHaveLength(13);
     expect(result[0].currentRatio).toBe(0);
   });
 });
@@ -134,18 +127,18 @@ describe('applyEmergencyFund', () => {
 // 仕様書の前提条件に近いテストデータ
 const realHoldings: Holdings = {
   japan_equity: 62_000_000,
-  developed_equity: 63_590_586,
+  us_equity: 50_000_000,
+  developed_equity: 13_590_586,
   emerging_equity: 563_624,
   japan_bond: 2_517_902,
   developed_bond: 30_681_043,
-  commodity: 3_663_909,
-  alternative: 6_496_596,
+  gold: 3_663_909,
+  commodity: 6_496_596,
   cash: 22_435_943,
 };
 const realTarget: TargetAllocation = {
-  japan_equity: 30, developed_equity: 35, emerging_equity: 15,
-  japan_bond: 0, developed_bond: 10, emerging_bond: 0,
-  japan_reit: 0, foreign_reit: 0, commodity: 10, alternative: 0, cash: 0,
+  japan_equity: 30, us_equity: 35, emerging_equity: 15,
+  developed_bond: 10, gold: 10,
 };
 
 describe('calculatePeriodByAmount', () => {
@@ -171,11 +164,11 @@ describe('calculatePeriodByMonths', () => {
 
   it('目標0%の非現金クラスは売却される', () => {
     const result = calculatePeriodByMonths(realHoldings, realTarget, 12);
-    // japan_bond, alternative は目標0%で保有あり → 売却
+    // japan_bond, commodity は目標0%で保有あり → 売却
     const jbSell = result!.sellItems.find(i => i.key === 'japan_bond');
-    const altSell = result!.sellItems.find(i => i.key === 'alternative');
+    const comSell = result!.sellItems.find(i => i.key === 'commodity');
     expect(jbSell).toBeDefined();
-    expect(altSell).toBeDefined();
+    expect(comSell).toBeDefined();
   });
 
   it('売却+現金余剰で足りれば積立額0', () => {

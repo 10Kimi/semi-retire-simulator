@@ -8,7 +8,7 @@ const fundMaster: FundMasterEntry[] = [
   { ticker: 'eMAXIS Slim 全世界株式(オール・カントリー)', fund_name: 'eMAXIS Slim 全世界株式(オール・カントリー)', asset_class: 'emerging_equity', ratio: 0.10 },
   { ticker: 'eMAXIS Slim 全世界株式(オール・カントリー)', fund_name: 'eMAXIS Slim 全世界株式(オール・カントリー)', asset_class: 'japan_equity', ratio: 0.06 },
   { ticker: 'VTI', fund_name: 'バンガード', asset_class: 'developed_equity', ratio: 1.00 },
-  { ticker: 'JEPI', fund_name: 'JPモルガン', asset_class: 'alternative', ratio: 1.00 },
+  { ticker: 'JEPI', fund_name: 'JPモルガン', asset_class: 'commodity', ratio: 1.00 },
 ];
 
 describe('allocateHoldings', () => {
@@ -72,7 +72,7 @@ describe('summarizeAllocations', () => {
     expect(summary.developed_equity).toBe(840_000);
     expect(summary.emerging_equity).toBe(100_000);
     expect(summary.japan_equity).toBe(60_000);
-    expect(summary.alternative).toBe(300_000);
+    expect(summary.commodity).toBe(300_000);
     expect(summary.cash).toBe(500_000);
   });
 

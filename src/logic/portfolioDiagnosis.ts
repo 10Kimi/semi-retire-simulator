@@ -32,6 +32,7 @@ const RISK_LEVEL_FROM_NUMBER: Record<number, RiskLevel> = {
 // market_data テーブルが空の場合に使用
 
 export const FALLBACK_ASSET_RETURNS: Record<string, number> = {
+  cash: 0.1,
   japan_equity: 5.6,
   us_equity: 7.2,
   developed_equity: 6.5,
@@ -41,11 +42,13 @@ export const FALLBACK_ASSET_RETURNS: Record<string, number> = {
   emerging_bond: 4.2,
   japan_reit: 4.5,
   developed_reit: 5.8,
+  emerging_reit: 6.5,
+  commodity: 3.5,
   gold: 3.0,
-  cash: 0.1,
 };
 
 export const FALLBACK_ASSET_RISKS: Record<string, number> = {
+  cash: 0.5,
   japan_equity: 18.0,
   us_equity: 20.0,
   developed_equity: 19.0,
@@ -55,36 +58,44 @@ export const FALLBACK_ASSET_RISKS: Record<string, number> = {
   emerging_bond: 12.0,
   japan_reit: 16.0,
   developed_reit: 18.0,
+  emerging_reit: 22.0,
+  commodity: 18.0,
   gold: 15.0,
-  cash: 0.5,
 };
 
-// 簡易化した相関行列（フォールバック用）
-// 行・列の順序: japan_equity, us_equity, developed_equity, emerging_equity,
+// 簡易化した相関行列（フォールバック用・13クラス）
+// 行・列の順序: cash, japan_equity, us_equity, developed_equity, emerging_equity,
 //               japan_bond, developed_bond, emerging_bond,
-//               japan_reit, developed_reit, gold, cash
+//               japan_reit, developed_reit, emerging_reit, commodity, gold
 const FALLBACK_CORRELATION_FLAT: number[][] = [
-  // japan_eq  us_eq  dev_eq  em_eq  jp_bd  dev_bd  em_bd  jp_rt  dev_rt  gold   cash
-  [  1.00,     0.65,  0.70,  0.55,  -0.10,  0.05,  0.20,  0.45,  0.40,  0.05,  0.00 ],  // japan_equity
-  [  0.65,     1.00,  0.85,  0.65,  -0.15,  0.10,  0.30,  0.40,  0.65,  0.00, -0.05 ],  // us_equity
-  [  0.70,     0.85,  1.00,  0.70,  -0.10,  0.15,  0.35,  0.40,  0.55,  0.05,  0.00 ],  // developed_equity
-  [  0.55,     0.65,  0.70,  1.00,  -0.05,  0.10,  0.50,  0.30,  0.45,  0.10,  0.00 ],  // emerging_equity
-  [ -0.10,    -0.15, -0.10, -0.05,   1.00,  0.30,  0.15,  0.20,  0.05,  0.10,  0.30 ],  // japan_bond
-  [  0.05,     0.10,  0.15,  0.10,   0.30,  1.00,  0.50,  0.15,  0.20,  0.25,  0.20 ],  // developed_bond
-  [  0.20,     0.30,  0.35,  0.50,   0.15,  0.50,  1.00,  0.20,  0.30,  0.15,  0.10 ],  // emerging_bond
-  [  0.45,     0.40,  0.40,  0.30,   0.20,  0.15,  0.20,  1.00,  0.55,  0.10,  0.05 ],  // japan_reit
-  [  0.40,     0.65,  0.55,  0.45,   0.05,  0.20,  0.30,  0.55,  1.00,  0.05,  0.00 ],  // developed_reit
-  [  0.05,     0.00,  0.05,  0.10,   0.10,  0.25,  0.15,  0.10,  0.05,  1.00,  0.10 ],  // gold
-  [  0.00,    -0.05,  0.00,  0.00,   0.30,  0.20,  0.10,  0.05,  0.00,  0.10,  1.00 ],  // cash
+  //cash  jp_eq  us_eq  dev_eq em_eq  jp_bd  dev_bd em_bd  jp_rt  dev_rt em_rt  commo  gold
+  [ 1.00,  0.00, -0.05,  0.00,  0.00,  0.30,  0.20,  0.10,  0.05,  0.00,  0.00,  0.05,  0.10 ], // cash
+  [ 0.00,  1.00,  0.65,  0.70,  0.55, -0.10,  0.05,  0.20,  0.45,  0.40,  0.35,  0.15,  0.05 ], // japan_equity
+  [-0.05,  0.65,  1.00,  0.85,  0.65, -0.15,  0.10,  0.30,  0.40,  0.65,  0.50,  0.20,  0.00 ], // us_equity
+  [ 0.00,  0.70,  0.85,  1.00,  0.70, -0.10,  0.15,  0.35,  0.40,  0.55,  0.45,  0.20,  0.05 ], // developed_equity
+  [ 0.00,  0.55,  0.65,  0.70,  1.00, -0.05,  0.10,  0.50,  0.30,  0.45,  0.60,  0.25,  0.10 ], // emerging_equity
+  [ 0.30, -0.10, -0.15, -0.10, -0.05,  1.00,  0.30,  0.15,  0.20,  0.05,  0.00,  0.05,  0.10 ], // japan_bond
+  [ 0.20,  0.05,  0.10,  0.15,  0.10,  0.30,  1.00,  0.50,  0.15,  0.20,  0.15,  0.10,  0.25 ], // developed_bond
+  [ 0.10,  0.20,  0.30,  0.35,  0.50,  0.15,  0.50,  1.00,  0.20,  0.30,  0.40,  0.20,  0.15 ], // emerging_bond
+  [ 0.05,  0.45,  0.40,  0.40,  0.30,  0.20,  0.15,  0.20,  1.00,  0.55,  0.40,  0.10,  0.10 ], // japan_reit
+  [ 0.00,  0.40,  0.65,  0.55,  0.45,  0.05,  0.20,  0.30,  0.55,  1.00,  0.55,  0.15,  0.05 ], // developed_reit
+  [ 0.00,  0.35,  0.50,  0.45,  0.60,  0.00,  0.15,  0.40,  0.40,  0.55,  1.00,  0.20,  0.10 ], // emerging_reit
+  [ 0.05,  0.15,  0.20,  0.20,  0.25,  0.05,  0.10,  0.20,  0.10,  0.15,  0.20,  1.00,  0.40 ], // commodity
+  [ 0.10,  0.05,  0.00,  0.05,  0.10,  0.10,  0.25,  0.15,  0.10,  0.05,  0.10,  0.40,  1.00 ], // gold
+];
+
+const CORR_KEYS = [
+  'cash', 'japan_equity', 'us_equity', 'developed_equity', 'emerging_equity',
+  'japan_bond', 'developed_bond', 'emerging_bond',
+  'japan_reit', 'developed_reit', 'emerging_reit', 'commodity', 'gold',
 ];
 
 function buildFallbackCorrelationMatrix(): Record<string, Record<string, number>> {
-  const keys = ASSET_CLASSES.map((ac) => ac.key);
   const matrix: Record<string, Record<string, number>> = {};
-  for (let i = 0; i < keys.length; i++) {
-    matrix[keys[i]] = {};
-    for (let j = 0; j < keys.length; j++) {
-      matrix[keys[i]][keys[j]] = FALLBACK_CORRELATION_FLAT[i][j];
+  for (let i = 0; i < CORR_KEYS.length; i++) {
+    matrix[CORR_KEYS[i]] = {};
+    for (let j = 0; j < CORR_KEYS.length; j++) {
+      matrix[CORR_KEYS[i]][CORR_KEYS[j]] = FALLBACK_CORRELATION_FLAT[i][j];
     }
   }
   return matrix;
