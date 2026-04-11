@@ -1,8 +1,8 @@
 import type { RiskSimpleResult } from '../../types/riskSimple';
 import { RISK_LEVEL_DEFS, getRiskLevelDef } from '../../logic/riskSimpleScoring';
 import { MODEL_ALLOCATIONS, MODEL_META, ASSET_CLASSES } from '../../lib/rb/types';
+import { Link } from 'react-router-dom';
 import AllocationDisclaimer from '../AllocationDisclaimer';
-import AllocationSlider from './AllocationSlider';
 
 interface Props {
   result: RiskSimpleResult;
@@ -117,7 +117,15 @@ export default function RiskResultDisplay({ result, onRetry, onSwitchToDetail }:
         )}
       </div>
 
-      <AllocationSlider finalLevel={finalLevel} />
+      {/* 配分カスタマイズへの導線 */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+        <Link
+          to="/portfolio"
+          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+        >
+          配分をカスタマイズする →
+        </Link>
+      </div>
 
       <AllocationDisclaimer variant="light" />
 

@@ -7,6 +7,7 @@ import RiskSimplePage from './pages/RiskSimplePage';
 import PfDiagnosisSimplePage from './pages/PfDiagnosisSimplePage';
 import MonthlyAdvisorPage from './pages/MonthlyAdvisorPage';
 import RebalancePage from './pages/RebalancePage';
+import PortfolioCustomizePage from './pages/PortfolioCustomizePage';
 // 有料版で復活予定
 // import AssessmentPage from './pages/AssessmentPage';
 // import PortfolioDiagnosisPage from './pages/PortfolioDiagnosisPage';
@@ -63,6 +64,7 @@ function App() {
         <Route path="/pf" element={<PfDiagnosisSimplePage />} />
         <Route path="/ma" element={<MonthlyAdvisorPage />} />
         <Route path="/rb" element={<RebalancePage />} />
+        <Route path="/portfolio" element={<PortfolioCustomizePage />} />
         {/* 有料版で復活予定 */}
         {/* <Route path="/assessment" element={<AssessmentPage />} /> */}
         {/* <Route path="/portfolio-diagnosis" element={<PortfolioDiagnosisPage />} /> */}
