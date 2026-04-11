@@ -7,6 +7,7 @@ export async function saveRiskSimpleResult(
   toleranceScore: number,
   finalLevel: number,
   answers: RiskAnswer[],
+  version: 'simple' | 'detail' = 'simple',
 ): Promise<string | null> {
   const { data, error } = await supabase
     .from('risk_assessment_simple')
@@ -16,6 +17,7 @@ export async function saveRiskSimpleResult(
       tolerance_score: toleranceScore,
       final_level: finalLevel,
       answers,
+      version,
     })
     .select('id')
     .single();

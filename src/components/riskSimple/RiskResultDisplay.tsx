@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import type { RiskSimpleResult } from '../../types/riskSimple';
 import { RISK_LEVEL_DEFS, getRiskLevelDef } from '../../logic/riskSimpleScoring';
 import { MODEL_ALLOCATIONS, MODEL_META, ASSET_CLASSES } from '../../lib/rb/types';
@@ -7,6 +6,7 @@ import AllocationDisclaimer from '../AllocationDisclaimer';
 interface Props {
   result: RiskSimpleResult;
   onRetry: () => void;
+  onSwitchToDetail?: () => void;
 }
 
 function LevelBar({ level, label }: { level: number; label: string }) {
@@ -24,9 +24,8 @@ function LevelBar({ level, label }: { level: number; label: string }) {
   );
 }
 
-export default function RiskResultDisplay({ result, onRetry }: Props) {
+export default function RiskResultDisplay({ result, onRetry, onSwitchToDetail }: Props) {
   const { capacityScore, toleranceScore, finalLevel, gapMessage, levelDef } = result;
-  const [showDetailedNotice, setShowDetailedNotice] = useState(false);
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -147,27 +146,24 @@ export default function RiskResultDisplay({ result, onRetry }: Props) {
         </div>
       )}
 
-      {/* 詳細版への導線 */}
-      <div className="bg-blue-50 rounded-xl border border-blue-200 p-5 text-center">
-        <h3 className="text-sm font-bold text-blue-800 mb-2">
-          より精度の高い診断はこちら
-        </h3>
-        <p className="text-xs text-blue-600 mb-4">
-          米国大学の学術調査に基づく13問の詳細版診断で、<br />
-          より正確なリスク許容度を判定します。
-        </p>
-        <button
-          onClick={() => setShowDetailedNotice(true)}
-          className="px-6 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors min-h-[44px]"
-        >
-          詳細版を試す
-        </button>
-        {showDetailedNotice && (
-          <p className="mt-3 text-xs text-blue-700 bg-blue-100 rounded-lg px-4 py-2">
-            詳細版は近日公開予定です。公開時にメールでお知らせします。
+      {/* 詳細版への導線（簡易版の場合のみ） */}
+      {onSwitchToDetail && (
+        <div className="bg-blue-50 rounded-xl border border-blue-200 p-5 text-center">
+          <h3 className="text-sm font-bold text-blue-800 mb-2">
+            より精度の高い診断はこちら
+          </h3>
+          <p className="text-xs text-blue-600 mb-4">
+            米国大学の学術調査に基づく20問の詳細版診断で、<br />
+            より正確なリスク許容度を判定します。
           </p>
-        )}
-      </div>
+          <button
+            onClick={onSwitchToDetail}
+            className="px-6 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors min-h-[44px]"
+          >
+            詳細版を試す
+          </button>
+        </div>
+      )}
 
       {/* やり直し */}
       <div className="text-center">

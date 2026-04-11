@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import RiskProgressBar from '../components/riskSimple/RiskProgressBar';
@@ -16,18 +16,26 @@ import {
   CAPACITY_QUESTIONS,
   TOTAL_QUESTIONS,
 } from '../logic/riskSimpleQuestions';
+import {
+  RISK_DETAIL_QUESTIONS,
+  DETAIL_CAPACITY_QUESTIONS,
+  DETAIL_TOTAL_QUESTIONS,
+} from '../logic/riskDetailQuestions';
 import { calculateRiskSimpleResult } from '../logic/riskSimpleScoring';
+import { calculateDetailResult } from '../logic/riskDetailScoring';
 import { saveRiskSimpleResult } from '../lib/riskSimpleDb';
 import { useAuth } from '../contexts/AuthContext';
 import type { RiskAnswer, RiskSimpleResult } from '../types/riskSimple';
 
-type Phase = 'questions' | 'section_transition' | 'auth_gate' | 'result';
+type Phase = 'version_select' | 'questions' | 'section_transition' | 'auth_gate' | 'result';
+type DiagVersion = 'simple' | 'detail';
 
 export default function RiskSimplePage() {
   const { user, loading: authLoading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [phase, setPhase] = useState<Phase>('questions');
+  const [version, setVersion] = useState<DiagVersion>('simple');
+  const [phase, setPhase] = useState<Phase>('version_select');
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<(RiskAnswer | null)[]>(
     () => new Array(TOTAL_QUESTIONS).fill(null)
@@ -37,10 +45,29 @@ export default function RiskSimplePage() {
   const [restored, setRestored] = useState(false);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
 
-  const currentQuestion = RISK_SIMPLE_QUESTIONS[questionIndex];
+  // 現在のバージョンに応じた質問セット
+  const questions = useMemo(
+    () => version === 'detail' ? RISK_DETAIL_QUESTIONS : RISK_SIMPLE_QUESTIONS,
+    [version]
+  );
+  const capacityCount = useMemo(
+    () => version === 'detail' ? DETAIL_CAPACITY_QUESTIONS.length : CAPACITY_QUESTIONS.length,
+    [version]
+  );
+  const totalQuestions = useMemo(
+    () => version === 'detail' ? DETAIL_TOTAL_QUESTIONS : TOTAL_QUESTIONS,
+    [version]
+  );
+  const currentQuestion = questions[questionIndex];
   const selectedAnswer = answers[questionIndex];
 
-  // マジックリンクから着地: ?show_result=1 + ログイン済み + localStorageに回答あり → 即結果表示
+  const calcResult = useCallback((validAnswers: RiskAnswer[]) => {
+    return version === 'detail'
+      ? calculateDetailResult(validAnswers)
+      : calculateRiskSimpleResult(validAnswers);
+  }, [version]);
+
+  // マジックリンクから着地
   useEffect(() => {
     if (authLoading || restored) return;
     if (searchParams.get('show_result') !== '1') return;
@@ -56,48 +83,45 @@ export default function RiskSimplePage() {
         setShowNicknameModal(true);
       }
 
-      // DB保存
       setSaving(true);
       saveRiskSimpleResult(
-        user.id,
-        res.capacityScore,
-        res.toleranceScore,
-        res.finalLevel,
-        saved
+        user.id, res.capacityScore, res.toleranceScore, res.finalLevel, saved, 'simple'
       ).then(() => {
         setSaving(false);
         clearAnswersStorage();
       });
 
-      // URLからクエリパラメータを除去
       setSearchParams({}, { replace: true });
     }
   }, [authLoading, user, searchParams, restored, setSearchParams]);
 
   const showResult = useCallback(
     async (validAnswers: RiskAnswer[]) => {
-      const res = calculateRiskSimpleResult(validAnswers);
+      const res = calcResult(validAnswers);
       setResult(res);
       setPhase('result');
       if (user && !user.user_metadata?.full_name && !user.user_metadata?.nickname_skipped) {
         setShowNicknameModal(true);
       }
 
-      // Save to DB if logged in
       if (user) {
         setSaving(true);
         await saveRiskSimpleResult(
-          user.id,
-          res.capacityScore,
-          res.toleranceScore,
-          res.finalLevel,
-          validAnswers
+          user.id, res.capacityScore, res.toleranceScore, res.finalLevel, validAnswers, version
         );
         setSaving(false);
       }
     },
-    [user]
+    [user, calcResult, version]
   );
+
+  const startDiagnosis = useCallback((v: DiagVersion) => {
+    setVersion(v);
+    const total = v === 'detail' ? DETAIL_TOTAL_QUESTIONS : TOTAL_QUESTIONS;
+    setAnswers(new Array(total).fill(null));
+    setQuestionIndex(0);
+    setPhase('questions');
+  }, []);
 
   const handleSelect = useCallback(
     (index: number, value: number) => {
@@ -119,10 +143,8 @@ export default function RiskSimplePage() {
 
     const nextIndex = questionIndex + 1;
 
-    // Finished all questions
-    if (nextIndex >= TOTAL_QUESTIONS) {
+    if (nextIndex >= totalQuestions) {
       const validAnswers = answers.filter((a): a is RiskAnswer => a !== null);
-
       if (user) {
         showResult(validAnswers);
       } else {
@@ -131,18 +153,14 @@ export default function RiskSimplePage() {
       return;
     }
 
-    // Section transition: Capacity → Tolerance
-    if (
-      questionIndex < CAPACITY_QUESTIONS.length &&
-      nextIndex >= CAPACITY_QUESTIONS.length
-    ) {
+    if (questionIndex < capacityCount && nextIndex >= capacityCount) {
       setQuestionIndex(nextIndex);
       setPhase('section_transition');
       return;
     }
 
     setQuestionIndex(nextIndex);
-  }, [questionIndex, answers, user, showResult]);
+  }, [questionIndex, answers, user, showResult, totalQuestions, capacityCount]);
 
   const handleBack = useCallback(() => {
     if (questionIndex > 0) {
@@ -161,14 +179,17 @@ export default function RiskSimplePage() {
   }, [answers, showResult]);
 
   const handleRetry = useCallback(() => {
-    setPhase('questions');
+    setPhase('version_select');
     setQuestionIndex(0);
     setAnswers(new Array(TOTAL_QUESTIONS).fill(null));
     setResult(null);
     setRestored(false);
   }, []);
 
-  // マジックリンク着地中のローディング
+  const handleSwitchToDetail = useCallback(() => {
+    startDiagnosis('detail');
+  }, [startDiagnosis]);
+
   if (authLoading && searchParams.get('show_result') === '1') {
     return (
       <Layout>
@@ -182,28 +203,67 @@ export default function RiskSimplePage() {
   return (
     <Layout>
       <main className="max-w-lg mx-auto px-4 py-6 md:py-10">
+        {/* バージョン選択 */}
+        {phase === 'version_select' && (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h1 className="text-lg md:text-xl font-bold text-gray-800 mb-2">
+                リスク許容度を診断します
+              </h1>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => startDiagnosis('simple')}
+                className="w-full text-left bg-white rounded-xl border-2 border-blue-200 p-5 hover:border-blue-400 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full border-2 border-blue-500 flex items-center justify-center">
+                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-800">簡易診断（約3〜5分）</p>
+                    <p className="text-xs text-gray-500 mt-0.5">まずざっくり確認したい方向け</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => startDiagnosis('detail')}
+                className="w-full text-left bg-white rounded-xl border-2 border-gray-200 p-5 hover:border-purple-400 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full border-2 border-gray-400" />
+                  <div>
+                    <p className="text-sm font-bold text-gray-800">詳細診断（約8〜10分）</p>
+                    <p className="text-xs text-gray-500 mt-0.5">より正確に把握したい方向け</p>
+                    <p className="text-xs text-purple-600 mt-0.5">※米国大学の学術調査に基づく</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
-        {phase !== 'result' && (
+        {phase !== 'result' && phase !== 'version_select' && (
           <div className="text-center mb-6">
             <h1 className="text-lg md:text-xl font-bold text-gray-800 mb-1">
-              リスク許容度診断
+              リスク許容度診断{version === 'detail' ? '（詳細版）' : ''}
             </h1>
             <p className="text-xs text-gray-500">
-              約3〜5分 ・ 全{TOTAL_QUESTIONS}問
+              {version === 'detail' ? '約8〜10分' : '約3〜5分'} ・ 全{totalQuestions}問
             </p>
           </div>
         )}
 
-        {/* Progress bar (questions phase only) */}
+        {/* Progress bar */}
         {(phase === 'questions' || phase === 'section_transition') && (
-          <RiskProgressBar
-            current={questionIndex + 1}
-            total={TOTAL_QUESTIONS}
-          />
+          <RiskProgressBar current={questionIndex + 1} total={totalQuestions} />
         )}
 
         {/* Section label */}
-        {phase === 'questions' && (
+        {phase === 'questions' && currentQuestion && (
           <div className="mb-4">
             <span
               className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -212,15 +272,13 @@ export default function RiskSimplePage() {
                   : 'bg-purple-100 text-purple-700'
               }`}
             >
-              {currentQuestion.section === 'capacity'
-                ? '投資余力'
-                : '投資許容度'}
+              {currentQuestion.section === 'capacity' ? '投資余力' : '投資許容度'}
             </span>
           </div>
         )}
 
-        {/* Main content */}
-        {phase === 'questions' && (
+        {/* Questions */}
+        {phase === 'questions' && currentQuestion && (
           <RiskQuestionStep
             key={currentQuestion.id}
             question={currentQuestion}
@@ -250,7 +308,11 @@ export default function RiskSimplePage() {
                 結果を保存中...
               </p>
             )}
-            <RiskResultDisplay result={result} onRetry={handleRetry} />
+            <RiskResultDisplay
+              result={result}
+              onRetry={handleRetry}
+              onSwitchToDetail={version === 'simple' ? handleSwitchToDetail : undefined}
+            />
             {showNicknameModal && (
               <NicknameModal onDone={() => setShowNicknameModal(false)} />
             )}
