@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useIsPremium } from '../hooks/useIsPremium';
@@ -9,6 +10,8 @@ import { FALLBACK_ASSET_RETURNS, FALLBACK_ASSET_RISKS, FALLBACK_CORRELATION_MATR
 import { classifyRiskLevel7 } from '../logic/pfSimple';
 import { getRiskLevelDef } from '../logic/riskSimpleScoring';
 import { loadLatestRiskSimple } from '../lib/riskSimpleDb';
+import { runMonteCarlo } from '../logic/monteCarlo';
+import type { MonteCarloResult } from '../logic/monteCarlo';
 
 const RISK_FREE_RATE = 0.5;
 
@@ -68,6 +71,13 @@ export default function PortfolioCustomizePage() {
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [result, setResult] = useState<AnalysisResult | null>(null);
 
+  // モンテカルロ
+  const [mcInitialAsset, setMcInitialAsset] = useState('');
+  const [mcMonthly, setMcMonthly] = useState('');
+  const [mcYears, setMcYears] = useState('');
+  const [mcResult, setMcResult] = useState<MonteCarloResult | null>(null);
+  const [mcRunning, setMcRunning] = useState(false);
+
   useEffect(() => {
     const base = MODEL_ALLOCATIONS[baseLevel] ?? MODEL_ALLOCATIONS[4];
     const init: Record<string, number> = {};
@@ -115,6 +125,21 @@ export default function PortfolioCustomizePage() {
 
     setResult({ riskLevel, expectedReturn, volatility, sharpeRatio, overLimit: volatility > volLimit });
   }, [alloc, baseLevel]);
+
+  const handleRunMonteCarlo = useCallback(() => {
+    if (!result) return;
+    const initial = parseInt(mcInitialAsset) || 0;
+    const monthly = parseInt(mcMonthly) || 0;
+    const years = parseInt(mcYears) || 0;
+    if (initial <= 0 || years <= 0) return;
+    setMcRunning(true);
+    // 非同期的に実行（UIブロック回避）
+    setTimeout(() => {
+      const mc = runMonteCarlo(initial, monthly, years, result.expectedReturn, result.volatility);
+      setMcResult(mc);
+      setMcRunning(false);
+    }, 10);
+  }, [result, mcInitialAsset, mcMonthly, mcYears]);
 
   const availableToAdd = ASSET_CLASSES.filter(ac => !activeKeys.includes(ac.key));
   const volLimit = VOL_UPPER[baseLevel] ?? 100;
@@ -284,6 +309,102 @@ export default function PortfolioCustomizePage() {
                   <span className="font-medium text-gray-800">{result.sharpeRatio}</span>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* モンテカルロシミュレーション（分析結果がある場合のみ） */}
+          {result && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="text-sm font-bold text-gray-800 mb-4">将来資産シミュレーション（モンテカルロ法）</h3>
+
+              <div className="space-y-3 mb-4">
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">現在の金融資産（万円）</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={mcInitialAsset}
+                    onChange={e => { setMcInitialAsset(e.target.value.replace(/[^0-9]/g, '')); setMcResult(null); }}
+                    placeholder="例: 10000"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">毎月の積立額（万円）</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={mcMonthly}
+                    onChange={e => { setMcMonthly(e.target.value.replace(/[^0-9]/g, '')); setMcResult(null); }}
+                    placeholder="例: 50"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">積立期間（年）</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={mcYears}
+                    onChange={e => { setMcYears(e.target.value.replace(/[^0-9]/g, '')); setMcResult(null); }}
+                    placeholder="例: 20"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+
+                <button
+                  onClick={handleRunMonteCarlo}
+                  disabled={mcRunning || !(parseInt(mcInitialAsset) > 0) || !(parseInt(mcYears) > 0)}
+                  className="w-full py-3 bg-purple-600 text-white text-sm font-semibold rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed min-h-[44px]"
+                >
+                  {mcRunning ? '計算中...' : 'シミュレーション実行'}
+                </button>
+              </div>
+
+              {/* モンテカルロ結果 */}
+              {mcResult && (
+                <div className="space-y-4">
+                  {/* ヒストグラム */}
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={mcResult.histogram} margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis
+                        dataKey="bin"
+                        tick={{ fill: '#6b7280', fontSize: 10 }}
+                        tickFormatter={v => `${Math.round(v / 10000)}億`}
+                      />
+                      <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} />
+                      <Tooltip
+                        contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                        formatter={(value: number | undefined) => [`${value ?? 0}回`, '試行回数']}
+                        labelFormatter={v => `${Number(v).toLocaleString()}万円〜`}
+                      />
+                      <ReferenceLine x={mcResult.median} stroke="#8b5cf6" strokeWidth={2} strokeDasharray="4 4" label={{ value: '中央値', fill: '#8b5cf6', fontSize: 10, position: 'top' }} />
+                      <Bar dataKey="count" fill="#a78bfa" radius={[2, 2, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+
+                  {/* 3シナリオ */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm bg-blue-50 rounded-lg px-4 py-2.5">
+                      <span className="text-blue-700">悲観シナリオ（下位25%）</span>
+                      <span className="font-bold text-blue-800">{mcResult.percentile25.toLocaleString()}万円</span>
+                    </div>
+                    <div className="flex justify-between text-sm bg-purple-50 rounded-lg px-4 py-2.5">
+                      <span className="text-purple-700">中央値</span>
+                      <span className="font-bold text-purple-800">{mcResult.median.toLocaleString()}万円</span>
+                    </div>
+                    <div className="flex justify-between text-sm bg-green-50 rounded-lg px-4 py-2.5">
+                      <span className="text-green-700">楽観シナリオ（上位75%）</span>
+                      <span className="font-bold text-green-800">{mcResult.percentile75.toLocaleString()}万円</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-xs text-gray-400 mt-4">
+                このシミュレーションは過去データに基づく計算上の参考値です。将来の運用成果を保証するものではありません。
+              </p>
             </div>
           )}
 
