@@ -2,6 +2,7 @@ import type { RiskSimpleResult } from '../../types/riskSimple';
 import { RISK_LEVEL_DEFS, getRiskLevelDef } from '../../logic/riskSimpleScoring';
 import { MODEL_ALLOCATIONS, MODEL_META, ASSET_CLASSES } from '../../lib/rb/types';
 import AllocationDisclaimer from '../AllocationDisclaimer';
+import AllocationSlider from './AllocationSlider';
 
 interface Props {
   result: RiskSimpleResult;
@@ -115,6 +116,8 @@ export default function RiskResultDisplay({ result, onRetry, onSwitchToDetail }:
           </div>
         )}
       </div>
+
+      <AllocationSlider finalLevel={finalLevel} />
 
       <AllocationDisclaimer variant="light" />
 
