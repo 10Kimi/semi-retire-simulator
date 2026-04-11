@@ -8,6 +8,7 @@ import PfDiagnosisSimplePage from './pages/PfDiagnosisSimplePage';
 import MonthlyAdvisorPage from './pages/MonthlyAdvisorPage';
 import RebalancePage from './pages/RebalancePage';
 import PortfolioCustomizePage from './pages/PortfolioCustomizePage';
+import PremiumGate from './components/PremiumGate';
 // 有料版で復活予定
 // import AssessmentPage from './pages/AssessmentPage';
 // import PortfolioDiagnosisPage from './pages/PortfolioDiagnosisPage';
@@ -62,9 +63,9 @@ function App() {
         <Route path="/" element={<SimulatorPage />} />
         <Route path="/risk" element={<RiskSimplePage />} />
         <Route path="/pf" element={<PfDiagnosisSimplePage />} />
-        <Route path="/ma" element={<MonthlyAdvisorPage />} />
-        <Route path="/rb" element={<RebalancePage />} />
-        <Route path="/portfolio" element={<PortfolioCustomizePage />} />
+        <Route path="/ma" element={<PremiumGate title="月次投資アドバイザー" description="市場環境に応じた月次の投資配分を計算します"><MonthlyAdvisorPage /></PremiumGate>} />
+        <Route path="/rb" element={<PremiumGate title="リバランスツール" description="ポートフォリオの乖離チェックとリバランス計画を作成します"><RebalancePage /></PremiumGate>} />
+        <Route path="/portfolio" element={<PremiumGate title="ポートフォリオ カスタマイズ" description="アセット配分をカスタマイズし、リスク・リターンをシミュレーションできます"><PortfolioCustomizePage /></PremiumGate>} />
         {/* 有料版で復活予定 */}
         {/* <Route path="/assessment" element={<AssessmentPage />} /> */}
         {/* <Route path="/portfolio-diagnosis" element={<PortfolioDiagnosisPage />} /> */}
