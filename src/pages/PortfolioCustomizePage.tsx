@@ -321,10 +321,9 @@ export default function PortfolioCustomizePage() {
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">現在の金融資産（万円）</label>
                   <input
-                    type="text"
-                    inputMode="numeric"
+                    type="number"
                     value={mcInitialAsset}
-                    onChange={e => { setMcInitialAsset(e.target.value.replace(/[^0-9]/g, '')); setMcResult(null); }}
+                    onChange={e => { setMcInitialAsset(e.target.value); setMcResult(null); }}
                     placeholder="例: 10000"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
                   />
@@ -332,10 +331,9 @@ export default function PortfolioCustomizePage() {
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">毎月の積立額（万円）</label>
                   <input
-                    type="text"
-                    inputMode="numeric"
+                    type="number"
                     value={mcMonthly}
-                    onChange={e => { setMcMonthly(e.target.value.replace(/[^0-9]/g, '')); setMcResult(null); }}
+                    onChange={e => { setMcMonthly(e.target.value); setMcResult(null); }}
                     placeholder="例: 50"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
                   />
@@ -343,10 +341,11 @@ export default function PortfolioCustomizePage() {
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">積立期間（年）</label>
                   <input
-                    type="text"
-                    inputMode="numeric"
+                    type="number"
+                    min="1"
+                    max="40"
                     value={mcYears}
-                    onChange={e => { setMcYears(e.target.value.replace(/[^0-9]/g, '')); setMcResult(null); }}
+                    onChange={e => { setMcYears(e.target.value); setMcResult(null); }}
                     placeholder="例: 20"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
                   />
