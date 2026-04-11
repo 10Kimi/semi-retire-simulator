@@ -21,7 +21,7 @@ export function calculateDetailCapacityScore(answers: RiskAnswer[]): number {
   // C7はC2スコアへの係数
   const incomeScore = c2 * c7;
 
-  const rawCapacity = (c1 + incomeScore) / 2 + (c5 - 1) * 0.3;
+  const rawCapacity = c1 * 0.6 + incomeScore * 0.4 + (c5 - 1) * 0.3;
   const capacityAdj = rawCapacity + c3 + c4 + c6 + c8;
 
   return clamp(Math.round(capacityAdj), 1, 7);

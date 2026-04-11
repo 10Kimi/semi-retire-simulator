@@ -36,12 +36,11 @@ export const RISK_SIMPLE_QUESTIONS: RiskQuestion[] = [
     section: 'capacity',
     title: '住宅ローン等の負債残高は、現在の金融資産の何割ですか？',
     options: [
-      { label: '負債なし',              value: 0 },
-      { label: '1割未満',              value: -0.3 },
-      { label: '1〜3割',               value: -0.7 },
-      { label: '3〜5割',               value: -1.2 },
-      { label: '5割〜1倍',             value: -1.8 },
-      { label: '1倍以上（負債が資産を超える）', value: -2.5 },
+      { label: '負債なし',    value: 0 },
+      { label: '1割未満',    value: -0.3 },
+      { label: '1〜3割',     value: -0.7 },
+      { label: '3〜5割',     value: -1.0 },
+      { label: '5割以上',    value: -1.5 },
     ],
   },
   {
@@ -52,9 +51,8 @@ export const RISK_SIMPLE_QUESTIONS: RiskQuestion[] = [
     options: [
       { label: 'ほぼなし',    value: 0 },
       { label: '1割未満',    value: -0.3 },
-      { label: '1〜3割',     value: -0.7 },
-      { label: '3〜5割',     value: -1.2 },
-      { label: '5割以上',    value: -1.8 },
+      { label: '1〜3割',     value: -0.8 },
+      { label: '3割以上',    value: -1.0 },
     ],
   },
   {

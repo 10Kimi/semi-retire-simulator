@@ -32,7 +32,7 @@ export function calculateCapacityScore(answers: RiskAnswer[]): number {
   const c5 = get('C5'); // 投資期間 (1〜7)
   const c6 = get('C6'); // 年齢補正 (-1.5 〜 +1.5)
 
-  const rawCapacity = (c1 + c2) / 2 + (c5 - 1) * 0.3;
+  const rawCapacity = c1 * 0.6 + c2 * 0.4 + (c5 - 1) * 0.3;
   const capacityAdj = rawCapacity + c3 + c4 + c6;
 
   return clamp(Math.round(capacityAdj), 1, 7);
