@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useIsPremium } from '../hooks/useIsPremium';
@@ -10,7 +10,7 @@ import { classifyRiskLevel7 } from '../logic/pfSimple';
 import { getRiskLevelDef } from '../logic/riskSimpleScoring';
 import { loadLatestRiskSimple } from '../lib/riskSimpleDb';
 
-const RISK_FREE_RATE = 0.5; // 無リスク金利 0.5%
+const RISK_FREE_RATE = 0.5;
 
 const VOL_UPPER: Record<number, number> = {
   1: 3, 2: 6, 3: 9, 4: 12, 5: 15, 6: 20, 7: 100,
@@ -40,13 +40,20 @@ function calcExpectedReturn(weights: Record<string, number>): number {
   return Math.round(ret * 10) / 10;
 }
 
+interface AnalysisResult {
+  riskLevel: number;
+  expectedReturn: number;
+  volatility: number;
+  sharpeRatio: number;
+  overLimit: boolean;
+}
+
 export default function PortfolioCustomizePage() {
   const { user } = useAuth();
   const { isPremium, loading: premiumLoading, refresh } = useIsPremium();
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [userLevel, setUserLevel] = useState<number | null>(null);
 
-  // ユーザーのリスクレベルを取得
   useEffect(() => {
     if (!user) return;
     loadLatestRiskSimple(user.id).then(data => {
@@ -56,11 +63,11 @@ export default function PortfolioCustomizePage() {
 
   const baseLevel = userLevel ?? 4;
 
-  // 配分state
+  // 配分state（各スライダーは独立）
   const [alloc, setAlloc] = useState<Record<string, number>>({});
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
 
-  // 初期化
   useEffect(() => {
     const base = MODEL_ALLOCATIONS[baseLevel] ?? MODEL_ALLOCATIONS[4];
     const init: Record<string, number> = {};
@@ -71,66 +78,46 @@ export default function PortfolioCustomizePage() {
     });
     setAlloc(init);
     setActiveKeys(keys);
+    setResult(null);
   }, [baseLevel]);
 
-  // ウェイト
-  const weights = useMemo(() => {
-    const w: Record<string, number> = {};
-    ASSET_CLASSES.forEach(ac => { w[ac.key] = (alloc[ac.key] ?? 0) / 100; });
-    return w;
-  }, [alloc]);
-
-  const totalPercent = useMemo(
-    () => ASSET_CLASSES.reduce((s, ac) => s + (alloc[ac.key] ?? 0), 0),
-    [alloc]
-  );
+  const totalPercent = ASSET_CLASSES.reduce((s, ac) => s + (alloc[ac.key] ?? 0), 0);
   const isValid = Math.abs(totalPercent - 100) < 0.01;
 
-  const volatility = useMemo(() => isValid ? calcVolatility(weights) : 0, [weights, isValid]);
-  const expectedReturn = useMemo(() => isValid ? calcExpectedReturn(weights) : 0, [weights, isValid]);
-  const riskLevel = useMemo(() => isValid ? classifyRiskLevel7(volatility) : 0, [volatility, isValid]);
-  const sharpeRatio = useMemo(
-    () => isValid && volatility > 0 ? Math.round((expectedReturn - RISK_FREE_RATE) / volatility * 100) / 100 : 0,
-    [expectedReturn, volatility, isValid]
-  );
-
-  const volLimit = VOL_UPPER[baseLevel] ?? 100;
-  const overLimit = isValid && volatility > volLimit;
-
   const handleSlider = useCallback((key: string, newVal: number) => {
-    setAlloc(prev => {
-      const next = { ...prev, [key]: newVal };
-      const otherKeys = activeKeys.filter(k => k !== key);
-      const otherSum = otherKeys.reduce((s, k) => s + (prev[k] ?? 0), 0);
-      if (otherSum > 0) {
-        let remaining = 100 - newVal;
-        for (let i = 0; i < otherKeys.length; i++) {
-          const k = otherKeys[i];
-          if (i === otherKeys.length - 1) {
-            next[k] = Math.max(0, Math.round(remaining));
-          } else {
-            const ratio = (prev[k] ?? 0) / otherSum;
-            const adjusted = Math.max(0, Math.round(remaining * ratio / 5) * 5);
-            next[k] = adjusted;
-            remaining -= adjusted;
-          }
-        }
-      }
-      return next;
-    });
-  }, [activeKeys]);
+    setAlloc(prev => ({ ...prev, [key]: newVal }));
+    setResult(null); // 変更時に結果をクリア
+  }, []);
 
   const addAsset = useCallback((key: string) => {
     setActiveKeys(prev => [...prev, key]);
     setAlloc(prev => ({ ...prev, [key]: 0 }));
+    setResult(null);
   }, []);
 
   const removeAsset = useCallback((key: string) => {
     setActiveKeys(prev => prev.filter(k => k !== key));
     setAlloc(prev => ({ ...prev, [key]: 0 }));
+    setResult(null);
   }, []);
 
+  const handleAnalyze = useCallback(() => {
+    const weights: Record<string, number> = {};
+    ASSET_CLASSES.forEach(ac => { weights[ac.key] = (alloc[ac.key] ?? 0) / 100; });
+
+    const volatility = calcVolatility(weights);
+    const expectedReturn = calcExpectedReturn(weights);
+    const riskLevel = classifyRiskLevel7(volatility);
+    const sharpeRatio = volatility > 0
+      ? Math.round((expectedReturn - RISK_FREE_RATE) / volatility * 100) / 100
+      : 0;
+    const volLimit = VOL_UPPER[baseLevel] ?? 100;
+
+    setResult({ riskLevel, expectedReturn, volatility, sharpeRatio, overLimit: volatility > volLimit });
+  }, [alloc, baseLevel]);
+
   const availableToAdd = ASSET_CLASSES.filter(ac => !activeKeys.includes(ac.key));
+  const volLimit = VOL_UPPER[baseLevel] ?? 100;
 
   if (premiumLoading) {
     return (
@@ -142,7 +129,6 @@ export default function PortfolioCustomizePage() {
     );
   }
 
-  // ロック画面
   if (!isPremium) {
     return (
       <Layout>
@@ -152,7 +138,7 @@ export default function PortfolioCustomizePage() {
             <div className="bg-gray-50 rounded-xl border border-gray-200 p-8">
               <div className="text-4xl mb-4">🔒</div>
               <p className="text-sm text-gray-700 mb-2">この機能は有料プランでご利用いただけます</p>
-              <p className="text-xs text-gray-500 mb-6">アセット配分をカスタマイズし、リスク・リターンをリアルタイムでシミュレーションできます</p>
+              <p className="text-xs text-gray-500 mb-6">アセット配分をカスタマイズし、リスク・リターンをシミュレーションできます</p>
               <button
                 onClick={() => setShowInviteModal(true)}
                 className="px-6 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors min-h-[44px]"
@@ -221,7 +207,6 @@ export default function PortfolioCustomizePage() {
               })}
             </div>
 
-            {/* アセット追加 */}
             {availableToAdd.length > 0 && (
               <div className="mt-4 pt-4 border-t border-gray-100">
                 <p className="text-xs text-gray-500 mb-2">＋ アセットを追加</p>
@@ -239,47 +224,66 @@ export default function PortfolioCustomizePage() {
               </div>
             )}
 
-            {/* 合計 */}
-            <div className={`mt-4 pt-3 border-t border-gray-100 flex justify-between text-sm ${isValid ? '' : 'text-red-500'}`}>
-              <span>合計</span>
-              <span className="font-bold">{totalPercent}%</span>
+            {/* 合計 + 分析ボタン */}
+            <div className="mt-4 pt-3 border-t border-gray-100">
+              <div className={`flex justify-between text-sm ${isValid ? 'text-gray-800' : 'text-red-500'}`}>
+                <span>合計</span>
+                <span className="font-bold">{totalPercent}%</span>
+              </div>
+              {!isValid && (
+                <p className="text-xs text-red-500 mt-1">合計: {totalPercent}%（100%になるよう調整してください）</p>
+              )}
+              <button
+                onClick={handleAnalyze}
+                disabled={!isValid}
+                className="w-full mt-3 py-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed min-h-[44px]"
+              >
+                分析する
+              </button>
             </div>
-            {!isValid && (
-              <p className="text-xs text-red-500 mt-1 text-right">合計を100%にしてください</p>
-            )}
           </div>
 
-          {/* 計算結果（合計100%の場合のみ） */}
-          {isValid && (
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
+          {/* 分析結果（ボタン押下後のみ表示） */}
+          {result && (
+            <div className={`bg-white rounded-xl border ${result.overLimit ? 'border-red-300' : 'border-gray-200'} p-5`}>
+              {/* 警告/OK アラート */}
+              {result.overLimit ? (
+                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4">
+                  <p className="text-sm text-red-700">
+                    ⚠️ このポートフォリオのリスクはあなたの許容度（Lv{baseLevel}・上限{volLimit}%）を超えています。長期投資ポートフォリオとしては不適切です。
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-4">
+                  <p className="text-sm text-green-700">
+                    ✅ このポートフォリオはあなたのリスク許容度の範囲内です。
+                  </p>
+                </div>
+              )}
+
               <h3 className="text-sm font-bold text-gray-800 mb-3">シミュレーション結果（計算上の参考値）</h3>
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">リスクレベル</span>
                   <span className="font-medium text-gray-800">
-                    Lv{riskLevel} {getRiskLevelDef(riskLevel).name}
+                    Lv{result.riskLevel} {getRiskLevelDef(result.riskLevel).name}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">期待リターン</span>
-                  <span className="font-medium text-gray-800">{expectedReturn}%</span>
+                  <span className="font-medium text-gray-800">{result.expectedReturn}%</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">ボラティリティ</span>
-                  <span className={`font-medium ${overLimit ? 'text-red-600' : 'text-gray-800'}`}>
-                    {volatility}%
+                  <span className={`font-medium ${result.overLimit ? 'text-red-600' : 'text-gray-800'}`}>
+                    {result.volatility}%
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">シャープレシオ</span>
-                  <span className="font-medium text-gray-800">{sharpeRatio}</span>
+                  <span className="font-medium text-gray-800">{result.sharpeRatio}</span>
                 </div>
               </div>
-              {overLimit && (
-                <p className="text-xs text-red-500 mt-3">
-                  あなたのリスクレベル（Lv{baseLevel}）の上限（{volLimit}%）を超えています
-                </p>
-              )}
             </div>
           )}
 
