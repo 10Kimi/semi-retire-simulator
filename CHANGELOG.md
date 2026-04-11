@@ -1,6 +1,35 @@
 # CHANGELOG
 
-## 2026-04-11 — リスク診断 詳細版 + Capacity計算式修正
+## 2026-04-11 — 有料基盤 + /portfolio + モンテカルロ + 13アセット統一
+
+### 有料プラン基盤
+- **招待コード認証**: invite_codes + profiles テーブル（`018_invite_codes_profiles.sql`）
+- **useIsPremiumフック**: profiles.is_premiumで有料判定
+- **InviteCodeModal**: コード入力→照合→プラン有効化
+- **PremiumGate共通コンポーネント**: /ma・/rb・/portfolioを統一ゲートでラップ
+- **有料ツール**: /portfolio、/ma、/rb
+- **無料ツール**: /（シミュレーター）、/risk（リスク診断）、/pf（PF診断）
+
+### /portfolio（ポートフォリオカスタマイズ）
+- 13アセット対応スライダー（独立動作、5%刻み、アセット追加/削除）
+- 「分析する」ボタンで4指標計算（リスクレベル・期待リターン・ボラティリティ・シャープレシオ）
+- 合計100%でない場合はボタンをグレーアウト
+- 許容度超過時: 赤背景アラート、許容度内: 緑背景アラート
+- /risk結果画面のAllocationSliderを削除→「配分をカスタマイズする →」リンクに変更
+
+### モンテカルロシミュレーション
+- `src/logic/monteCarlo.ts`: Box-Muller法で1000試行、20ビンヒストグラム生成
+- /portfolio画面の4指標の下に入力セクション（金融資産・毎月積立額・積立期間）
+- rechartsのBarChartでヒストグラム表示、中央値にReferenceLine
+- 3シナリオ表示: 悲観（下位25%）・中央値・楽観（上位75%）
+
+### アセットクラス13クラス統一（My Index準拠）
+- ASSET_CLASSES: 11→13クラス（us_equity, developed_reit, emerging_reit, commodity, gold追加、alternative・foreign_reit削除）
+- MODEL_ALLOCATIONS: 旧commodity→gold、旧alternative→削除、us_equity追加
+- FALLBACK_ASSET_RETURNS/RISKS/CORRELATION_MATRIX: 13x13に拡張
+- Supabase: `019_asset_class_unify.sql`（不足アセットをINSERT）
+
+### リスク診断 詳細版 + Capacity計算式修正
 
 ### リスク診断 詳細版（/risk）
 - **バージョン選択UI**: /riskトップに簡易版/詳細版の選択画面を追加
