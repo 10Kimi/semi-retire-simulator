@@ -74,6 +74,9 @@ export default function SimulatorPage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
               <h2 className="text-sm font-bold text-gray-700 mb-3">シミュレーション結果</h2>
               <ResultSummary result={result} />
+              <p className="text-xs text-gray-400 mt-3">
+                ※期待リターンによる複利計算のため、実際の資産増加はボラティリティの影響で下回る可能性があります
+              </p>
             </div>
 
             {/* Chart */}
