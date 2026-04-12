@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ASSET_CLASSES } from '../../lib/rb/types';
 import type { Holdings } from '../../lib/rb/types';
@@ -32,6 +32,8 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
   const [allocated, setAllocated] = useState<AllocatedHolding[]>([]);
   const [submittedTickers, setSubmittedTickers] = useState<Set<string>>(new Set());
   const [requestedTickers, setRequestedTickers] = useState<Set<string>>(new Set());
+  const [verifyingTicker, setVerifyingTicker] = useState<string | null>(null);
+  const [confirmTicker, setConfirmTicker] = useState<{ ticker: string; name: string; assetClass: string } | null>(null);
 
   const unclassified = allocated.filter(a => !a.matched);
   const classified = allocated.filter(a => a.matched);
@@ -79,14 +81,29 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
     }));
   };
 
-  const handleSubmitRequest = async (item: AllocatedHolding) => {
+  const handleSubmitRequest = useCallback(async (item: AllocatedHolding) => {
     if (!user || !item.manualClass || item.manualClass === 'exclude') return;
     const ticker = item.holding.ticker || item.holding.name;
-    const sent = await submitFundRequest(user.id, ticker, item.holding.name, item.manualClass);
-    if (sent) {
+    setVerifyingTicker(ticker);
+
+    const result = await submitFundRequest(user.id, ticker, item.holding.name, item.manualClass);
+    setVerifyingTicker(null);
+
+    if (result.status === 'auto_approved' || result.status === 'already_sent') {
       setRequestedTickers(prev => new Set([...prev, ticker]));
+    } else if (result.status === 'needs_confirm') {
+      setConfirmTicker({ ticker, name: item.holding.name, assetClass: item.manualClass });
     }
-  };
+  }, [user]);
+
+  const handleForceSubmit = useCallback(async () => {
+    if (!user || !confirmTicker) return;
+    setVerifyingTicker(confirmTicker.ticker);
+    await submitFundRequest(user.id, confirmTicker.ticker, confirmTicker.name, confirmTicker.assetClass, true);
+    setVerifyingTicker(null);
+    setRequestedTickers(prev => new Set([...prev, confirmTicker.ticker]));
+    setConfirmTicker(null);
+  }, [user, confirmTicker]);
 
   const allUnclassifiedHandled = unclassified.every(a => a.manualClass);
 
@@ -190,7 +207,9 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
                         </select>
                         {item.manualClass && item.manualClass !== 'exclude' && (
                           alreadyRequested ? (
-                            <span className="text-xs text-slate-500 shrink-0">リクエスト済み</span>
+                            <span className="text-xs text-slate-500 shrink-0">登録済み</span>
+                          ) : verifyingTicker === ticker ? (
+                            <span className="text-xs text-blue-400 shrink-0">検証中...</span>
                           ) : (
                             <button
                               onClick={() => handleSubmitRequest(item)}
@@ -259,6 +278,34 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
             </button>
           </div>
         </>
+      )}
+
+      {/* Yahoo Finance検証NG確認ダイアログ */}
+      {confirmTicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-sm bg-slate-900 rounded-xl border border-slate-700 p-5">
+            <p className="text-sm text-orange-300 mb-3">
+              ティッカー「{confirmTicker.ticker}」はYahoo Financeで確認できませんでした。
+            </p>
+            <p className="text-xs text-slate-400 mb-4">
+              正しい場合はそのまま送信できますが、管理者の確認が必要になります。
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmTicker(null)}
+                className="flex-1 py-2.5 text-sm text-slate-400 border border-slate-600 rounded-lg hover:bg-slate-800"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleForceSubmit}
+                className="flex-1 py-2.5 text-sm text-white bg-orange-600 rounded-lg hover:bg-orange-500"
+              >
+                それでも送信する
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <button

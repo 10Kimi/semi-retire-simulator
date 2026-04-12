@@ -116,13 +116,40 @@ export async function fetchFundMaster(): Promise<FundMasterEntry[]> {
   return data ?? [];
 }
 
-/** 登録リクエストを送信 */
+/** Yahoo Finance APIでティッカーを検証 */
+async function verifyTicker(ticker: string): Promise<boolean> {
+  // 日本株（数字のみ）は .T を付与
+  const queryTicker = /^\d+$/.test(ticker) ? `${ticker}.T` : ticker;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const resp = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(queryTicker)}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeout);
+    if (!resp.ok) return false;
+    const json = await resp.json();
+    return !!json?.chart?.result;
+  } catch {
+    return false;
+  }
+}
+
+export type FundRequestResult =
+  | { status: 'auto_approved' }    // Yahoo OK → fund_masterに即登録
+  | { status: 'needs_confirm' }    // Yahoo NG → ユーザーに確認を促す
+  | { status: 'already_sent' }     // 重複リクエスト
+  | { status: 'error'; message: string };
+
+/** 登録リクエストを送信（Yahoo Finance検証付き） */
 export async function submitFundRequest(
   userId: string,
   ticker: string,
   fundName: string,
   suggestedAssetClass: string,
-): Promise<boolean> {
+  forceSubmit: boolean = false,
+): Promise<FundRequestResult> {
   // 重複チェック
   const { data: existing } = await supabase
     .from('fund_master_requests')
@@ -131,22 +158,43 @@ export async function submitFundRequest(
     .eq('ticker', ticker)
     .limit(1);
 
-  if (existing && existing.length > 0) return false; // 既に送信済み
+  if (existing && existing.length > 0) return { status: 'already_sent' };
 
-  const { error } = await supabase
-    .from('fund_master_requests')
-    .insert({
-      ticker,
-      fund_name: fundName,
-      suggested_asset_class: suggestedAssetClass,
-      user_id: userId,
-    });
+  // fund_masterに既存なら不要
+  const { data: masterExisting } = await supabase
+    .from('fund_master')
+    .select('id')
+    .eq('ticker', ticker)
+    .limit(1);
 
-  if (error) {
-    console.error('fund request submit error:', error);
-    return false;
+  if (masterExisting && masterExisting.length > 0) return { status: 'auto_approved' };
+
+  // forceSubmit=falseの場合のみYahoo検証
+  if (!forceSubmit) {
+    const valid = await verifyTicker(ticker);
+    if (valid) {
+      // Yahoo OK → fund_masterに即登録 + requests に approved で記録
+      await supabase.from('fund_master').insert({
+        ticker, fund_name: fundName, asset_class: suggestedAssetClass, ratio: 1.0,
+      });
+      await supabase.from('fund_master_requests').insert({
+        ticker, fund_name: fundName, suggested_asset_class: suggestedAssetClass,
+        user_id: userId, status: 'approved',
+      });
+      return { status: 'auto_approved' };
+    }
+    // Yahoo NG → ユーザーに確認を求める
+    return { status: 'needs_confirm' };
   }
-  return true;
+
+  // forceSubmit=true → pending_reviewで登録（fund_masterには未登録）
+  const { error } = await supabase.from('fund_master_requests').insert({
+    ticker, fund_name: fundName, suggested_asset_class: suggestedAssetClass,
+    user_id: userId, status: 'pending_review',
+  });
+
+  if (error) return { status: 'error', message: error.message };
+  return { status: 'auto_approved' }; // UIとしては送信完了扱い
 }
 
 /** ユーザーの送信済みリクエストのtickerセットを取得 */
