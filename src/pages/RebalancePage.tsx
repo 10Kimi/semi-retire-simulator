@@ -5,8 +5,10 @@ import { ASSET_CLASSES, MODEL_ALLOCATIONS, MODEL_META } from '../lib/rb/types';
 import type { Holdings, TargetAllocation, DeviationItem, AdjustmentItem, AdjustmentMode } from '../lib/rb/types';
 import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, estimateMonthsToRebalance, calculateEmergencyFund, applyEmergencyFund, calculatePeriodByAmount, calculatePeriodByMonths, simulateMonthly, getTotalAssets, formatCurrency, formatThousands } from '../lib/rb/logic';
 import { fetchTargetAllocation, saveTargetAllocation, fetchLatestSnapshot, saveSnapshot, fetchRbProfile, saveRbProfile } from '../lib/rb/db';
+import { loadLatestRiskSimple } from '../lib/riskSimpleDb';
 import MfImportFlow from '../components/rb/MfImportFlow';
 import AllocationDisclaimer from '../components/AllocationDisclaimer';
+import { supabase } from '../lib/supabase';
 import MonthlyProjection from '../components/rb/MonthlyProjection';
 
 type Step = 'input' | 'import' | 'target' | 'result';
@@ -53,6 +55,8 @@ export default function RebalancePage() {
   const { user } = useAuth();
   const [step, setStep] = useState<Step>('input');
   const [loading, setLoading] = useState(true);
+  const [optimalLoading, setOptimalLoading] = useState(false);
+  const [userRiskLevel, setUserRiskLevel] = useState<number>(4);
 
   // 残高入力
   const [holdings, setHoldings] = useState<Holdings>(() => {
@@ -88,11 +92,13 @@ export default function RebalancePage() {
     const load = async () => {
       if (!user) { setLoading(false); return; }
 
-      const [savedTarget, snapshot, profile] = await Promise.all([
+      const [savedTarget, snapshot, profile, riskData] = await Promise.all([
         fetchTargetAllocation(user.id),
         fetchLatestSnapshot(user.id),
         fetchRbProfile(user.id),
+        loadLatestRiskSimple(user.id),
       ]);
+      if (riskData?.final_level) setUserRiskLevel(riskData.final_level);
 
       if (savedTarget) {
         setTarget(savedTarget);
@@ -146,6 +152,24 @@ export default function RebalancePage() {
 
   const targetSum = ASSET_CLASSES.reduce((sum, ac) => sum + (target[ac.key] || 0), 0);
   const targetValid = Math.abs(targetSum - 100) < 0.01;
+
+  const loadOptimalPF = async () => {
+    setOptimalLoading(true);
+    const { data } = await supabase
+      .from('optimal_portfolios')
+      .select('allocations')
+      .eq('risk_level', userRiskLevel)
+      .single();
+
+    if (data?.allocations) {
+      const optimal = data.allocations as Record<string, number>;
+      const newTarget: TargetAllocation = {};
+      ASSET_CLASSES.forEach(ac => { newTarget[ac.key] = optimal[ac.key] ?? 0; });
+      setTarget(newTarget);
+      setSelectedPreset(null);
+    }
+    setOptimalLoading(false);
+  };
 
   const applyPreset = (riskLevel: number) => {
     const preset = MODEL_ALLOCATIONS[riskLevel];
@@ -404,6 +428,14 @@ export default function RebalancePage() {
 
               <AllocationDisclaimer variant="dark" />
             </div>
+
+            <button
+              onClick={loadOptimalPF}
+              disabled={optimalLoading}
+              className="w-full py-3 mb-4 bg-purple-900/30 border border-purple-500/50 rounded-2xl text-sm text-purple-300 hover:bg-purple-900/50 transition-colors disabled:opacity-50"
+            >
+              {optimalLoading ? '読込中...' : '理論上の最適PFを読み込む'}
+            </button>
 
             <div className="bg-slate-900 rounded-2xl p-4 mb-4">
               <h2 className="text-sm text-slate-400 mb-4">目標比率（%）</h2>
