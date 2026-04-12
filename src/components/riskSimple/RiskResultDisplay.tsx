@@ -164,7 +164,7 @@ export default function RiskResultDisplay({ result, onRetry, onSwitchToDetail }:
             より精度の高い診断はこちら
           </h3>
           <p className="text-xs text-blue-600 mb-4">
-            米国大学の学術調査に基づく20問の詳細版診断で、<br />
+            米国大学の学術調査をベースに日本向けに設計した20問の詳細版診断で、<br />
             より正確なリスク許容度を判定します。
           </p>
           <button

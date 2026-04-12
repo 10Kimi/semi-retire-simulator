@@ -237,7 +237,7 @@ export default function RiskSimplePage() {
                   <div>
                     <p className="text-sm font-bold text-gray-800">詳細診断（約8〜10分）</p>
                     <p className="text-xs text-gray-500 mt-0.5">より正確に把握したい方向け</p>
-                    <p className="text-xs text-purple-600 mt-0.5">※米国大学の学術調査に基づく</p>
+                    <p className="text-xs text-purple-600 mt-0.5">※米国大学の学術調査をベースに日本向けに設計</p>
                   </div>
                 </div>
               </button>
