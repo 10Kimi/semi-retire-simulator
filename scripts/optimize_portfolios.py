@@ -58,7 +58,7 @@ CORR_FLAT = [
 
 RISK_FREE_RATE = 0.5  # %
 
-VOL_UPPER = {1: 3, 2: 6, 3: 9, 4: 12, 5: 15, 6: 20, 7: 30}
+VOL_UPPER = {1: 3, 2: 6, 3: 9, 4: 12, 5: 15, 6: 20, 7: 50}
 
 N = len(ASSET_KEYS)
 mu = np.array([RETURNS[k] / 100 for k in ASSET_KEYS])
@@ -83,7 +83,8 @@ def neg_sharpe(w):
     return -(portfolio_ret(w) - rf) / vol
 
 
-def count_active(w, threshold=0.01):
+def count_active(w, threshold=0.02):
+    """5%刻みに丸めた後に残るアセット数を近似"""
     return np.sum(w > threshold)
 
 
@@ -105,9 +106,12 @@ def optimize_for_level(level):
     best_result = None
     best_score = -np.inf
 
-    for trial in range(100):
+    for trial in range(200):
         if trial == 0:
             w0 = np.ones(N) / N
+        elif trial < 50:
+            # 均等配分に近い初期値（多くのアセットが非ゼロ）
+            w0 = np.random.dirichlet(np.ones(N) * 3)
         else:
             w0 = np.random.dirichlet(np.ones(N))
 
@@ -129,14 +133,45 @@ def optimize_for_level(level):
             active = count_active(w)
             sharpe = -neg_sharpe(w)
 
-            # 5アセット未満ペナルティ（強め）
-            score = sharpe
+            # 5アセット未満は除外（ペナルティではなくハード制約）
             if active < 5:
-                score -= (5 - active) * 0.5
+                continue
 
-            if score > best_score:
-                best_score = score
+            if sharpe > best_score:
+                best_score = sharpe
                 best_result = w
+
+    # 5アセット以上が見つからない場合: 最低配分5%を5つのアセットに強制してリトライ
+    if best_result is None:
+        # 株式系5つに最低5%ずつ配分する制約
+        forced_keys = ['japan_equity', 'us_equity', 'emerging_equity', 'developed_bond', 'gold']
+        forced_idx = [ASSET_KEYS.index(k) for k in forced_keys]
+        bounds2 = [(0, 1) for _ in range(N)]
+        for idx in forced_idx:
+            bounds2[idx] = (0.05, 1)
+
+        for trial in range(100):
+            w0 = np.random.dirichlet(np.ones(N) * 2)
+            for idx in forced_idx:
+                w0[idx] = max(w0[idx], 0.05)
+            w0 /= w0.sum()
+
+            res = minimize(
+                neg_sharpe, w0,
+                method='SLSQP', bounds=bounds2, constraints=constraints,
+                options={'maxiter': 2000, 'ftol': 1e-12}
+            )
+            if res.success:
+                w = res.x
+                w = np.maximum(w, 0)
+                w /= w.sum()
+                vol = portfolio_vol(w)
+                if vol < vol_min * 0.95 or vol > vol_max * 1.05:
+                    continue
+                active = count_active(w)
+                if active >= 5 and -neg_sharpe(w) > best_score:
+                    best_score = -neg_sharpe(w)
+                    best_result = w
 
     if best_result is None:
         print(f"  Lv{level}: 最適化失敗")
