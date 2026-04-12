@@ -353,45 +353,66 @@ export default function PortfolioCustomizePage() {
               </div>
 
               {/* モンテカルロ結果 */}
-              {mcResult && (
-                <div className="space-y-4">
-                  {/* ヒストグラム */}
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={mcResult.histogram} margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis
-                        dataKey="bin"
-                        tick={{ fill: '#6b7280', fontSize: 10 }}
-                        tickFormatter={v => `${Math.round(v / 10000)}億`}
-                      />
-                      <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} />
-                      <Tooltip
-                        contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                        formatter={(value: number | undefined) => [`${value ?? 0}回`, '試行回数']}
-                        labelFormatter={v => `${Number(v).toLocaleString()}万円〜`}
-                      />
-                      <ReferenceLine x={mcResult.median} stroke="#8b5cf6" strokeWidth={2} strokeDasharray="4 4" label={{ value: '中央値', fill: '#8b5cf6', fontSize: 10, position: 'top' }} />
-                      <Bar dataKey="count" fill="#a78bfa" radius={[2, 2, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+              {mcResult && (() => {
+                const initial = parseInt(mcInitialAsset) || 0;
+                const monthly = parseInt(mcMonthly) || 0;
+                const years = parseInt(mcYears) || 1;
+                const totalPrincipal = initial + monthly * 12 * years;
 
-                  {/* 3シナリオ */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm bg-blue-50 rounded-lg px-4 py-2.5">
-                      <span className="text-blue-700">悲観シナリオ（下位25%）</span>
-                      <span className="font-bold text-blue-800">{mcResult.percentile25.toLocaleString()}万円</span>
+                const scenarioRow = (label: string, value: number, bgColor: string, textColor: string, boldColor: string) => {
+                  const profit = value - totalPrincipal;
+                  const cagr = totalPrincipal > 0 ? (Math.pow(value / totalPrincipal, 1 / years) - 1) * 100 : 0;
+                  return (
+                    <div className={`${bgColor} rounded-lg px-4 py-2.5`}>
+                      <div className="flex justify-between text-sm">
+                        <span className={textColor}>{label}</span>
+                        <span className={`font-bold ${boldColor}`}>{value.toLocaleString()}万円</span>
+                      </div>
+                      <div className="flex justify-between text-xs mt-1">
+                        <span className={textColor}>利益{profit >= 0 ? '+' : ''}{profit.toLocaleString()}万円</span>
+                        <span className={textColor}>CAGR {cagr.toFixed(1)}%</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-sm bg-purple-50 rounded-lg px-4 py-2.5">
-                      <span className="text-purple-700">中央値</span>
-                      <span className="font-bold text-purple-800">{mcResult.median.toLocaleString()}万円</span>
+                  );
+                };
+
+                return (
+                  <div className="space-y-4">
+                    {/* 投資元本合計 */}
+                    <div className="flex justify-between text-sm bg-gray-100 rounded-lg px-4 py-2.5">
+                      <span className="text-gray-600">投資元本合計</span>
+                      <span className="font-bold text-gray-800">{totalPrincipal.toLocaleString()}万円</span>
                     </div>
-                    <div className="flex justify-between text-sm bg-green-50 rounded-lg px-4 py-2.5">
-                      <span className="text-green-700">楽観シナリオ（上位75%）</span>
-                      <span className="font-bold text-green-800">{mcResult.percentile75.toLocaleString()}万円</span>
+
+                    {/* ヒストグラム */}
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={mcResult.histogram} margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis
+                          dataKey="bin"
+                          tick={{ fill: '#6b7280', fontSize: 10 }}
+                          tickFormatter={v => `${Math.round(v / 10000)}億`}
+                        />
+                        <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} />
+                        <Tooltip
+                          contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                          formatter={(value: number | undefined) => [`${value ?? 0}回`, '試行回数']}
+                          labelFormatter={v => `${Number(v).toLocaleString()}万円〜`}
+                        />
+                        <ReferenceLine x={mcResult.median} stroke="#8b5cf6" strokeWidth={2} strokeDasharray="4 4" label={{ value: '中央値', fill: '#8b5cf6', fontSize: 10, position: 'top' }} />
+                        <Bar dataKey="count" fill="#a78bfa" radius={[2, 2, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+
+                    {/* 3シナリオ */}
+                    <div className="space-y-2">
+                      {scenarioRow('悲観シナリオ（下位25%）', mcResult.percentile25, 'bg-blue-50', 'text-blue-700', 'text-blue-800')}
+                      {scenarioRow('中央値', mcResult.median, 'bg-purple-50', 'text-purple-700', 'text-purple-800')}
+                      {scenarioRow('楽観シナリオ（上位75%）', mcResult.percentile75, 'bg-green-50', 'text-green-700', 'text-green-800')}
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               <p className="text-xs text-gray-400 mt-4">
                 このシミュレーションは過去データに基づく計算上の参考値です。将来の運用成果を保証するものではありません。
