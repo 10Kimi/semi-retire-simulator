@@ -36,13 +36,21 @@
 
 ## フォルダ構成
 - `reference/` — 元Excel V4.2、解析スクリプト、解析結果（加工前）
-- `src/logic/` — シミュレーション計算エンジン（Excel V4.2の再現）
+- `src/pages/` — ページ単位コンポーネント（6ページ稼働中）
+- `src/logic/` — 計算エンジン（simulator, riskScoring, pfSimple, monteCarlo等）
 - `src/components/` — UIコンポーネント
-- `src/components/assessment/` — リスク診断系（有料版Phase 4）
-- `src/pages/` — ページ単位コンポーネント
-- `src/lib/` — Supabase接続
-- `scripts/market/` — 市場データ取得スクリプト
-- `supabase/` — DBマイグレーション
+- `src/components/assessment/` — リスク診断系（Phase 4用、現在コメントアウト）
+- `src/components/riskSimple/` — 簡易版リスク診断UI
+- `src/components/rb/` — リバランスツールUI
+- `src/components/auth/` — 認証UI
+- `src/lib/` — Supabase接続・DB操作
+- `src/lib/rb/` — リバランスツールのロジック・型定義・DB
+- `src/lib/ma/` — 月次アドバイザーのロジック・型定義
+- `src/hooks/` — カスタムフック（useIsPremium等）
+- `src/types/` — 型定義
+- `scripts/` — 招待コード生成、法的チェック
+- `scripts/market/` — 市場データ取得スクリプト（fetch_and_optimize.py, fetch_indicators.py）
+- `supabase/migrations/` — DBマイグレーション（22件）
 
 ## 制約
 - Excel V4.2の計算ロジックを正確に再現すること
@@ -53,5 +61,10 @@
 
 ## 現在のフェーズ
 - Phase 1-2 完了（無料版シミュレーター + 認証ゲート + コンテンツパイプライン）
-- 次の優先: Phase 3（ステップメール + note記事拡充 + X発信最適化）
-- 開発中: Phase 4（有料版リスク診断ツール）
+- Phase 3 完了（有料ツール群: /portfolio, /ma, /rb + 招待コード基盤）
+- 次の優先: Phase 3.5（ステップメール + リスク乖離の損失体感UI改善）
+- 将来: Phase 4（詳細版リスク診断）
+
+## GitHubリポジトリ
+https://github.com/10Kimi/semi-retire-simulator
+※ Vercelと連携済み。pushで自動デプロイ

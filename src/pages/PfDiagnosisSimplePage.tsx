@@ -11,7 +11,9 @@ import {
 } from '../logic/pfSimple';
 import { loadAssetClassParams, buildMarketDataFromParams } from '../lib/assetClassParamsDb';
 import { loadLatestRiskSimple } from '../lib/riskSimpleDb';
+import { savePfWithSnapshot } from '../lib/diagnosisDb';
 import { useAuth } from '../contexts/AuthContext';
+import RiskExcessWarning from '../components/riskSimple/RiskExcessWarning';
 
 type Phase = 'input' | 'result';
 
@@ -35,6 +37,8 @@ export default function PfDiagnosisSimplePage() {
   const [diagResult, setDiagResult] = useState<PfDiagnosisResult | null>(null);
   const [gapResult, setGapResult] = useState<PfGapResult | null>(null);
   const [assessmentLevel, setAssessmentLevel] = useState<number | null>(null);
+  const [assessmentId, setAssessmentId] = useState<string | null>(null);
+  const [assessedAt, setAssessedAt] = useState<string | null>(null);
   const [marketData, setMarketData] = useState<{
     assetReturns: Record<string, number>;
     assetRisks: Record<string, number>;
@@ -51,6 +55,8 @@ export default function PfDiagnosisSimplePage() {
         const latest = await loadLatestRiskSimple(user.id);
         if (latest) {
           setAssessmentLevel(latest.final_level);
+          setAssessmentId(latest.id);
+          setAssessedAt(latest.created_at);
         }
       }
 
@@ -87,7 +93,24 @@ export default function PfDiagnosisSimplePage() {
     }
 
     setPhase('result');
-  }, [holdings, marketData, assessmentLevel]);
+
+    // Supabase保存（fire-and-forget・失敗してもUIは止めない）
+    if (user) {
+      void savePfWithSnapshot({
+        holdingAmounts: holdings,
+        totalAmount: result.totalAmount,
+        expectedReturn: result.expectedReturn,
+        volatility: result.volatility,
+        riskLevel: result.riskLevel,
+        riskLevelKey: `level_${result.riskLevel}`,
+        assessmentRiskLevel: assessmentLevel !== null ? `level_${assessmentLevel}` : null,
+        assessmentSource: assessmentId ? 'simple' : null,
+        assessmentId,
+        assessmentLevel7: assessmentLevel,
+        assessedAt,
+      });
+    }
+  }, [holdings, marketData, assessmentLevel, assessmentId, assessedAt, user]);
 
   const handleRetry = useCallback(() => {
     setPhase('input');
@@ -258,6 +281,15 @@ export default function PfDiagnosisSimplePage() {
                 </div>
                 <p className="text-sm text-gray-700 leading-relaxed">{gapResult.message}</p>
               </div>
+            )}
+
+            {/* リスク超過警告 */}
+            {gapResult && gapResult.gapType === 'pf_higher' && diagResult && (
+              <RiskExcessWarning
+                totalAmount={diagResult.totalAmount}
+                pfLevel={gapResult.pfLevel}
+                assessmentLevel={gapResult.assessmentLevel}
+              />
             )}
 
             {/* 7段階レベル一覧 */}
