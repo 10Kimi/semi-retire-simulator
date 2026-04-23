@@ -26,6 +26,9 @@ import { calculateDetailResult } from '../logic/riskDetailScoring';
 import { saveRiskSimpleResult } from '../lib/riskSimpleDb';
 import { useAuth } from '../contexts/AuthContext';
 import type { RiskAnswer, RiskSimpleResult } from '../types/riskSimple';
+import { SEOHead } from '../components/seo/SEOHead';
+import { JsonLd } from '../components/seo/JsonLd';
+import { softwareApplicationSchema } from '../lib/seo/schemas';
 
 type Phase = 'version_select' | 'questions' | 'section_transition' | 'auth_gate' | 'result';
 type DiagVersion = 'simple' | 'detail';
@@ -192,15 +195,36 @@ export default function RiskSimplePage() {
 
   if (authLoading && searchParams.get('show_result') === '1') {
     return (
+      <>
+        <SEOHead
+          title="リスク許容度診断｜11問で資産運用の適正レベルを判定"
+          description="Risk Capacity（財務体力）とRisk Tolerance（心理耐性）の両軸で、あなたに合ったリスクレベル（1〜7）を算出します。無料・約3〜5分。"
+          canonical="/risk"
+        />
       <Layout>
         <main className="max-w-lg mx-auto px-4 py-20 text-center">
           <p className="text-sm text-gray-500">ログインを確認中...</p>
         </main>
       </Layout>
+      </>
     );
   }
 
   return (
+    <>
+      <SEOHead
+        title="リスク許容度診断｜11問で資産運用の適正レベルを判定"
+        description="Risk Capacity（財務体力）とRisk Tolerance（心理耐性）の両軸で、あなたに合ったリスクレベル（1〜7）を算出します。無料・約3〜5分。"
+        canonical="/risk"
+      />
+      <JsonLd
+        data={softwareApplicationSchema({
+          name: 'リスク許容度診断',
+          description:
+            '11問の質問で投資家としてのリスク許容度（1〜7のレベル）を判定する診断ツール。',
+          url: '/risk',
+        })}
+      />
     <Layout>
       <main className="max-w-lg mx-auto px-4 py-6 md:py-10">
         {/* バージョン選択 */}
@@ -320,5 +344,6 @@ export default function RiskSimplePage() {
         )}
       </main>
     </Layout>
+    </>
   );
 }

@@ -7,6 +7,9 @@ import BalanceChart from '../components/BalanceChart';
 import AchievementGauge from '../components/AchievementGauge';
 import BalanceSheet from '../components/BalanceSheet';
 import Layout from '../components/Layout';
+import { SEOHead } from '../components/seo/SEOHead';
+import { JsonLd } from '../components/seo/JsonLd';
+import { softwareApplicationSchema } from '../lib/seo/schemas';
 
 const defaultInput: SimulationInput = {
   currentAge: 53,
@@ -51,6 +54,20 @@ export default function SimulatorPage() {
   const result = useMemo(() => runSimulation(input), [input]);
 
   return (
+    <>
+      <SEOHead
+        title="FIREシミュレーター｜資産運用で経済的自由まで何年？"
+        description="現在の資産・積立額・期待リターンから、経済的自由（FIRE）到達までの年数を計算。合同会社ラルゴ運営、計算結果の提供のみで投資助言ではありません。"
+        canonical="/"
+      />
+      <JsonLd
+        data={softwareApplicationSchema({
+          name: 'FIREシミュレーター',
+          description:
+            '現在の資産・積立額・期待リターンから、経済的自由到達までの年数を計算するツール。',
+          url: '/',
+        })}
+      />
     <Layout>
       <main className="max-w-7xl mx-auto px-3 py-4 md:px-4 md:py-6">
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 md:gap-6">
@@ -103,5 +120,6 @@ export default function SimulatorPage() {
         </div>
       </main>
     </Layout>
+    </>
   );
 }

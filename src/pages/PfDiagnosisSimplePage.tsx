@@ -14,6 +14,9 @@ import { loadLatestRiskSimple } from '../lib/riskSimpleDb';
 import { savePfWithSnapshot } from '../lib/diagnosisDb';
 import { useAuth } from '../contexts/AuthContext';
 import RiskExcessWarning from '../components/riskSimple/RiskExcessWarning';
+import { SEOHead } from '../components/seo/SEOHead';
+import { JsonLd } from '../components/seo/JsonLd';
+import { softwareApplicationSchema } from '../lib/seo/schemas';
 
 type Phase = 'input' | 'result';
 
@@ -120,15 +123,36 @@ export default function PfDiagnosisSimplePage() {
 
   if (loading) {
     return (
+      <>
+        <SEOHead
+          title="ポートフォリオ診断｜現在の資産配分のリスク量を計算"
+          description="保有資産を13アセットクラスで入力すると、ボラティリティと期待リターンを算出。あなたのリスク許容度とのギャップも可視化します。"
+          canonical="/pf"
+        />
       <Layout>
         <main className="max-w-2xl mx-auto px-4 py-10 text-center">
           <p className="text-sm text-gray-500">データを読み込み中...</p>
         </main>
       </Layout>
+      </>
     );
   }
 
   return (
+    <>
+      <SEOHead
+        title="ポートフォリオ診断｜現在の資産配分のリスク量を計算"
+        description="保有資産を13アセットクラスで入力すると、ボラティリティと期待リターンを算出。あなたのリスク許容度とのギャップも可視化します。"
+        canonical="/pf"
+      />
+      <JsonLd
+        data={softwareApplicationSchema({
+          name: 'ポートフォリオ診断',
+          description:
+            '13アセットクラスで保有資産を入力すると、ボラティリティ・期待リターン・リスクレベルを計算する診断ツール。',
+          url: '/pf',
+        })}
+      />
     <Layout>
       <main className="max-w-2xl mx-auto px-4 py-6 md:py-10">
         {phase === 'input' && (
@@ -358,5 +382,6 @@ export default function PfDiagnosisSimplePage() {
         )}
       </main>
     </Layout>
+    </>
   );
 }

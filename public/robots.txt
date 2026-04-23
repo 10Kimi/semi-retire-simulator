@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# AI検索クローラー対応（OpenAI / Anthropic / Perplexity 等）
+# 2024年以降のAI検索は独自Bot でクロールするケースが多く、通常の User-agent: * で許可される
+# 特定Bot をブロックしたい場合は以下を追加:
+# User-agent: GPTBot
+# Disallow: /
+
+Sitemap: https://fire.largogk.jp/sitemap.xml
