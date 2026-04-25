@@ -15,37 +15,100 @@ interface Props {
   assessmentLevel: number;
 }
 
-// ── チャート用データ生成 ──
+// ── チャート用データ生成（2回暴落・20年シナリオ） ──
+// 5年目: コロナ級（1.7σ、回復早い）、15年目: リーマン級（2.5σ、回復遅い）
+// 青: 適正PFで持ち続けた人
+// 橙: 攻撃的PFで耐えた人
+// 赤: 攻撃的PFで売却した人
 
-function buildChartData(totalAmount: number, impact: RiskExcessImpact) {
-  const holdReturn = 0.065; // 持ち続けた場合の年率（近似）
-  const bottomAsset = impact.soldValue;
+/** リスクレベル別の代表期待リターン（%） */
+const CHART_LEVEL_RETURN: Record<number, number> = {
+  1: 0.5, 2: 2.0, 3: 3.5, 4: 5.0, 5: 6.5, 6: 8.0, 7: 9.5,
+};
 
-  const data: { year: number; label: string; hold: number; sold: number }[] = [];
+interface ChartRow {
+  year: number;
+  label: string;
+  proper: number;
+  endured: number;
+  sold: number;
+}
 
-  for (let y = 0; y <= 13; y++) {
-    let hold: number;
-    let sold: number;
+function buildChartData(
+  totalAmount: number,
+  impact: RiskExcessImpact,
+  pfLevel: number,
+  toleranceLevel: number,
+): ChartRow[] {
+  const tolReturn = (CHART_LEVEL_RETURN[toleranceLevel] ?? 3.5) / 100;
+  const pfReturn = (CHART_LEVEL_RETURN[pfLevel] ?? 6.5) / 100;
 
+  // 適正PFの暴落下落率
+  const tolCoronaCrashR = impact.toleranceCrashPercentCorona / 100;
+  const tolLehmanCrashR = impact.toleranceCrashPercentLehman / 100;
+  // 攻撃的PFの暴落下落率
+  const pfCoronaCrashR = impact.crashPercentCorona / 100;
+  const pfLehmanCrashR = impact.crashPercentLehman / 100;
+  // 離脱期間（暴落種類別）
+  const absCorona = Math.round(impact.absenceYearsCorona);
+  const absLehman = Math.round(impact.absenceYearsLehman);
+
+  const data: ChartRow[] = [];
+
+  let properAsset = totalAmount;
+  let enduredAsset = totalAmount;
+  let soldAsset = totalAmount;
+  let soldInCash = false;
+  let reentryCountdown = 0;
+
+  for (let y = 0; y <= 20; y++) {
     if (y === 0) {
-      hold = totalAmount;
-      sold = totalAmount;
-    } else if (y === 1) {
-      // 暴落年
-      hold = bottomAsset;
-      sold = bottomAsset;
+      // 現在
+    } else if (y === 5) {
+      // コロナ級暴落
+      properAsset = Math.round(properAsset * (1 - tolCoronaCrashR));
+      enduredAsset = Math.round(enduredAsset * (1 - pfCoronaCrashR));
+      if (!soldInCash) {
+        soldAsset = Math.round(soldAsset * (1 - pfCoronaCrashR));
+        soldInCash = true;
+        reentryCountdown = absCorona;
+      }
+    } else if (y === 15) {
+      // リーマン級暴落
+      properAsset = Math.round(properAsset * (1 - tolLehmanCrashR));
+      enduredAsset = Math.round(enduredAsset * (1 - pfLehmanCrashR));
+      if (!soldInCash) {
+        soldAsset = Math.round(soldAsset * (1 - pfLehmanCrashR));
+        soldInCash = true;
+        reentryCountdown = absLehman;
+      }
     } else {
-      // 回復期
-      hold = Math.round(bottomAsset * Math.pow(1 + holdReturn, y - 1));
-      sold = bottomAsset; // 売った人は底値で確定
+      // 通常年
+      properAsset = Math.round(properAsset * (1 + tolReturn));
+      enduredAsset = Math.round(enduredAsset * (1 + pfReturn));
+
+      if (soldInCash) {
+        reentryCountdown--;
+        if (reentryCountdown <= 0) soldInCash = false;
+      } else {
+        if (y < 15) {
+          soldAsset = Math.round(soldAsset * (1 + pfReturn));
+        } else {
+          soldAsset = Math.round(soldAsset * (1 + tolReturn));
+        }
+      }
     }
 
-    const labels = ['現在', '暴落', '', '', '4年後', '', '', '', '', '', '', '', '', '12年半後'];
+    const labels: Record<number, string> = {
+      0: '現在', 5: 'コロナ級', 15: 'リーマン級', 20: '20年後',
+    };
+
     data.push({
       year: y,
-      label: labels[y] ?? `${y}年`,
-      hold: Math.round(hold),
-      sold: Math.round(sold),
+      label: labels[y] ?? '',
+      proper: properAsset,
+      endured: enduredAsset,
+      sold: soldAsset,
     });
   }
   return data;
@@ -68,8 +131,8 @@ export default function RiskExcessWarning({ totalAmount, pfLevel, assessmentLeve
   );
 
   const chartData = useMemo(
-    () => buildChartData(totalAmount, impact),
-    [totalAmount, impact],
+    () => buildChartData(totalAmount, impact, pfLevel, assessmentLevel),
+    [totalAmount, impact, pfLevel, assessmentLevel],
   );
 
   const pfDef = getRiskLevelDef(pfLevel);
@@ -145,7 +208,7 @@ export default function RiskExcessWarning({ totalAmount, pfLevel, assessmentLeve
     );
   }
 
-  // step 2: 第2の痛み
+  // step 2: 第2の痛み — 売っても地獄、持ち続けても地獄
   if (step === 2) {
     return (
       <div className="rounded-xl border-2 border-red-200 bg-white p-5 animate-fade-in">
@@ -167,24 +230,34 @@ export default function RiskExcessWarning({ totalAmount, pfLevel, assessmentLeve
             を持ち続けられるでしょうか？
           </p>
 
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-sm text-red-800 font-medium mb-1">
-              行動経済学の知見
-            </p>
-            <p className="text-sm text-red-700">
-              リスク許容度を超えたPFを持つ投資家の
-              <span className="font-bold text-lg">
-                {' '}{impact.panicSell.denominator}人に{impact.panicSell.numerator}人
-              </span>
-              が底値圏で売却しています。
-            </p>
+          {/* 二重苦の提示 */}
+          <div className="grid grid-cols-1 gap-3">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-sm text-red-800 font-medium mb-2">
+                売った場合
+              </p>
+              <p className="text-sm text-red-700">
+                <span className="font-bold">{impact.crashLoss.toLocaleString()}万円</span>の含み損が確定損になります。
+                さらに恐怖で市場に戻れず、回復局面を逃します。
+              </p>
+            </div>
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <p className="text-sm text-orange-800 font-medium mb-2">
+                持ち続けた場合
+              </p>
+              <p className="text-sm text-orange-700">
+                含み損<span className="font-bold">{impact.crashLoss.toLocaleString()}万円</span>を毎日見ながら耐え続ける日々。
+                睡眠や仕事への影響、家族との関係悪化 — 許容度を超えた含み損は生活の質を確実に蝕みます。
+              </p>
+            </div>
           </div>
 
-          <p className="text-sm text-gray-700">
-            売却した場合、
-            <span className="font-bold text-red-600">{impact.crashLoss.toLocaleString()}万円</span>
-            の含み損が<span className="font-bold">確定損</span>になります。
-          </p>
+          <div className="bg-gray-100 border border-gray-200 rounded-lg p-4">
+            <p className="text-sm text-gray-700 leading-relaxed">
+              <span className="font-bold">どちらを選んでも辛い</span> — これが許容度を超えたPFの本質です。
+              問題はあなたの意志の強さではなく、<span className="font-bold">PFのリスクレベルが合っていないこと</span>です。
+            </p>
+          </div>
         </div>
 
         <button
@@ -207,20 +280,39 @@ export default function RiskExcessWarning({ totalAmount, pfLevel, assessmentLeve
 
         <div className="space-y-4 mb-4">
           <p className="text-sm text-gray-700 leading-relaxed">
-            暴落の記憶が残り、市場に戻れない期間は
-            <span className="font-bold">平均{impact.absenceYears}年</span>。
+            どちらの道を選んでも、許容度を超えたPFは回復局面で代償を払います。
           </p>
 
-          <p className="text-sm text-gray-700 leading-relaxed">
-            しかし歴史は、<span className="font-bold">暴落直後に最大のリターンが来る</span>ことを示しています。
-          </p>
+          <div className="grid grid-cols-1 gap-3">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-sm text-red-800 font-medium mb-2">
+                売った人のその後
+              </p>
+              <p className="text-sm text-red-700 leading-relaxed">
+                暴落の記憶が残り、市場に戻れない期間は<span className="font-bold">少なくとも{impact.absenceYears}年</span>。
+                しかし歴史的に、暴落直後に最大のリターンが集中しています。
+                あなたの場合、離脱で逃すリターンは
+                <span className="font-bold">約{impact.opportunityCost.toLocaleString()}万円</span>。
+              </p>
+            </div>
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <p className="text-sm text-orange-800 font-medium mb-2">
+                耐えた人のその後
+              </p>
+              <p className="text-sm text-orange-700 leading-relaxed">
+                回復はしますが、<span className="font-bold">{impact.crashLoss.toLocaleString()}万円</span>の含み損を抱え続けます。
+                回復の速さは暴落の種類によって異なります（リーマンは約4年、コロナは約半年）。下落が深いほど元本回復までの期間は長く、その間ずっと「あのとき売っておけば」という後悔と戦うことになります。
+                適正PFなら含み損は<span className="font-bold">{impact.toleranceCrashLoss.toLocaleString()}万円</span>で済み、回復も相対的に早い。
+              </p>
+            </div>
+          </div>
 
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
             <div className="flex items-start gap-2">
               <span className="text-xs text-gray-400 shrink-0 mt-0.5">▎</span>
               <p className="text-xs text-gray-600">
                 <span className="font-medium">三菱UFJ銀行データ:</span>{' '}
-                リーマン時に離脱した場合28%の損失確定。継続保有した場合は4年後にプラス転換、12年半後に+84%
+                リーマン時に離脱→28%の損失確定。継続保有→4年後にプラス転換、12年半後に+84%
               </p>
             </div>
             <div className="flex items-start gap-2">
@@ -232,10 +324,12 @@ export default function RiskExcessWarning({ totalAmount, pfLevel, assessmentLeve
             </div>
           </div>
 
-          <p className="text-sm text-gray-700">
-            あなたの場合、{impact.absenceYears}年の離脱で逃すリターン:{' '}
-            <span className="font-bold text-red-600">約{impact.opportunityCost.toLocaleString()}万円</span>
-          </p>
+          <div className="bg-gray-100 border border-gray-200 rounded-lg p-4">
+            <p className="text-sm text-gray-700 leading-relaxed">
+              <span className="font-bold">売っても耐えても、許容度を超えたPFは代償が大きい。</span><br />
+              適正PFなら、浅い下落で済み、冷静に回復を待てます。
+            </p>
+          </div>
         </div>
 
         <button
@@ -254,7 +348,7 @@ export default function RiskExcessWarning({ totalAmount, pfLevel, assessmentLeve
       {/* 合計コスト */}
       <div className="rounded-xl border-2 border-red-200 bg-white p-5">
         <h4 className="text-sm font-bold text-gray-800 mb-4 text-center">
-          リスクを超えたPFで暴落を迎えた場合の総コスト
+          リスクを超えたPFで暴落を迎えた場合の最大損失額
         </h4>
         <div className="space-y-2 mb-3">
           <CostRow label="第1の痛み（暴落による下落）" amount={impact.crashLoss} />
@@ -263,7 +357,7 @@ export default function RiskExcessWarning({ totalAmount, pfLevel, assessmentLeve
         </div>
         <div className="border-t-2 border-red-300 pt-3">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-bold text-red-800">総コスト</span>
+            <span className="text-sm font-bold text-red-800">最大損失額</span>
             <span className="text-xl font-bold text-red-600">
               約{impact.totalCost.toLocaleString()}万円
             </span>
@@ -274,10 +368,10 @@ export default function RiskExcessWarning({ totalAmount, pfLevel, assessmentLeve
       {/* 分岐チャート */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
         <h4 className="text-sm font-bold text-gray-800 mb-1">
-          持ち続けた人 vs 売った人
+          20年間でコロナ級とリーマン級の暴落が来た場合
         </h4>
         <p className="text-xs text-gray-500 mb-3">
-          三菱UFJ銀行データをあなたの{totalAmount.toLocaleString()}万円に当てはめた場合
+          同じ{totalAmount.toLocaleString()}万円を運用した場合の3つのシナリオ
         </p>
         <div className="w-full h-52 md:h-64">
           <ResponsiveContainer width="100%" height="100%">
@@ -295,41 +389,64 @@ export default function RiskExcessWarning({ totalAmount, pfLevel, assessmentLeve
                 label={{ value: '万円', position: 'insideTopLeft', offset: -5, fontSize: 10 }}
               />
               <Tooltip
-                formatter={(value, name) => [
-                  `${Number(value).toLocaleString()}万円`,
-                  name === 'hold' ? '持ち続けた人' : '売った人',
-                ]}
+                formatter={(value, name) => {
+                  const labels: Record<string, string> = {
+                    proper: '適正PFで継続',
+                    endured: '攻撃的PFで耐えた',
+                    sold: '攻撃的PFで売却',
+                  };
+                  return [`${Number(value).toLocaleString()}万円`, labels[name as string] ?? name];
+                }}
               />
               <ReferenceLine y={totalAmount} stroke="#9ca3af" strokeDasharray="3 3" />
               <Area
                 type="monotone"
-                dataKey="hold"
+                dataKey="proper"
                 stroke="#2563eb"
                 fill="#dbeafe"
+                fillOpacity={0.3}
                 strokeWidth={2}
-                name="hold"
+                name="proper"
+              />
+              <Area
+                type="monotone"
+                dataKey="endured"
+                stroke="#f59e0b"
+                fill="none"
+                strokeWidth={2}
+                strokeDasharray="5 3"
+                name="endured"
               />
               <Area
                 type="monotone"
                 dataKey="sold"
                 stroke="#dc2626"
                 fill="#fee2e2"
+                fillOpacity={0.15}
                 strokeWidth={2}
                 name="sold"
               />
             </AreaChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex justify-between text-xs mt-2">
+        <div className="space-y-1 text-xs mt-2">
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-0.5 bg-blue-600" />
-            <span className="text-gray-600">持ち続けた人: {impact.holdValue12y.toLocaleString()}万円</span>
+            <div className="w-3 h-0.5 bg-blue-600 shrink-0" />
+            <span className="text-gray-600">適正PF（Lv{assessmentLevel}）で持ち続けた: {chartData[chartData.length - 1].proper.toLocaleString()}万円</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-0.5 bg-red-600" />
-            <span className="text-gray-600">売った人: {impact.soldValue.toLocaleString()}万円で確定</span>
+            <div className="w-6 h-0 shrink-0 border-t-2 border-dashed border-amber-500" />
+            <span className="text-gray-600">攻撃的PF（Lv{pfLevel}）で耐えた: {chartData[chartData.length - 1].endured.toLocaleString()}万円</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-0.5 bg-red-600 shrink-0" />
+            <span className="text-gray-600">攻撃的PF（Lv{pfLevel}）で売却: {chartData[chartData.length - 1].sold.toLocaleString()}万円</span>
           </div>
         </div>
+        <p className="text-xs text-gray-400 mt-2 leading-relaxed">
+          ※ 一括投資・積立なしの想定。毎月の積立を加えると、暴落後の安値で買い増す効果により複利の差はさらに拡大します<br />
+          ※ 5年目にコロナ級（1.7σ）、15年目にリーマン級（2.5σ）の暴落を想定。赤線は暴落のたびに売却→離脱（コロナ後{Math.round(impact.absenceYearsCorona)}年・リーマン後{Math.round(impact.absenceYearsLehman)}年）→復帰を繰り返す
+        </p>
       </div>
 
       {/* スライダー: リスクレベルを調整したら？ */}
@@ -394,37 +511,50 @@ export default function RiskExcessWarning({ totalAmount, pfLevel, assessmentLeve
               <tr className="border-t border-gray-100">
                 <td className="py-2 px-3 text-xs text-gray-600">暴落時の下落</td>
                 <td className="py-2 px-3 text-right text-xs font-medium text-red-600">
-                  -{impact.crashLoss.toLocaleString()}万円
+                  -{impact.crashLoss.toLocaleString()}万円（-{impact.crashPercent}%）
                 </td>
                 <td className="py-2 px-3 text-right text-xs font-medium text-blue-700">
-                  -{sliderImpact.crashLoss.toLocaleString()}万円
+                  -{sliderImpact.crashLoss.toLocaleString()}万円（-{sliderImpact.crashPercent}%）
                 </td>
               </tr>
               <tr className="border-t border-gray-100">
                 <td className="py-2 px-3 text-xs text-gray-600">底値売却リスク</td>
                 <td className="py-2 px-3 text-right text-xs font-medium text-red-600">
-                  {impact.panicSell.denominator}人に{impact.panicSell.numerator}人
+                  {impact.panicSell.numerator > 0
+                    ? `${impact.panicSell.denominator}人に${impact.panicSell.numerator}人`
+                    : 'ほぼなし'}
                 </td>
                 <td className="py-2 px-3 text-right text-xs font-medium text-blue-700">
-                  {sliderImpact.panicSell.denominator}人に{sliderImpact.panicSell.numerator}人
+                  {sliderImpact.panicSell.numerator > 0
+                    ? `${sliderImpact.panicSell.denominator}人に${sliderImpact.panicSell.numerator}人`
+                    : 'ほぼなし'}
                 </td>
               </tr>
               <tr className="border-t border-gray-100">
                 <td className="py-2 px-3 text-xs text-gray-600">離脱期間</td>
                 <td className="py-2 px-3 text-right text-xs font-medium text-red-600">
-                  平均{impact.absenceYears}年
+                  {impact.absenceYears > 0 ? `少なくとも${impact.absenceYears}年は回復に要する` : '離脱なし'}
                 </td>
                 <td className="py-2 px-3 text-right text-xs font-medium text-blue-700">
-                  平均{sliderImpact.absenceYears}年
+                  {sliderImpact.absenceYears > 0 ? `少なくとも${sliderImpact.absenceYears}年は回復に要する` : '離脱なし'}
                 </td>
               </tr>
               <tr className="border-t-2 border-gray-200 bg-gray-50">
-                <td className="py-2 px-3 text-xs font-bold text-gray-700">総コスト</td>
+                <td className="py-2 px-3 text-xs font-bold text-gray-700">最大損失額</td>
                 <td className="py-2 px-3 text-right text-sm font-bold text-red-600">
                   {impact.totalCost.toLocaleString()}万円
                 </td>
                 <td className="py-2 px-3 text-right text-sm font-bold text-blue-700">
                   {sliderImpact.totalCost.toLocaleString()}万円
+                </td>
+              </tr>
+              <tr className="border-t border-gray-200 bg-blue-50">
+                <td className="py-2 px-3 text-xs font-bold text-gray-700">20年後の資産額<br /><span className="font-normal text-gray-400">（暴落2回・持ち続けた場合）</span></td>
+                <td className="py-2 px-3 text-right text-sm font-bold text-red-600">
+                  {impact.properValue20y.toLocaleString()}万円
+                </td>
+                <td className="py-2 px-3 text-right text-sm font-bold text-blue-700">
+                  {sliderImpact.properValue20y.toLocaleString()}万円
                 </td>
               </tr>
             </tbody>
