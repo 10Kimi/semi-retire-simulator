@@ -1,5 +1,48 @@
 # CHANGELOG
 
+## 2026-04-25 — Vercel build 復旧（prerender 暫定停止 + 重複プロジェクト削除）
+
+### 発覚
+2026-04-23 以降の push（SEO Phase 1 Commit 1, PF Step 2, SEO Commit 2,
+マイグレーション修復, ドキュメント一連）が **本番（fire.largogk.jp）に反映されていない**
+ことが判明。`vercel ls` で確認した結果、`semi-retire-simulator` は 13 日前以降の
+production deployment が**全て Error**（4 件連続失敗）。
+
+### 原因
+`npm run build` が呼び出す `tsx scripts/prerender.ts` の `puppeteer.launch()` が
+Vercel build 環境で Chromium 起動に失敗。ローカル（Node 22）では全 3 段階成功するため、
+Vercel 特有の問題と確定（Chromium 関連 system library 不足が有力仮説）。
+
+### 短期対応（本コミット）
+- `vercel.json` に `"buildCommand": "npm run build:spa-only"` を追記
+- push トリガで両プロジェクト（semi-retire-simulator + 重複の semi-retire-app）が
+  自動 build → 両方 ● Ready
+- fire.largogk.jp が 13 日ぶりに最新コードに更新（PF Step 2 / simulation_logs 基盤 / 修復された migrations が反映）
+
+### 重複プロジェクト整理
+同じ GitHub リポジトリ（`10Kimi/semi-retire-simulator`）に Vercel プロジェクトが 2 つ
+紐付いていた状態を解消：
+- `semi-retire-simulator`（2026-02-22 作成、本番 fire.largogk.jp 紐付け）→ **保持**
+- `semi-retire-app`（2026-04-18 作成、`*.vercel.app` 自動ドメインのみ）→ **削除**
+
+削除前確認：env vars 0 件、カスタムドメインなし、GitHub webhook なし
+（Vercel GitHub App 連携経由）→ 影響範囲ゼロを確認済み。
+
+`vercel project remove semi-retire-app` で削除実行。push 1 回あたりの build 起動が
+1 本に集約され、重複 Error 通知も解消。
+
+### 中期対応（別コミット予定）
+`puppeteer` → `@sparticuz/chromium` + `puppeteer-core` に置換し、Vercel build で
+prerender を復活させる。詳細は `CLAUDE.md` TODO「prerender を Vercel build に
+戻す（中期対応）」参照。SEO Phase 1 Commit 3〜4 の前に実施推奨。
+
+### コミット
+```
+377fde2 chore(vercel): Build Command を build:spa-only に切替（prerender 暫定停止）
+```
+
+---
+
 ## 2026-04-25 — マイグレーション番号衝突修復（案A'）
 
 ### 経緯と判断

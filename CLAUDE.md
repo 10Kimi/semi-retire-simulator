@@ -112,6 +112,48 @@ curl -s -H "apikey: $SUPABASE_SERVICE_KEY" \
      "$SUPABASE_URL/rest/v1/" | jq -r '.definitions | keys[]'
 ```
 
+### prerender を Vercel build に戻す（中期対応）
+
+⚠️ **暫定停止中**（2026-04-25〜）
+
+Vercel build 環境で `puppeteer.launch()` が Chromium 起動失敗したため、
+`vercel.json` で Build Command を `npm run build:spa-only` に切替えて prerender を
+一時停止中（commit 377fde2）。
+
+**影響**:
+- AI クローラー（ChatGPT/Perplexity 等の JS 非実行エージェント）への prerender
+  HTML 配信が無効。検索エンジン SEO（Google/Bing 等の JS 実行クローラー）は
+  SPA エントリーで対応できているため影響軽微
+- `SEOHead` / `JsonLd` / `robots.txt` / `sitemap.xml` の本体は SPA でも有効
+
+**復旧方針**: `puppeteer` → **`@sparticuz/chromium` + `puppeteer-core`** に置換。
+Lambda/Vercel 向けに最適化された軽量 Chromium バイナリで、Vercel build 環境でも
+起動可能になる想定。
+
+```ts
+// scripts/prerender.ts 改修案
+import chromium from '@sparticuz/chromium'
+import puppeteer from 'puppeteer-core'
+
+const browser = await puppeteer.launch({
+  args: chromium.args,
+  executablePath: await chromium.executablePath(),
+  headless: chromium.headless,
+})
+```
+
+復旧手順：
+1. `npm i -D @sparticuz/chromium puppeteer-core`、`npm uninstall puppeteer`
+2. `scripts/prerender.ts` を上記パターンに書き換え
+3. `vercel.json` の `buildCommand` を削除（フル `npm run build` に戻す）
+4. push → Vercel build で prerender が走ることを確認
+5. `dist/risk/index.html` 等に prerender HTML が焼き付くことを確認
+
+タイミング: SEO Phase 1 Commit 3〜4（信頼性ページ・/tools/* LP）の前に対応推奨。
+LP を増やす段階で prerender が無いと SEO 戦略の効果が出にくいため。
+
+---
+
 ### マイグレーション番号衝突の修復（案A）
 
 ✅ **2026-04-25 完了（案A' で実施）**
