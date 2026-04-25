@@ -68,10 +68,11 @@
 - Phase 3 完了（有料ツール群: /portfolio, /ma, /rb + 招待コード基盤）
 - **SEO基盤 Phase 1 着手中**（2026-04-23〜）
   - Commit 1 完了（be2fc65）: Puppeteer 自作 prerender + React 19 ネイティブ metadata hoisting + schema.org 構造化データ基盤
-  - Commit 2 予定: 匿名ログ DB 基盤（`simulation_logs` テーブル）
+  - Commit 2 完了（576f3a9, 2026-04-25）: 匿名シミュレーションログ基盤（`simulation_logs` テーブル + `anonSession.ts` + `simulationLogsDb.ts`）。RLS は INSERT-only / SELECT は service_role のみ、PII 非保存（IP・User-Agent なし、referrer はホスト名のみ）。実計測の配線は Commit 3 以降で実施
   - Commit 3 予定: 信頼性ページ（/about, /privacy, /tokushoho）
   - Commit 4 予定: `/tools/` ハブ + 先行LP 3本（simulation, age/50s, retirement）
   - Commit 5+: 内部リンク・品質チェック・Lighthouse
+- **PF Step 2 完了**（46ef507, 2026-04-25）: リスク超過警告を 2回暴落シナリオに刷新（コロナ級1.7σ・リーマン級2.5σ、20年シミュ、3線チャート）+ `savePfWithSnapshot` で PF診断結果を `risk_gap_snapshots` と同トランザクション保存。`calculateRiskExcessImpact` の単体テストは別コミットで後追い予定
 - 次の優先: Phase 3.5（ステップメール + リスク乖離の損失体感UI改善）
 - 将来: Phase 4（詳細版リスク診断）
 

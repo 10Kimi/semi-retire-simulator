@@ -1,5 +1,110 @@
 # CHANGELOG
 
+## 2026-04-25 — マイグレーション番号衝突修復（案A'）
+
+### 経緯と判断
+CLAUDE.md TODO「マイグレーション番号衝突の修復（案A）」を実行する直前に、
+事前確認 SQL で `supabase_migrations.schema_migrations` 011 行が
+`risk_gap_snapshots`（後付け untracked 版を指していた）と判明。元の案A（INSERT のみ）
+では 011 不整合が解消できないため、Phase 2 を **DELETE + INSERT 方式（案A'）**
+に切り替えて実施。
+
+### ローカルファイル変更
+- `011_risk_gap_snapshots.sql` → `023_risk_gap_snapshots.sql` にリネーム
+  （`011_rebalance_tool.sql` との番号衝突を解消）
+- `012_invite_codes.sql` を削除（`018_invite_codes_profiles.sql` の RLS なし不完全版・代替済み）
+- 結果: `supabase/migrations/` は 001..024 連続 24 ファイル、番号重複なし
+
+### 本番 DB 側の対応
+- `schema_migrations` の 011 = `risk_gap_snapshots` を DELETE
+- 011..024 を一括 INSERT（011 = `rebalance_tool`、023 = `risk_gap_snapshots`、024 = `simulation_logs`）
+- 最終 24 行、各 name はローカルファイル名と完全一致
+- テーブル・カラム・関数の実体は一切変更していない
+
+### 関連ドキュメント
+- `Docs/migration-repair-planA.md` — 改訂版（案A'）手順書を永続化
+- 元の案A は履歴セクションとして残存（事前確認 → 改訂判断の経緯付き）
+
+### コミット
+```
+1cce732 chore(migrations): 番号衝突修復（011→023、012削除、案A'適用）
+14617e8 chore(docs): 案A 手順書を案A' 改訂版に更新
+33643b4 chore(docs): マイグレーション番号衝突修復手順書（案A）を追加
+```
+
+---
+
+## 2026-04-25 — SEO基盤 Phase 1 Commit 2（匿名シミュレーションログ基盤）
+
+### 背景
+SEO 経由の流入導線・コンバージョンを定量分析するための匿名ログ基盤。
+実際の `logSimulationEvent` 呼び出しは Commit 3 以降（信頼性ページ・/tools/* LP 実装時）
+で配置予定。本コミットはあくまで基盤のみ。
+
+### 追加
+- **`supabase/migrations/024_simulation_logs.sql`** 新規
+  - `simulation_logs` テーブル（id, anon_session_id, tool_path, event_type, payload, referrer_host, created_at の 7カラム）
+  - インデックス 3 本（session / path_created / event_created × `created_at DESC`）
+  - RLS: INSERT は anon キーから可、SELECT/UPDATE/DELETE はポリシー無し（service_role のみ閲覧）
+- **`src/lib/anonSession.ts`** 新規
+  - `getAnonSessionId()`: localStorage `fire_anon_session_id` から UUID v4 を取得・無ければ発行。プライベートブラウジング時は揮発IDフォールバック
+  - `getReferrerHost()`: `document.referrer` から hostname のみ抽出。同一オリジン・パース失敗は null
+- **`src/lib/simulationLogsDb.ts`** 新規
+  - `logSimulationEvent({ toolPath, eventType, payload? })`: fire-and-forget で 1 行 INSERT。例外は呼び出し側に伝播させない
+
+### プライバシー設計
+- **IP アドレス・User-Agent は保存しない**（クライアントから送信もしない）
+- `anon_session_id` は localStorage の UUID v4 のみ。個人特定情報なし
+- `referrer_host` はホスト名のみ。フルURL・クエリ文字列は保存しない（検索クエリ漏洩防止）
+
+### マイグレーション番号
+- 024 を採番（023 は `risk_gap_snapshots` のリネーム予約のため避けた）
+
+### コミット
+```
+576f3a9 feat(seo): Phase 1 Commit 2 — 匿名シミュレーションログ基盤（simulation_logs）
+e7f3ba1 chore: supabase/.temp/ を .gitignore に追加
+```
+
+---
+
+## 2026-04-25 — リスク超過警告 2回暴落シナリオ刷新 + PF診断永続化（PF Step 2）
+
+### 表示ロジック（`RiskExcessWarning.tsx`）
+- Step 2: 単一メッセージ → 「売った場合 / 持ち続けた場合」二重苦カードに刷新。
+  「問題は意志ではなくPFのリスクレベル」とメタメッセージで着地
+- Step 3: 「売った人 / 耐えた人」二カード対比、出典（三菱UFJ・JP Morgan）で裏付け
+- Step 4: 12.5年・1回暴落・2線チャート → **20年・2回暴落・3線チャート**
+  （適正PF継続 / 攻撃的PF耐えた / 攻撃的PF売却）に拡張。比較表に「20年後の資産額」行を追加
+
+### 計算ロジック（`pfSimple.ts`）
+- 暴落関数を `crashDrawdownCorona` (1.7σ) / `crashDrawdownLehman` (2.5σ) に分離
+- 離脱期間も `absenceYearsCorona` (0/0.5/1/1.5) / `absenceYearsLehman` (0/2/3/4) に分離
+- 機会損失計算はリーマン級ベースに固定（最大の痛みを示す）
+- 20年シミュ `properValue20y` / `soldValue20y` を追加（5年目コロナ級・15年目リーマン級）
+- `panicSellRate` 仕様変更: gap≤0 を `{1,10}` → `{0,0}`。許容度以下のPFは売却リスクなしと明示
+- 段階テーブル（`absenceYears` / 暴落タイミング）の設計意図を docstring に明記。
+  引用元データではなく見積もり値である旨、UI 側の「少なくともN年」表現で断定を回避する旨
+
+### 永続化（`diagnosisDb.ts`）
+- `savePfWithSnapshot` を追加。Supabase RPC `save_pf_with_snapshot` 経由で
+  `portfolio_diagnoses` + `risk_gap_snapshots` を同トランザクション保存
+- `PfDiagnosisSimplePage` から fire-and-forget で発火
+
+### 残タスク
+- `calculateRiskExcessImpact` の単体テストは別コミットで後追い
+  （境界値 gap=0/1/2/3+、`absenceYears` 段階テーブル、20年シミュ単純ケース）
+- チャートとテーブルの「持ち続けた」ラベル（チャート＝tolerance held、テーブル＝pfLevel held）の
+  明示化は別UIレビューで対応
+
+### コミット
+```
+46ef507 feat(pf): リスク超過警告を2回暴落シナリオに刷新 + PF診断結果の永続化
+ec3218e docs(seo): Phase 1 Commit 1 の補足記録 + TODO 整備
+```
+
+---
+
 ## 2026-04-23 — SEO基盤 Phase 1 Commit 1（prerender + SEOHead + JsonLd）
 
 ### 背景
