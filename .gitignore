@@ -41,3 +41,6 @@ scripts/market/.venv/
 # Claude
 .claude/
 .vercel
+
+# Supabase CLI 一時ファイル
+supabase/.temp/
