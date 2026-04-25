@@ -1,5 +1,77 @@
 # CHANGELOG
 
+## 2026-04-23 — SEO基盤 Phase 1 Commit 1（prerender + SEOHead + JsonLd）
+
+### 背景
+note / X 発信以外の流入経路として、検索エンジン経由の診断ツール流入（特に
+「資産運用シミュレーション」月33,100 等）を狙う戦略を開始。ただし YMYL 領域
+での記事量産リスクを避け、「ツール群を SEO に乗せる」方針。
+まず SEO 基盤（静的 HTML 生成・メタタグ・構造化データ）を Commit 1 として整備。
+
+### 技術選定の経緯
+当初 `vite-react-ssg` を検討するも React Router v7 未対応（v6 専用 peer deps）。
+React Router v7 の Framework Mode 移行は工数 16〜24h かかるため Phase 1 立ち上げ
+では過剰と判断。最終的に **Puppeteer ベースの自作 post-build prerender スクリプト**
+を採用（100行、React Router 非依存、Vercel ビルド環境で動作）。
+
+### 追加・変更
+- **`scripts/prerender.ts`** 新規
+  - `serve-handler` で dist/ を静的配信 → Puppeteer で各ルートを並列描画 → HTML 化
+  - 並列数 3、タイムアウト 30s、ルートリスト明示
+  - Commit 1 時点の対象は `/risk` のみ、Commit 3 で `/about /privacy /tokushoho`、
+    Commit 4 で `/tools/*` を追加予定
+- **`src/components/seo/SEOHead.tsx`** 新規
+  - React 19 のネイティブ metadata hoisting を使用（外部ライブラリ不要）
+  - title / description / canonical / OGP / Twitter カードを宣言的に設定
+- **`src/components/seo/JsonLd.tsx`** 新規
+- **`src/lib/seo/schemas.ts`** 新規
+  - `organizationSchema`（合同会社ラルゴ）
+  - `softwareApplicationSchema()`（各ツールに付与、無料 Offer price=0）
+  - `breadcrumbListSchema()`（Phase 2 のパンくず用）
+- **既存3ページに SEOHead + JsonLd 埋込**: `/`（FIREシミュレーター）、
+  `/risk`（リスク診断）、`/pf`（PF診断）
+- **`public/robots.txt`** 新規（AI クローラー対応コメント付き）
+- **`public/sitemap.xml`** 新規（手書き版、Phase 2 で自動生成に移行予定）
+- **`index.html`** から static `<title>` を撤去（React 19 hoist に統一）
+- **`package.json`**: `puppeteer@24.x` / `serve-handler@6.x` / `p-limit@5.x` /
+  `@types/serve-handler` を devDependencies 追加。`build` スクリプトに prerender 統合、
+  `build:spa-only` で prerender スキップ可
+
+### 却下した選択肢
+- **`react-helmet-async`**: React 19 未対応（peer deps 失敗）
+- **`vite-react-ssg`**: React Router v7 全バージョン非対応（v6 専用）
+- **React Router v7 Framework Mode 移行**: Phase 1 立ち上げ工数として過剰、
+  Phase 3 後半〜4 での再検討事項に送り
+- **`vike` 移行**: pages/ 構造への書き換えコスト大
+- **SSG 無効・純 SPA**: AI 検索クローラー（ChatGPT/Perplexity 等）JS 非実行のため不適
+
+### マイグレーション調査（本コミットとは独立・Step 3 として後日実行予定）
+以下を並行調査して記録：
+- 本番 DB（PostgREST API 経由）: public スキーマに 23 テーブル + 1 ビューが存在。
+  `risk_gap_snapshots` `invite_codes` `fund_master` 等、マイグレーション 013〜022 が
+  定義するテーブル・カラム・関数すべて適用済みを確認
+- schema_migrations の記録は `011_rebalance_tool.sql` までで止まっている
+  （012以降は Supabase Dashboard 経由で手動適用されたため）
+- 未tracked ファイル `011_risk_gap_snapshots.sql` と `012_invite_codes.sql` が
+  既 commit 済み `011_rebalance_tool.sql` / `012_fund_master.sql` と**番号衝突**
+- 修復方針として **案A（リネーム + `supabase migration repair --status applied`）**
+  を採用決定。本番 DB には一切触らず schema_migrations テーブルを書き戻すのみ
+- 詳細は `CLAUDE.md` の TODO セクションに記録
+
+### 検証済み事項
+- `npm run build:spa-only`: tsc + vite build 成功（773 modules、3.48s）
+- `npm run build`: フルビルド + prerender 成功、`dist/risk/index.html` に正しい
+  `<title>` / meta description / canonical / OGP / JSON-LD が焼き付き
+- `dist/index.html`（SPA entry）: static title なし、各ページの SEOHead で設定される
+- 既存ルート（`/ /risk /pf /ma /rb /portfolio`）の挙動は無改修
+
+### コミット
+```
+be2fc65 feat(seo): Phase 1 Commit 1 — SEO基盤（prerender + SEOHead + JsonLd）
+```
+
+---
+
 ## 2026-04-11 — 有料基盤 + /portfolio + モンテカルロ + 13アセット統一
 
 ### 有料プラン基盤

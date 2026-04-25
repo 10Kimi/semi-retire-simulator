@@ -40,3 +40,4 @@ scripts/market/.venv/
 
 # Claude
 .claude/
+.vercel

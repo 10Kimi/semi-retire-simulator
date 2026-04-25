@@ -43,14 +43,18 @@
 - `src/components/riskSimple/` — 簡易版リスク診断UI
 - `src/components/rb/` — リバランスツールUI
 - `src/components/auth/` — 認証UI
+- `src/components/seo/` — SEO 共通コンポーネント（SEOHead・JsonLd、React 19 ネイティブ metadata hoisting）
 - `src/lib/` — Supabase接続・DB操作
 - `src/lib/rb/` — リバランスツールのロジック・型定義・DB
 - `src/lib/ma/` — 月次アドバイザーのロジック・型定義
+- `src/lib/seo/` — schema.org ファクトリ（SoftwareApplication・Organization・BreadcrumbList）
 - `src/hooks/` — カスタムフック（useIsPremium等）
 - `src/types/` — 型定義
-- `scripts/` — 招待コード生成、法的チェック
+- `scripts/` — 招待コード生成、法的チェック、prerender
+- `scripts/prerender.ts` — Puppeteer ベース post-build prerender（SEO用、各公開ルートのHTML静的化）
 - `scripts/market/` — 市場データ取得スクリプト（fetch_and_optimize.py, fetch_indicators.py）
-- `supabase/migrations/` — DBマイグレーション（22件）
+- `public/robots.txt`, `public/sitemap.xml` — SEO 基盤
+- `supabase/migrations/` — DBマイグレーション（22件。番号衝突あり、TODO参照）
 
 ## 制約
 - Excel V4.2の計算ロジックを正確に再現すること
@@ -62,9 +66,57 @@
 ## 現在のフェーズ
 - Phase 1-2 完了（無料版シミュレーター + 認証ゲート + コンテンツパイプライン）
 - Phase 3 完了（有料ツール群: /portfolio, /ma, /rb + 招待コード基盤）
+- **SEO基盤 Phase 1 着手中**（2026-04-23〜）
+  - Commit 1 完了（be2fc65）: Puppeteer 自作 prerender + React 19 ネイティブ metadata hoisting + schema.org 構造化データ基盤
+  - Commit 2 予定: 匿名ログ DB 基盤（`simulation_logs` テーブル）
+  - Commit 3 予定: 信頼性ページ（/about, /privacy, /tokushoho）
+  - Commit 4 予定: `/tools/` ハブ + 先行LP 3本（simulation, age/50s, retirement）
+  - Commit 5+: 内部リンク・品質チェック・Lighthouse
 - 次の優先: Phase 3.5（ステップメール + リスク乖離の損失体感UI改善）
 - 将来: Phase 4（詳細版リスク診断）
+
+### SEO基盤 Phase 1 の設計方針（サマリ）
+- URL 構造: ハブ型 `/tools/*`。既存 `/risk /pf /portfolio` はそのまま残す
+- ホスティング: `fire.largogk.jp` に集約、新規ドメインなし
+- 戦略: 記事量産ではなく「ツール群として SEO に乗せる」
+- ゲート構造: 3層（ゲートなし層＝新設LP／診断誘導層＝`/risk /pf`／本格ツール層＝`/portfolio /ma /rb`）
+- 権威性: YMYL 対応のため `/about` で運営者プロフィール明示
+- 運営上限: LP は 15〜20 本までを目安
 
 ## GitHubリポジトリ
 https://github.com/10Kimi/semi-retire-simulator
 ※ Vercelと連携済み。pushで自動デプロイ
+
+---
+
+## TODO（後続対応）
+
+### マイグレーション未管理テーブルの補完
+本番 DB には以下のテーブルが存在するが、どのマイグレーションファイルにも定義がない。
+Supabase Dashboard で手動作成された可能性が高い。
+
+- `english_subscribers`
+- `market_data`
+- `scene_cache`
+
+**対応予定**: Phase 1〜2 の SEO 基盤実装では触らない。将来的に
+「補完マイグレーション（例: `XXX_dashboard_created_tables_backfill.sql`）」で
+これらの現在スキーマを記録し、履歴として残すこと。
+
+**確認方法**:
+```bash
+# PostgREST OpenAPI 経由（本番の public スキーマ全テーブルを列挙）
+curl -s -H "apikey: $SUPABASE_SERVICE_KEY" \
+     -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+     "$SUPABASE_URL/rest/v1/" | jq -r '.definitions | keys[]'
+```
+
+### マイグレーション番号衝突の修復（案A）
+`011_risk_gap_snapshots.sql`（未tracked）と `012_invite_codes.sql`（未tracked）が
+既 commit 済みの `011_rebalance_tool.sql` / `012_fund_master.sql` と番号衝突中。
+
+**修復方針**: `supabase migration repair --status applied 012..023` で schema_migrations
+を書き戻す + 未tracked ファイルを `023_risk_gap_snapshots.sql` へリネーム + `012_invite_codes.sql`
+は `018_invite_codes_profiles.sql` の重複なので削除。
+
+詳細は前回調査レポート参照。ユーザーの明示指示後に実行する。
