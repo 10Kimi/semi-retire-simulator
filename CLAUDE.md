@@ -112,11 +112,26 @@ curl -s -H "apikey: $SUPABASE_SERVICE_KEY" \
 ```
 
 ### マイグレーション番号衝突の修復（案A）
+
+✅ **2026-04-25 完了（案A' で実施）**
+
+実行時の事前確認 SQL で「schema_migrations 011 = risk_gap_snapshots」と判明
+（元の案A 前提と異なる）。Phase 2 を DELETE + INSERT 方式に修正した
+**案A'** に切り替えて実施。手順詳細・改訂理由・ロールバック SQL は
+[Docs/migration-repair-planA.md](Docs/migration-repair-planA.md) 参照。
+
+実施結果：
+- ローカル: `011_risk_gap_snapshots.sql` を `023_risk_gap_snapshots.sql` にリネーム、
+  `012_invite_codes.sql` を削除（018 で代替済み）
+- 本番 schema_migrations: 011 不整合行を削除した上で 011..024 を一括 INSERT。
+  最終 24 行（001..024 連続、各 name はローカルファイル名と完全一致）
+
+---
+
+#### 元の修復方針（参考・履歴）
 `011_risk_gap_snapshots.sql`（未tracked）と `012_invite_codes.sql`（未tracked）が
 既 commit 済みの `011_rebalance_tool.sql` / `012_fund_master.sql` と番号衝突中。
 
 **修復方針**: `supabase migration repair --status applied 012..023` で schema_migrations
 を書き戻す + 未tracked ファイルを `023_risk_gap_snapshots.sql` へリネーム + `012_invite_codes.sql`
 は `018_invite_codes_profiles.sql` の重複なので削除。
-
-詳細は前回調査レポート参照。ユーザーの明示指示後に実行する。
