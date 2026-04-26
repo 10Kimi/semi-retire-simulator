@@ -1,11 +1,12 @@
 import { Link, useLocation } from 'react-router-dom';
 import UserStatusBar from './UserStatusBar';
+import Footer from './Footer';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white border-b border-gray-200 px-3 py-2 md:px-4 md:py-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 md:gap-4 min-w-0">
           <div className="shrink-0">
@@ -49,7 +50,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
         <UserStatusBar variant="light" />
       </header>
-      {children}
+      <div className="flex-1">{children}</div>
+      <Footer />
     </div>
   );
 }
