@@ -12,7 +12,7 @@ export default function AboutPage() {
         canonical="/about"
       />
       <Layout>
-        <main className="max-w-3xl mx-auto px-4 py-8 md:px-6 md:py-12">
+        <main className="max-w-5xl mx-auto px-4 py-8 md:px-6 md:py-12">
           <MarkdownContent>{aboutMd}</MarkdownContent>
         </main>
       </Layout>
