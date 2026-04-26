@@ -7,7 +7,7 @@
   Commit 4 で /tools, /tools/simulation, /tools/age/50s, /tools/retirement を追加予定
   Phase 2 でビルド時自動生成へ移行予定
 -->
-<urlset xmlns="http://www.sitemap.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://fire.largogk.jp/</loc>
     <changefreq>monthly</changefreq>
