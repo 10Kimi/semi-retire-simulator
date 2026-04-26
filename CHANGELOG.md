@@ -1,5 +1,126 @@
 # CHANGELOG
 
+## 2026-04-26 — SEO基盤 Phase 1 Commit 3（信頼性ページ /about /privacy /tokushoho 実装 + 関連 SEO 整備）
+
+### 概要
+信頼性ページ3本（/about、/privacy、/tokushoho）の実装を中心に、フッター・ヘッダーナビ整備、
+Google Search Console 認証、sitemap.xml 更新まで一連で完了。本番（fire.largogk.jp）に
+公開済み、Search Console 認証 + サイトマップ送信も成功。
+
+### 1. 信頼性ページ実装
+
+#### 設計判断
+- 本文は markdown として `src/content/legal/` に置き、ページコンポーネントから raw import
+- レンダリングは **react-markdown を新規導入**（既存ライブラリは未導入）+ components prop で
+  Tailwind スタイリング。`@tailwindcss/typography` は導入せず、各要素にクラスを当てる方針
+- React Router の3ブロック構造（未認証・メール未確認・確認済み）すべてに /about /privacy
+  /tokushoho を追加 → **未認証でも閲覧可能**（信頼性ページの法的要件）
+- 文体は `Docs/tone_guideline_lp.md §4` に準拠（事実ベース、煽らない、計算結果のみ提示）
+
+#### 実装内容
+- `src/content/legal/{about,privacy,tokushoho}.md` 新設、本文配置
+  - /about: 48歳セミリタイア、SEI Investments の暴落データ（目標設定済み顧客 75% が
+    持ち続けた、未設定顧客 6割が売却）、4年運用継続のストーリー
+  - /privacy: 取得情報（メアド + 計算ツール入力）・利用目的・業務委託先（Supabase, Vercel）・
+    `simulation_logs` の匿名性（IP・UA 非保存）
+  - /tokushoho: 合同会社ラルゴ事業者情報・連絡先・動作環境
+- `src/components/MarkdownContent.tsx` 新設（react-markdown ラッパー、h1/h2/h3/p/ul/li/strong/a/hr/blockquote
+  にカスタム Tailwind クラスを適用）
+- `src/pages/{AboutPage,PrivacyPage,TokushohoPage}.tsx` 新設（Layout + SEOHead + MarkdownContent）
+- `src/App.tsx` の3ブロック全てに3ルート追加
+- `src/components/Footer.tsx` 新設、Layout に flex-col + sticky-footer で組み込み
+  - 「運営者について」「プライバシーポリシー」「特定商取引法に基づく表記」の3リンク
+  - コピーライト「© 2026 合同会社ラルゴ」併記
+- `legal-check` 偽陽性回避のための本文最小調整
+  - about.md「特定の金融商品を**推奨しない**」→「特定の金融商品を**勧めない**」
+  - tokushoho.md「ブラウザ...での**利用を推奨します**」→「ブラウザ...での**利用を想定しています**」
+  - `src/lib/seo/schemas.ts:30` の同種コメントは既存コード由来のため別タスクで対応
+
+### 2. dev サーバー復旧（clean install + recharts ピン）
+
+#### 発覚
+react-markdown 導入時の `npm install` が `ERR_INVALID_ARG_TYPE` で失敗、`--no-audit`
+で回避してインストール完了。その後 `npm run dev` で
+`Failed to resolve entry for package "micromark-util-subtokenize"` のエラーで
+dev サーバーが起動しなくなった（`build:spa-only` は成功するため見落としやすい）。
+
+#### 原因
+`--no-audit` 回避時の不完全な install で `node_modules/micromark-util-subtokenize/`
+配下に重複ファイル（`index 2.js`、`package 2.json` 等、permission 600 の異常状態）
+が残り、Vite の dep optimizer が `exports.development` 経由で `dev/index.js` を
+解決しようとして失敗。
+
+#### 対処
+- `node_modules` + `package-lock.json` を削除して clean install（`--no-audit` なし）
+  → 重複ファイル消失、permission 正常化、dev 起動 OK
+- 副次的に `recharts` が `^3.7.0` の `^` で 3.7.0 → 3.8.1 にバージョンアップし、
+  `MonthlyProjection.tsx`（L79）と `PortfolioCustomizePage.tsx`（L399）の `Formatter`
+  関数で TS 型エラーが発生
+- `recharts` を `3.7.0` にピン（`^` を削除）して既存 build を維持
+- recharts 上げに伴う既存型エラー修正は別タスク（CLAUDE.md TODO へ）
+
+### 3. ヘッダーナビ・本文幅調整
+
+#### 実装内容
+- `Layout.tsx` のヘッダーナビに「運営者について」リンクを追加（PF診断 の右、UserStatusBar の左）
+  - 既存リンクと同一の active highlight ロジック（`bg-blue-50 text-blue-700`）
+- 信頼性ページ3本の `<main>` の `max-w-3xl`（768px）→ `max-w-5xl`（1024px）に拡張
+  - ワイド画面での左右空白が大きすぎたため、視覚的にバランスの良い幅に
+  - モバイル（< 1024px）では viewport 幅に追従、レイアウト崩れなし
+- /privacy、/tokushoho へのリンクはヘッダーには追加せず、フッター誘導のみ（法的に必要だが
+  能動的に見せるべきページではないため、/about のみヘッダー昇格）
+
+#### 既知事項
+- モバイル（375px）でヘッダーナビが overflow（`scrollWidth=559 > clientWidth=375`）。
+  `shrink-0` で折り返しせず、横スクロールが必要。レスポンシブ対応（ハンバーガーメニュー化等）
+  は別タスク
+
+### 4. SEO 周辺整備
+
+#### Google Search Console verification
+
+`index.html` の `<head>` に verification meta タグを追加：
+```html
+<meta name="google-site-verification" content="-F4u87K93aZcDoF3dMkQK3S0NOolmV0bUlcDPbawchw" />
+```
+
+配置判断：
+- SEOHead（ページ別動的メタ、React 19 metadata hoisting）と独立して **`index.html` 直書き**
+- 理由: prerender 暫定停止中の SPA 構成下で、initial HTML に確実に含まれるのが最も robust
+- charset・viewport と同列の「サイト共通固定 meta」ブロックに配置
+
+#### sitemap.xml の更新
+
+- `public/sitemap.xml` に /about /privacy /tokushoho を追加（手書き運用、Phase 2 で
+  自動生成移行予定）
+  - /about: priority 0.7, changefreq yearly
+  - /privacy: priority 0.3, changefreq yearly
+  - /tokushoho: priority 0.3, changefreq yearly
+- `public/sitemap.xml` の `<urlset>` 名前空間 URL のタイポ修正
+  - `http://www.sitemap.org/schemas/sitemap/0.9` → `http://www.sitemaps.org/schemas/sitemap/0.9`
+  - **Phase 1 Commit 1 から残っていた誤り**。Search Console で「誤ったネームスペース」
+    エラーが発生して発覚
+- `robots.txt` は既存のまま（Sitemap 参照を含む、修正不要）
+
+#### 達成事項（Google 側）
+- **Google Search Console 所有権確認完了**（HTML タグ方式、`fire.largogk.jp` 認証済み）
+- **サイトマップ送信成功**: `sitemap.xml` ステータス「成功しました」、5 URL 検出
+  （`/`、`/risk`、`/about`、`/privacy`、`/tokushoho`）
+
+### コミット
+```
+c702b58 feat: 信頼性ページ /about /privacy /tokushoho を実装(SEO Phase 1 Commit 3)
+e1c5928 feat: フッターを追加し信頼性ページへの導線を整備
+88bd46d chore: dev サーバー復旧のため clean install + recharts を 3.7.0 にピン
+a58cc51 fix: 信頼性ページの本文幅を max-w-3xl → max-w-5xl に拡張
+f1dd667 feat: ヘッダーナビに「運営者について」リンクを追加
+9747c6e chore: Google Search Console site verification の meta タグを追加
+e960542 chore: sitemap.xml に /about /privacy /tokushoho を追加(SEO Phase 1 Commit 3)
+dffc08f fix: sitemap.xml の xmlns ネームスペース URL のタイポを修正
+```
+
+---
+
 ## 2026-04-25 — Vercel build 復旧（prerender 暫定停止 + 重複プロジェクト削除）
 
 ### 発覚

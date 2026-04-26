@@ -6,7 +6,7 @@
 「セミリタイア資産運用パッケージ」の中核プロダクト。
 
 - 本番URL: https://fire.largogk.jp
-- パッケージ全体設計書: ../../Docs/設計書_v6_1_main.docx
+- パッケージ全体設計書: ../../Docs/設計書_v6_2_main.docx
 - パッケージ全体の判断文脈: ../../CLAUDE.md
 
 ## ターゲット像
@@ -33,6 +33,8 @@
 - ホスティング: Vercel
 - ドメイン: fire.largogk.jp（お名前.com DNS）
 - 決済（予定）: Stripe
+- Markdown レンダリング: react-markdown（信頼性ページの本文表示用、`MarkdownContent.tsx` で Tailwind カスタムスタイルを適用）
+- グラフ: recharts 3.7.0（**pin**。3.8.x で `Formatter` の型が厳格化されて既存 `MonthlyProjection.tsx` / `PortfolioCustomizePage.tsx` が型エラーになるため固定。recharts 上げ時は型修正を別タスクで実施）
 
 ## フォルダ構成
 - `reference/` — 元Excel V4.2、解析スクリプト、解析結果（加工前）
@@ -69,7 +71,7 @@
 - **SEO基盤 Phase 1 着手中**（2026-04-23〜）
   - Commit 1 完了（be2fc65）: Puppeteer 自作 prerender + React 19 ネイティブ metadata hoisting + schema.org 構造化データ基盤
   - Commit 2 完了（576f3a9, 2026-04-25）: 匿名シミュレーションログ基盤（`simulation_logs` テーブル + `anonSession.ts` + `simulationLogsDb.ts`）。RLS は INSERT-only / SELECT は service_role のみ、PII 非保存（IP・User-Agent なし、referrer はホスト名のみ）。実計測の配線は Commit 3 以降で実施
-  - Commit 3 予定: 信頼性ページ（/about, /privacy, /tokushoho）
+  - Commit 3 完了（c702b58〜dffc08f, 2026-04-26）: 信頼性ページ /about /privacy /tokushoho 実装、react-markdown 新規導入、`src/content/legal/` 配下に md 配置、`MarkdownContent.tsx`・`Footer.tsx` 新設、Layout に sticky-footer 組み込み、ヘッダーナビに「運営者について」追加、本文幅 max-w-5xl(1024px)、Google Search Console 認証 meta タグ追加（index.html 直書き）、sitemap.xml に 3 URL 追加 + xmlns タイポ修正（sitemap.org → sitemaps.org）。**Search Console 認証完了 + サイトマップ送信成功（5 URL 検出）**
   - Commit 4 予定: `/tools/` ハブ + 先行LP 3本（simulation, age/50s, retirement）
   - Commit 5+: 内部リンク・品質チェック・Lighthouse
 - **PF Step 2 完了**（46ef507, 2026-04-25）: リスク超過警告を 2回暴落シナリオに刷新（コロナ級1.7σ・リーマン級2.5σ、20年シミュ、3線チャート）+ `savePfWithSnapshot` で PF診断結果を `risk_gap_snapshots` と同トランザクション保存。`calculateRiskExcessImpact` の単体テストは別コミットで後追い予定
