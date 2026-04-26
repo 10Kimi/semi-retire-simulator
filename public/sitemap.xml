@@ -3,7 +3,7 @@
   sitemap.xml - Phase 1 手書き版
 
   Commit 1: / (FIREシミュレーター) と /risk のみ（prerender 対応済みの公開ルート）
-  Commit 3 で /about, /privacy, /tokushoho を追加予定
+  Commit 3: /about, /privacy, /tokushoho を追加（信頼性ページ）
   Commit 4 で /tools, /tools/simulation, /tools/age/50s, /tools/retirement を追加予定
   Phase 2 でビルド時自動生成へ移行予定
 -->
@@ -17,5 +17,20 @@
     <loc>https://fire.largogk.jp/risk</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://fire.largogk.jp/about</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://fire.largogk.jp/privacy</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://fire.largogk.jp/tokushoho</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
   </url>
 </urlset>
