@@ -1,8 +1,45 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import { SEOHead } from '../../components/seo/SEOHead'
 
+function InlineCTA() {
+  return (
+    <div className="text-center py-12">
+      <Link
+        to="/risk"
+        className="inline-block bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold px-10 py-5 rounded-lg transition-colors"
+      >
+        リスク許容度を診断する →
+      </Link>
+    </div>
+  )
+}
+
 export default function RiskToleranceLPPage() {
+  const [showPopup, setShowPopup] = useState(false)
+  const [popupDismissed, setPopupDismissed] = useState(false)
+
+  useEffect(() => {
+    if (popupDismissed) return
+
+    const handleScroll = () => {
+      const scrolled = window.scrollY
+      const total = document.documentElement.scrollHeight - window.innerHeight
+      if (total > 0 && scrolled / total > 0.7) {
+        setShowPopup(true)
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [popupDismissed])
+
+  const handleDismiss = () => {
+    setShowPopup(false)
+    setPopupDismissed(true)
+  }
+
   return (
     <>
       <SEOHead
@@ -11,25 +48,27 @@ export default function RiskToleranceLPPage() {
         canonical="/tools/risk"
       />
       <Layout>
-        <main className="max-w-3xl mx-auto px-4 py-12 md:px-6 md:py-16 text-gray-700 leading-relaxed">
-          {/* Hero */}
-          <section className="mb-16 md:mb-20 text-center">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-800 leading-tight">
+        {/* Hero */}
+        <section className="bg-white min-h-screen flex items-center justify-center py-32 md:py-40">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 text-center">
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-800 leading-tight">
               本業で稼ぎ、設計で増やす。
               <br />
               1馬力から2馬力へ。
             </h1>
-          </section>
+          </div>
+        </section>
 
-          {/* セクション1: 資産形成の構造 */}
-          <section className="mb-14 md:mb-16 space-y-5">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
+        {/* セクション1: 資産形成の構造 (white) */}
+        <section className="bg-white py-20 md:py-28">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-5">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               資産形成の構造
             </h2>
 
             <p>資産形成の構造は、シンプルです。</p>
 
-            <div className="bg-gray-50 border border-gray-200 rounded p-4 font-mono text-center text-gray-800">
+            <div className="bg-gray-900 text-white text-center py-8 px-6 rounded-lg text-xl md:text-2xl font-mono my-10">
               資産 ＝ 収入 － 支出 ＋（資産 × 利回り）
             </div>
 
@@ -71,11 +110,13 @@ export default function RiskToleranceLPPage() {
             </p>
 
             <p>でも、その仕組みを安心して動かし続けるには、前提があります。</p>
-          </section>
+          </div>
+        </section>
 
-          {/* セクション2: 正直に言います */}
-          <section className="mb-14 md:mb-16 space-y-5">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
+        {/* セクション2: 正直に言います (gray-50) */}
+        <section className="bg-gray-50 py-20 md:py-28">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-5">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               正直に言います
             </h2>
 
@@ -94,11 +135,13 @@ export default function RiskToleranceLPPage() {
             <p>
               後悔というより、適当にやってはダメだと思いました。でもどうしたらいいのかわからず、たくさんの現金を残したまま、少しずつ積立しながら、ひたすら勉強する期間が続きました。
             </p>
-          </section>
+          </div>
+        </section>
 
-          {/* セクション3: リスク許容度次第と言いながら */}
-          <section className="mb-14 md:mb-16 space-y-5">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
+        {/* セクション3: リスク許容度次第と言いながら (white) */}
+        <section className="bg-white py-20 md:py-28">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-5">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               リスク許容度次第と言いながら
             </h2>
 
@@ -119,11 +162,13 @@ export default function RiskToleranceLPPage() {
             <p>
               やっているプロがいるかもしれません。自分が知らないだけかもしれない。でも少なくとも、「リスク許容度次第」と言いながら、その計測方法を示してくれた人には出会えませんでした。
             </p>
-          </section>
+          </div>
+        </section>
 
-          {/* セクション4: 転換点 */}
-          <section className="mb-14 md:mb-16 space-y-5">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
+        {/* セクション4: 転換点 (gray-50) — 末尾に InlineCTA */}
+        <section className="bg-gray-50 py-20 md:py-28">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-5">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               転換点
             </h2>
 
@@ -138,11 +183,15 @@ export default function RiskToleranceLPPage() {
             <p>
               その範囲に収まるポートフォリオをどう組むか、試行錯誤が始まりました。感情ではなく、設計として運用できるようになったのは、そこからです。
             </p>
-          </section>
 
-          {/* セクション5: 株価下落は避けられない */}
-          <section className="mb-14 md:mb-16 space-y-5">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
+            <InlineCTA />
+          </div>
+        </section>
+
+        {/* セクション5: 株価下落は避けられない (white) */}
+        <section className="bg-white py-20 md:py-28">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-5">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               株価下落は避けられない
             </h2>
 
@@ -159,11 +208,13 @@ export default function RiskToleranceLPPage() {
             <p>
               市場に居続けることが、長期投資の唯一の正解です。でも、それができなかった。自分のリスク許容度を把握していなかったから。
             </p>
-          </section>
+          </div>
+        </section>
 
-          {/* セクション6: 2択ではない */}
-          <section className="mb-14 md:mb-16 space-y-5">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
+        {/* セクション6: 2択ではない (gray-50) — 末尾に InlineCTA */}
+        <section className="bg-gray-50 py-20 md:py-28">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-5">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               2択ではない
             </h2>
 
@@ -182,11 +233,15 @@ export default function RiskToleranceLPPage() {
             <p>
               そのためにまず必要なのは、自分のリスク許容度を正確に把握することです。どのくらいの下落まで冷静でいられるか。どのくらいの期間、市場に居続けられるか。その輪郭がはっきりすれば、その範囲内で最大限のリターンを取りに行けます。
             </p>
-          </section>
 
-          {/* セクション7: 孫子 */}
-          <section className="mb-14 md:mb-16 space-y-5">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
+            <InlineCTA />
+          </div>
+        </section>
+
+        {/* セクション7: 孫子 (white) — 中央に bg-emerald-900 ブロック */}
+        <section className="bg-white py-20 md:py-28">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-5">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               孫子 — 己を知り敵を知る
             </h2>
 
@@ -196,37 +251,44 @@ export default function RiskToleranceLPPage() {
 
             <p>資産運用に置き換えると、こうなります。</p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 my-2">
-              <div className="bg-emerald-50 border border-emerald-200 rounded p-5">
-                <h3 className="text-base font-bold text-emerald-800 mb-3">
-                  己を知るとは
-                </h3>
-                <ul className="space-y-1.5 text-sm">
-                  <li>・自分のリスク許容度</li>
-                  <li>・損失耐性</li>
-                  <li>・投資可能期間</li>
-                </ul>
-              </div>
-              <div className="bg-purple-50 border border-purple-200 rounded p-5">
-                <h3 className="text-base font-bold text-purple-800 mb-3">
-                  敵を知るとは
-                </h3>
-                <ul className="space-y-1.5 text-sm">
-                  <li>・市場の動き</li>
-                  <li>・金融商品の特性</li>
-                  <li>・ポートフォリオの分散効果</li>
-                </ul>
+            <div className="bg-emerald-900 text-white rounded-lg py-12 px-8 my-8">
+              <p className="text-2xl font-bold text-center mb-8">
+                彼を知り己を知れば百戦殆うからず
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                <div>
+                  <h3 className="text-lg font-bold text-emerald-200 mb-3">
+                    己を知るとは
+                  </h3>
+                  <ul className="space-y-1.5 text-sm">
+                    <li>・自分のリスク許容度</li>
+                    <li>・損失耐性</li>
+                    <li>・投資可能期間</li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-emerald-200 mb-3">
+                    敵を知るとは
+                  </h3>
+                  <ul className="space-y-1.5 text-sm">
+                    <li>・市場の動き</li>
+                    <li>・金融商品の特性</li>
+                    <li>・ポートフォリオの分散効果</li>
+                  </ul>
+                </div>
               </div>
             </div>
 
             <p>
               この両方が揃ったとき、感情ではなく設計で運用できるようになります。タイミングを読もうとする投機的なギャンブルではなく、構造として長期で勝ちに行く運用です。
             </p>
-          </section>
+          </div>
+        </section>
 
-          {/* セクション8: 複利を味方につける */}
-          <section className="mb-14 md:mb-16 space-y-5">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
+        {/* セクション8: 複利を味方につける (gray-50) */}
+        <section className="bg-gray-50 py-20 md:py-28">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-5">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               複利を味方につける
             </h2>
 
@@ -252,12 +314,18 @@ export default function RiskToleranceLPPage() {
               市場に居続けられる自分を設計する。そのために必要なのは予測力ではなく、自分のリスク許容度の範囲内で組まれた、揺さぶられないポートフォリオです。
             </p>
 
-            <p>あなたが安心して眠れる夜は、設計の先にあります。</p>
-          </section>
+            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8 my-2">
+              <p className="text-xl font-medium text-blue-900">
+                あなたが安心して眠れる夜は、設計の先にあります。
+              </p>
+            </div>
+          </div>
+        </section>
 
-          {/* セクション9: このツールについて */}
-          <section className="mb-14 md:mb-16 space-y-5">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
+        {/* セクション9: このツールについて (white) */}
+        <section className="bg-white py-20 md:py-28">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-5">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               このツールについて
             </h2>
 
@@ -289,10 +357,12 @@ export default function RiskToleranceLPPage() {
             <p className="text-sm text-gray-500">
               計測結果は投資の推奨ではありません。設計の起点です。
             </p>
-          </section>
+          </div>
+        </section>
 
-          {/* クロージング */}
-          <section className="mb-10 md:mb-12 space-y-5">
+        {/* クロージング (gray-50) — InlineCTA で締める */}
+        <section className="bg-gray-50 py-20 md:py-28">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-5">
             <p>己を知るところから、すべては始まります。</p>
 
             <p>
@@ -302,19 +372,37 @@ export default function RiskToleranceLPPage() {
             <p>
               お金のために走り続けなくていい。設計した仕組みが、あなたの代わりに静かに動いている。そういう状態を作るための、最初の一歩をここから始めてみてください。
             </p>
-          </section>
 
-          {/* CTA */}
-          <div className="text-center">
-            <Link
-              to="/risk"
-              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-4 rounded-lg transition-colors"
-            >
-              リスク許容度を診断する →
-            </Link>
+            <InlineCTA />
           </div>
-        </main>
+        </section>
       </Layout>
+
+      {/* スクロールポップアップ (70%到達で1回のみ) */}
+      {showPopup && (
+        <div className="fixed bottom-6 right-6 z-50 bg-white shadow-2xl rounded-xl p-6 max-w-sm border border-gray-100">
+          <button
+            onClick={handleDismiss}
+            aria-label="閉じる"
+            className="absolute top-3 right-4 text-gray-400 hover:text-gray-600 text-lg"
+          >
+            ✕
+          </button>
+          <p className="text-sm text-gray-500 mb-1">己を知るところから</p>
+          <p className="font-bold text-gray-900 mb-4">
+            あなたのリスク許容度、
+            <br />
+            把握していますか？
+          </p>
+          <Link
+            to="/risk"
+            onClick={handleDismiss}
+            className="block text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+          >
+            5分で診断する →
+          </Link>
+        </div>
+      )}
     </>
   )
 }
