@@ -19,7 +19,8 @@
  *   認証ゲートのかかったルート（/, /pf 等）は prerender 対象外（AuthGate が焼き付くため）。
  */
 
-import puppeteer from 'puppeteer'
+import puppeteerCore from 'puppeteer-core'
+import chromium from '@sparticuz/chromium'
 import http from 'node:http'
 import handler from 'serve-handler'
 import { promises as fs } from 'node:fs'
@@ -47,6 +48,9 @@ const TIMEOUT_MS = 30_000
  */
 const PRERENDER_ROUTES: string[] = [
   '/risk',
+  '/about',
+  '/privacy',
+  '/tokushoho',
 ]
 
 type PrerenderResult =
@@ -54,7 +58,7 @@ type PrerenderResult =
   | { route: string; status: 'error'; error: string }
 
 async function prerenderRoute(
-  browser: puppeteer.Browser,
+  browser: puppeteerCore.Browser,
   route: string,
 ): Promise<PrerenderResult> {
   const page = await browser.newPage()
@@ -120,9 +124,21 @@ async function main(): Promise<void> {
   console.log(`[prerender] static server listening on http://localhost:${PORT}`)
 
   // 2. Puppeteer 起動
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  // Vercel/Lambda 環境: @sparticuz/chromium の Linux バイナリ + Lambda 向け args
+  // ローカル(macOS/Linux): インストール済みの Google Chrome + 最小限の args
+  // (sparticuz の args には --single-process 等が含まれており、デスクトップ Chrome に
+  //  渡すと即クラッシュするため、ローカルでは args/headless も切り替える)
+  const isVercel = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME
+  const localChromePath =
+    process.platform === 'darwin'
+      ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+      : '/usr/bin/google-chrome'
+  const browser = await puppeteerCore.launch({
+    args: isVercel ? chromium.args : ['--no-sandbox', '--disable-setuid-sandbox'],
+    executablePath: isVercel
+      ? await chromium.executablePath()
+      : localChromePath,
+    headless: isVercel ? chromium.headless : true,
   })
 
   // 3. 並列 prerender
