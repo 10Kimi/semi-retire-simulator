@@ -51,6 +51,7 @@ const PRERENDER_ROUTES: string[] = [
   '/about',
   '/privacy',
   '/tokushoho',
+  '/tools/risk',
 ]
 
 type PrerenderResult =
