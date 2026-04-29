@@ -72,7 +72,7 @@
   - Commit 1 完了（be2fc65）: Puppeteer 自作 prerender + React 19 ネイティブ metadata hoisting + schema.org 構造化データ基盤
   - Commit 2 完了（576f3a9, 2026-04-25）: 匿名シミュレーションログ基盤（`simulation_logs` テーブル + `anonSession.ts` + `simulationLogsDb.ts`）。RLS は INSERT-only / SELECT は service_role のみ、PII 非保存（IP・User-Agent なし、referrer はホスト名のみ）。実計測の配線は Commit 3 以降で実施
   - Commit 3 完了（c702b58〜dffc08f, 2026-04-26）: 信頼性ページ /about /privacy /tokushoho 実装、react-markdown 新規導入、`src/content/legal/` 配下に md 配置、`MarkdownContent.tsx`・`Footer.tsx` 新設、Layout に sticky-footer 組み込み、ヘッダーナビに「運営者について」追加、本文幅 max-w-5xl(1024px)、Google Search Console 認証 meta タグ追加（index.html 直書き）、sitemap.xml に 3 URL 追加 + xmlns タイポ修正（sitemap.org → sitemaps.org）。**Search Console 認証完了 + サイトマップ送信成功（5 URL 検出）**
-  - Commit 4 予定: `/tools/` ハブ + 先行LP 3本（simulation, age/50s, retirement）
+  - Commit 4 進行中（2026-04-29〜）: リスク許容度診断 LP `/tools/risk` を先行実装（eaf559c〜d09dff3）。ヒーロー伊豆背景画像 + 黒オーバーレイ、交互背景セクション、強調ブロック3点（方程式 = bg-gray-900 / 孫子 = bg-emerald-900 / 安心して眠れる夜 = bg-blue-50）、3 InlineCTA、70% スクロールポップアップ、装飾 12 箇所（マーカー 6 + 太字 4 + 下線 2）。`tone_guideline_lp.md` 準拠で本文 2 箇所微修正（「必ず来ます」→「来ます」、末尾「では、また。」削除）。残: `/tools/` ハブ + 残り LP 3本（simulation, age/50s, retirement）
   - Commit 5+: 内部リンク・品質チェック・Lighthouse
 - **PF Step 2 完了**（46ef507, 2026-04-25）: リスク超過警告を 2回暴落シナリオに刷新（コロナ級1.7σ・リーマン級2.5σ、20年シミュ、3線チャート）+ `savePfWithSnapshot` で PF診断結果を `risk_gap_snapshots` と同トランザクション保存。`calculateRiskExcessImpact` の単体テストは別コミットで後追い予定
 - 次の優先: Phase 3.5（ステップメール + リスク乖離の損失体感UI改善）
@@ -116,43 +116,22 @@ curl -s -H "apikey: $SUPABASE_SERVICE_KEY" \
 
 ### prerender を Vercel build に戻す（中期対応）
 
-⚠️ **暫定停止中**（2026-04-25〜）
+✅ **2026-04-29 完了**（コミット 196e5f0）
 
-Vercel build 環境で `puppeteer.launch()` が Chromium 起動失敗したため、
-`vercel.json` で Build Command を `npm run build:spa-only` に切替えて prerender を
-一時停止中（commit 377fde2）。
+`puppeteer ^24` → **`@sparticuz/chromium ^148 + puppeteer-core ^24`** に置換、
+ローカル(macOS)/Vercel(Linux Lambda) 両対応の launch 分岐を `scripts/prerender.ts` に実装、
+`vercel.json` の `buildCommand: "npm run build:spa-only"` を削除して通常の `npm run build`
+に復帰。並行で `PRERENDER_ROUTES` に Commit 3 公開済みだった `/about /privacy /tokushoho`
+を追加（配列が追従していなかった）。Vercel build で 5 ルート（`/risk /about /privacy
+/tokushoho /tools/risk`）全 prerender 成功確認済み（Duration 32s、前回 spa-only 19s + 13s）。
 
-**影響**:
-- AI クローラー（ChatGPT/Perplexity 等の JS 非実行エージェント）への prerender
-  HTML 配信が無効。検索エンジン SEO（Google/Bing 等の JS 実行クローラー）は
-  SPA エントリーで対応できているため影響軽微
-- `SEOHead` / `JsonLd` / `robots.txt` / `sitemap.xml` の本体は SPA でも有効
+**ローカル/Vercel 切替の要点**:
+- Vercel/Lambda: `chromium.args` + `chromium.executablePath()` + `chromium.headless`
+- ローカル (macOS): 既存の最小 args (`--no-sandbox` 等) + Mac Chrome の executablePath
+- ※ `chromium.args` には `--single-process` 等の Lambda 用フラグが含まれており、デスクトップ
+  Chrome に渡すと即クラッシュするため、ローカルでは args/headless も既存の値に切替
 
-**復旧方針**: `puppeteer` → **`@sparticuz/chromium` + `puppeteer-core`** に置換。
-Lambda/Vercel 向けに最適化された軽量 Chromium バイナリで、Vercel build 環境でも
-起動可能になる想定。
-
-```ts
-// scripts/prerender.ts 改修案
-import chromium from '@sparticuz/chromium'
-import puppeteer from 'puppeteer-core'
-
-const browser = await puppeteer.launch({
-  args: chromium.args,
-  executablePath: await chromium.executablePath(),
-  headless: chromium.headless,
-})
-```
-
-復旧手順：
-1. `npm i -D @sparticuz/chromium puppeteer-core`、`npm uninstall puppeteer`
-2. `scripts/prerender.ts` を上記パターンに書き換え
-3. `vercel.json` の `buildCommand` を削除（フル `npm run build` に戻す）
-4. push → Vercel build で prerender が走ることを確認
-5. `dist/risk/index.html` 等に prerender HTML が焼き付くことを確認
-
-タイミング: SEO Phase 1 Commit 3〜4（信頼性ページ・/tools/* LP）の前に対応推奨。
-LP を増やす段階で prerender が無いと SEO 戦略の効果が出にくいため。
+元の暫定停止記録（2026-04-25〜2026-04-29）は履歴のみ。
 
 ---
 

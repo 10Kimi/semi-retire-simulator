@@ -1,5 +1,107 @@
 # CHANGELOG
 
+## 2026-04-29 — prerender 復旧 + SEO Phase 1 Commit 4 先行（/tools/risk LP）+ largogk.jp SSL リダイレクト復旧
+
+### 概要
+3 つの独立した作業を 1 日にまとめて実施:
+1. **prerender 復旧**: `puppeteer` → `@sparticuz/chromium + puppeteer-core` 置換で Vercel build 環境での Chromium 起動失敗を解消し、`vercel.json` の `buildCommand: build:spa-only` 迂回を解除して通常 build に復帰
+2. **SEO Phase 1 Commit 4 先行**: リスク許容度診断 LP `/tools/risk` を新設、デザイン・テキスト改善 5 段階を経て本番投入
+3. **largogk.jp SSL リダイレクト復旧**: apex (`largogk.jp`) と www が Netlify を指したまま放置で SSL 検証失敗していた件を修復、`https://largogk.jp/*` → `https://fire.largogk.jp/*`（path/query 保持、308 Permanent）の運用に統一
+
+### 1. prerender 復旧（コミット 196e5f0）
+
+#### 背景
+2026-04-25 に Vercel build 環境で `puppeteer.launch()` が Chromium 起動失敗、`vercel.json` で
+`build:spa-only` に迂回して暫定停止していた（CLAUDE.md TODO「prerender を Vercel build に戻す」）。
+LP 量産前に復旧が必要なタイミング。
+
+#### 実装
+- `npm uninstall puppeteer` + `npm install -D @sparticuz/chromium puppeteer-core`
+  - `puppeteer ^24.0.0` → 削除
+  - `@sparticuz/chromium ^148.0.0` + `puppeteer-core ^24.42.0` を devDependencies に追加
+- `scripts/prerender.ts`:
+  - import を `puppeteerCore` + `chromium` に変更、型注釈 `puppeteer.Browser` → `puppeteerCore.Browser`
+  - `launch()` を環境分岐:
+    - Vercel/Lambda: `chromium.args` + `chromium.executablePath()` + `chromium.headless`
+    - ローカル (macOS): `['--no-sandbox', '--disable-setuid-sandbox']` + ローカル Chrome の executablePath + `headless: true`
+    - ※ `chromium.args` には `--single-process` 等 Lambda 用フラグが含まれており、デスクトップ Chrome に渡すと即クラッシュするため args/headless もローカルでは既存値に切替
+- `vercel.json` から `"buildCommand": "npm run build:spa-only"` を削除 → 通常 `npm run build` に復帰
+- `PRERENDER_ROUTES` に `/about /privacy /tokushoho` を追加（Commit 3 で公開済みなのに配列が未追従だった）
+
+#### 検証
+- ローカル `npm run build` で 4 ルート全 prerender 成功
+- Vercel build: ● Ready / 32s（前回 spa-only は 19s、+13s が prerender ぶん）
+- 本番 `curl https://fire.largogk.jp/risk` で React 描画後の HTML が焼き込まれていることを確認
+
+### 2. SEO Phase 1 Commit 4 先行: `/tools/risk` LP 新設
+
+#### 設計判断
+- `Docs/tone_guideline_lp.md` 準拠で本文・CTA を構築
+- 本文は **JSX で直接記述**（信頼性ページとは異なり、装飾と動的要素が必要なため Markdown 不採用）
+- 既存 `/risk` ページは触らず、LP からの導線（CTA → `/risk`）として実装
+- ルーティング: 3 認証状態すべてに `/tools/risk` を追加し、未認証アクセス可能に
+
+#### 実装サマリ（5 コミットの差分を統合）
+
+| コミット | 内容 |
+|---|---|
+| **eaf559c** | 初版 — 11 セクション本文（ヒーロー / 資産形成の構造 / 正直に言います / リスク許容度次第と言いながら / 転換点 / 株価下落は避けられない / 2択ではない / 孫子 / 複利 / このツールについて / クロージング）+ CTA（→ /risk）+ ルート/sitemap/prerender 配線 |
+| **a4f27bc** | デザイン改善 — ヒーロー full-screen 化、セクション交互背景（white ↔ gray-50）、強調ブロック 3 点（方程式 = bg-gray-900 / 孫子 = bg-emerald-900 / 安心して眠れる夜 = bg-blue-50）、InlineCTA を 3 箇所に配置（転換点末尾／2択ではない末尾／クロージング）、70% スクロールでポップアップ表示（1 回のみ、`popupDismissed` フラグ） |
+| **90d82be** | テキスト改善 — h1 サイズ調整、段落間余白拡大（`space-y-6 md:space-y-8`）、強調装飾 12 箇所（マーカー 6 + 太字 4 + 下線 2）、本文テキスト変更なし（span ラップのみ） |
+| **42136bf** | h1 サイズ縮小（`text-3xl md:text-4xl lg:text-5xl`）、マーカー範囲を単語単位 → 文単位に拡大 |
+| **659a152** + **d09dff3** | ヒーロー背景画像（伊豆海岸）+ 黒オーバーレイ + テキスト白系化、`public/Images` → `public/images` ケース修復（macOS 開発で見落とす Linux/Vercel ケース依存問題） |
+
+#### `tone_guideline_lp.md` 準拠のため本文 2 箇所のみ微修正（ユーザー確認済み）
+- 【セクション 5】「必ず来ます」→「来ます」（絶対回避リストの「必ず」を回避、不可避性は前文で確立済み）
+- 【クロージング】末尾の「では、また。」を削除（LP は CTA で締める方針）
+- ポップアップ CTA: 指示書「無料で診断する」→「5 分で診断する」に変更（「無料」も避け語）
+
+#### ルート・SEO 配線
+- `src/App.tsx`: 3 認証ブロックすべてに `/tools/risk` ルート追加
+- `public/sitemap.xml`: `<loc>https://fire.largogk.jp/tools/risk</loc>` を `priority 0.8 / changefreq monthly / lastmod 2026-04-29` で追加
+- `scripts/prerender.ts` の `PRERENDER_ROUTES` に追加 → Vercel build で prerender HTML が焼き込まれる
+
+### 3. largogk.jp SSL リダイレクト復旧
+
+#### 発覚
+`https://largogk.jp` (apex) にアクセスすると SSL 証明書エラー。証明書サブジェクトは
+`*.netlify.app` で `largogk.jp` をカバーしないため検証失敗。`fire.largogk.jp` は正常。
+
+#### 原因（DNS 調査結果）
+- apex `largogk.jp` の A レコード = `75.2.60.5` (Netlify) のまま
+- `www.largogk.jp` も `largogk.netlify.app.` (Netlify) のまま
+- Vercel アカウントには `largogk.jp` が 66 日前から登録されていたが、DNS が向いておらず
+  Let's Encrypt 発行も完了していなかった
+- DNS 管理: バリュードメイン (`01-04.dnsv.jp`)
+
+#### 修復方針 B = apex を `fire.largogk.jp` にリダイレクト
+1. **Vercel CLI**: `vercel domains add largogk.jp` + `vercel domains add www.largogk.jp` で `semi-retire-simulator` プロジェクトに attach
+2. **Vercel Dashboard**: Project Settings → Domains で両ドメインに「Redirect to a different domain」設定（→ `fire.largogk.jp`、308 Permanent、Path & Query 保持）
+3. **DNS（バリュードメイン）**:
+   - 旧 Netlify レコード削除: `a @ 75.2.60.5`、`cname www largogk.netlify.app.`
+   - 新 Vercel レコード追加: `a @ 76.76.21.21`、`cname www cname.vercel-dns.com.`
+   - 既存 `cname fire ...vercel-dns-017.com.` `cname english ...` は維持
+
+#### 検証結果（すべて Pass）
+| パス | 期待 | 実測 |
+|---|---|---|
+| `https://largogk.jp` | 308 → `https://fire.largogk.jp/` | ✅ |
+| `https://largogk.jp/about` | 308 → `https://fire.largogk.jp/about` | ✅ |
+| `https://largogk.jp/risk?show_result=1` | 308 → `https://fire.largogk.jp/risk?show_result=1` | ✅ |
+| `https://www.largogk.jp` | 308 → `https://fire.largogk.jp/` | ✅ |
+| `https://www.largogk.jp/tools/risk` | 308 → `https://fire.largogk.jp/tools/risk` | ✅ |
+| `https://fire.largogk.jp` | 200 OK / Vercel | ✅ 影響なし |
+
+SSL は Let's Encrypt 自動発行済み（`Server: Vercel` + HSTS ヘッダー付与確認）。
+`x-vercel-id: kix1::...` で東京エッジ経由を確認。
+
+#### 残作業（ユーザー手動対応）
+- Netlify 側の旧サイト削除 / アカウント整理（同一 Netlify アカウントで他プロジェクトが
+  動いている可能性があり、解約前に Netlify Dashboard でホスト一覧の確認が必要）
+- 旧サイトのソースは `~/Documents/Projects/デジタルタイムカプセル/ラルゴHP/files/` に保管
+
+---
+
 ## 2026-04-26 — SEO基盤 Phase 1 Commit 3（信頼性ページ /about /privacy /tokushoho 実装 + 関連 SEO 整備）
 
 ### 概要
