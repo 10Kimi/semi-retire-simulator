@@ -51,7 +51,7 @@ export default function RiskToleranceLPPage() {
         {/* Hero */}
         <section className="bg-white min-h-screen flex items-center justify-center py-32 md:py-40">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-center">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-800 leading-tight">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-800 leading-tight">
               本業で稼ぎ、設計で増やす。
               <br />
               1馬力から2馬力へ。
@@ -73,9 +73,8 @@ export default function RiskToleranceLPPage() {
             </div>
 
             <p>
-              収入はすでにある。支出も極端には変えられない。でも「
-              <span className="bg-yellow-200 px-1 rounded">資産 × 利回り</span>
-              」の部分がちゃんと設計されていない人が、思いのほか多い。
+              収入はすでにある。支出も極端には変えられない。でも
+              <span className="bg-yellow-200 px-1 rounded">「資産 × 利回り」の部分がちゃんと設計されていない人が、思いのほか多い。</span>
             </p>
 
             <p>
@@ -91,7 +90,7 @@ export default function RiskToleranceLPPage() {
             <p>でも、資産運用についてはどうでしょう？</p>
 
             <p>
-              長期の資産運用は、複利の効果を最大限享受するゲームです。そのためには時間を味方につけないと意味がない。だからこそ、後回しにせず、適当にやらず、<span className="bg-yellow-200 px-1 rounded">1日でも早く</span>ちゃんとした設計のもとに仕組みを作った方がいい。
+              長期の資産運用は、複利の効果を最大限享受するゲームです。そのためには時間を味方につけないと意味がない。だからこそ、<span className="bg-yellow-200 px-1 rounded">後回しにせず、適当にやらず、1日でも早くちゃんとした設計のもとに仕組みを作った方がいい。</span>
             </p>
 
             <p>だから順番はこうなります。</p>
@@ -130,7 +129,7 @@ export default function RiskToleranceLPPage() {
             <p>そして実際に、やってしまいました。</p>
 
             <p>
-              運用資産を数百万から数千万に増やしたとき、毎日100万円単位で減っていく画面を見ながら、「<span className="bg-yellow-200 px-1 rounded">とりあえず売却</span>」したんです。頭では長期投資と決めていたのに。
+              運用資産を数百万から数千万に増やしたとき、<span className="bg-yellow-200 px-1 rounded">毎日100万円単位で減っていく画面を見ながら、「とりあえず売却」したんです。頭では長期投資と決めていたのに。</span>
             </p>
 
             <p>
@@ -153,7 +152,7 @@ export default function RiskToleranceLPPage() {
             </p>
 
             <p>
-              でも、リスク許容度をどうやって調べるのか、<span className="bg-yellow-200 px-1 rounded">誰も書いていない</span>んです。
+              <span className="bg-yellow-200 px-1 rounded">でも、リスク許容度をどうやって調べるのか、誰も書いていないんです。</span>
             </p>
 
             <p>
@@ -178,7 +177,7 @@ export default function RiskToleranceLPPage() {
             </p>
 
             <p>
-              当時、アメリカの保険会社のサイトで計測してみました。自分がどのくらいの下落まで冷静でいられるか、どのくらいの期間市場に居続けられるか、数字として把握できた瞬間、<span className="bg-yellow-200 px-1 rounded">何かが変わりました</span>。
+              当時、アメリカの保険会社のサイトで計測してみました。自分がどのくらいの下落まで冷静でいられるか、どのくらいの期間市場に居続けられるか、<span className="bg-yellow-200 px-1 rounded">数字として把握できた瞬間、何かが変わりました。</span>
             </p>
 
             <p>
@@ -308,7 +307,7 @@ export default function RiskToleranceLPPage() {
             </ol>
 
             <p>
-              この3つはすべてつながっています。タイミングを読もうとした瞬間に、<span className="bg-yellow-200 px-1 rounded">複利が壊れます</span>。予測しようとした瞬間に、設計が崩れます。
+              この3つはすべてつながっています。<span className="bg-yellow-200 px-1 rounded">タイミングを読もうとした瞬間に、複利が壊れます。予測しようとした瞬間に、設計が崩れます。</span>
             </p>
 
             <p>
