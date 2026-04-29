@@ -48,14 +48,26 @@ export default function RiskToleranceLPPage() {
         canonical="/tools/risk"
       />
       <Layout>
-        {/* Hero */}
-        <section className="bg-white min-h-screen flex items-center justify-center py-32 md:py-40">
-          <div className="max-w-3xl mx-auto px-4 md:px-6 text-center">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-800 leading-tight">
+        {/* Hero (背景画像 + 黒オーバーレイ) */}
+        <section
+          className="relative min-h-screen flex flex-col justify-center"
+          style={{
+            backgroundImage: 'url(/images/hero-izu.jpeg)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        >
+          {/* オーバーレイ */}
+          <div className="absolute inset-0 bg-black/50" />
+
+          {/* コンテンツ */}
+          <div className="relative z-10 max-w-3xl mx-auto px-6 py-32 text-white">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
               本業で稼ぎ、設計で増やす。
-              <br />
-              1馬力から2馬力へ。
             </h1>
+            <p className="text-xl md:text-2xl text-white/80 mt-4">
+              1馬力から2馬力へ。
+            </p>
           </div>
         </section>
 
