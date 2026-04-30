@@ -9,8 +9,6 @@ import MonthlyAdvisorPage from './pages/MonthlyAdvisorPage';
 import RebalancePage from './pages/RebalancePage';
 import PortfolioCustomizePage from './pages/PortfolioCustomizePage';
 import AboutPage from './pages/AboutPage';
-import PrivacyPage from './pages/PrivacyPage';
-import TokushohoPage from './pages/TokushohoPage';
 import RiskToleranceLPPage from './pages/tools/RiskToleranceLPPage';
 import PremiumGate from './components/PremiumGate';
 // 有料版で復活予定
@@ -42,8 +40,6 @@ function App() {
           <Route path="/risk" element={<RiskSimplePage />} />
           <Route path="/tools/risk" element={<RiskToleranceLPPage />} />
           <Route path="/about" element={<AboutPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/tokushoho" element={<TokushohoPage />} />
           <Route path="*" element={<AuthGatePage />} />
         </Routes>
         <Analytics />
@@ -59,8 +55,6 @@ function App() {
           <Route path="/risk" element={<RiskSimplePage />} />
           <Route path="/tools/risk" element={<RiskToleranceLPPage />} />
           <Route path="/about" element={<AboutPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/tokushoho" element={<TokushohoPage />} />
           <Route path="*" element={<EmailConfirmationPending email={user.email ?? ''} />} />
         </Routes>
         <Analytics />
@@ -80,8 +74,6 @@ function App() {
         <Route path="/portfolio" element={<PremiumGate title="ポートフォリオ カスタマイズ" description="アセット配分をカスタマイズし、リスク・リターンをシミュレーションできます"><PortfolioCustomizePage /></PremiumGate>} />
         <Route path="/tools/risk" element={<RiskToleranceLPPage />} />
         <Route path="/about" element={<AboutPage />} />
-        <Route path="/privacy" element={<PrivacyPage />} />
-        <Route path="/tokushoho" element={<TokushohoPage />} />
         {/* 有料版で復活予定 */}
         {/* <Route path="/assessment" element={<AssessmentPage />} /> */}
         {/* <Route path="/portfolio-diagnosis" element={<PortfolioDiagnosisPage />} /> */}
