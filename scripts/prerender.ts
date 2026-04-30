@@ -49,8 +49,6 @@ const TIMEOUT_MS = 30_000
 const PRERENDER_ROUTES: string[] = [
   '/risk',
   '/about',
-  '/privacy',
-  '/tokushoho',
   '/tools/risk',
 ]
 
