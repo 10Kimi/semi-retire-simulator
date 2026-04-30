@@ -167,7 +167,7 @@ export default function RiskToleranceLPPage() {
               投資と投機は、形が似ているので、自分でもなかなか区別がつかないんですよね。
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 my-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <h3 className="text-lg font-bold text-gray-800">投資</h3>
                 <ul className="space-y-1.5 text-sm">
@@ -194,7 +194,7 @@ export default function RiskToleranceLPPage() {
               怖いのは、<span className="underline decoration-blue-400 decoration-2 underline-offset-4">形は投資なのに、中身が投機になっているケース</span>の方だと思います。長期で持つつもりで買ったインデックス。でもポートフォリオ全体が自分のリスク許容度を超えていたら、下落のときに耐えられない。<span className="bg-yellow-200 px-1 rounded">耐えられないものは、結果として投機と同じ動きになる</span>。
             </p>
 
-            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8 my-2">
+            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8">
               <p className="text-xl font-medium text-blue-900">
                 自分がそうでした。だから、自分のリスク許容度を知る必要があったんですよね。
               </p>
@@ -356,7 +356,7 @@ export default function RiskToleranceLPPage() {
 
             <p>ジョージ・ソロスはこう言っています。</p>
 
-            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8 my-2">
+            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8">
               <p className="text-xl font-medium text-blue-900">
                 私の原則は、まず生き残ること。稼ぐのはそれからだ
               </p>
