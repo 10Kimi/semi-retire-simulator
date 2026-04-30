@@ -132,8 +132,6 @@ export default function RiskToleranceLPPage() {
               正直に言います
             </h2>
 
-            <p>正直に言います。</p>
-
             <p>
               資産運用を始めた頃、自分はずっとドキドキしていました。下がり止まって上がったときは「あーよかった」と胸をなでおろす。でも心のどこかで、あのまま下がり続けていたら耐えられなかったかもな、とも思っていました。
             </p>
@@ -146,6 +144,58 @@ export default function RiskToleranceLPPage() {
 
             <p>
               後悔というより、適当にやってはダメだと思いました。でもどうしたらいいのかわからず、たくさんの現金を残したまま、少しずつ積立しながら、ひたすら勉強する期間が続きました。
+            </p>
+          </div>
+        </section>
+
+        {/* セクション: 投資のつもりで、投機をやっていた (white) */}
+        <section className="bg-white py-20 md:py-28">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
+              投資のつもりで、投機をやっていた
+            </h2>
+
+            <p>
+              あとで気づいたんですが、あのとき自分がやっていたのは、投資のつもりで、実は投機に近かったのかもしれません。
+            </p>
+
+            <p>
+              インデックスを長期で持つと決めていたから、形としては投資です。でも中身を見ると、ポートフォリオ全体が自分のリスク許容度を超えていた。下落に耐える設計になっていなかった。だから、画面の数字に振り回されて、売ってしまった。
+            </p>
+
+            <p>
+              投資と投機は、形が似ているので、自分でもなかなか区別がつかないんですよね。
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 my-2">
+              <div>
+                <h3 className="text-lg font-bold text-gray-800 mb-3">投資</h3>
+                <ul className="space-y-1.5 text-sm">
+                  <li>・データや分析にもとづいている</li>
+                  <li>・長期的にリターンを取りに行く</li>
+                  <li>・資産を「守る」ために使う</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-800 mb-3">投機</h3>
+                <ul className="space-y-1.5 text-sm">
+                  <li>・「上がるかもしれない」という期待がベース</li>
+                  <li>・短期で大きな金額を入れる</li>
+                  <li>・一発逆転の「攻め」の手段として使う</li>
+                </ul>
+              </div>
+            </div>
+
+            <p>
+              SNSで「必ず儲かる」「いま仕込まないと乗り遅れる」という話を見かけたとき、それは投資の話ではなく投機の話です。それは自分でも気づきやすい。
+            </p>
+
+            <p>
+              怖いのは、形は投資なのに、中身が投機になっているケースの方だと思います。長期で持つつもりで買ったインデックス。でもポートフォリオ全体が自分のリスク許容度を超えていたら、下落のときに耐えられない。耐えられないものは、結果として投機と同じ動きになる。
+            </p>
+
+            <p>
+              自分がそうでした。だから、自分のリスク許容度を知る必要があったんですよね。
             </p>
           </div>
         </section>
@@ -200,17 +250,15 @@ export default function RiskToleranceLPPage() {
           </div>
         </section>
 
-        {/* セクション5: 株価下落は避けられない (white) */}
+        {/* セクション5: 市場から出ない (white) */}
         <section className="bg-white py-20 md:py-28">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
-              株価下落は避けられない
+              市場から出ない
             </h2>
 
-            <p>株価下落は、避けられません。</p>
-
             <p>
-              来るか来ないかではなく、いつ来るかの問題です。リーマンショック、コロナショック、そして次の何か。名前はまだついていないけれど、来ます。
+              長期で資産運用をしている限り、一時的な下落は何度か通過することになります。リーマンショック、コロナショック、そして次の何か。名前はまだついていないけれど、来ます。来るか来ないかではなく、いつ来るかの問題です。
             </p>
 
             <p>
@@ -254,14 +302,12 @@ export default function RiskToleranceLPPage() {
         <section className="bg-white py-20 md:py-28">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
-              孫子 — 己を知り敵を知る
+              己を知る、敵を知る
             </h2>
 
-            <p>
-              孫子は言いました。「彼を知り己を知れば百戦殆うからず」と。
-            </p>
+            <p>「彼を知り己を知れば百戦殆うからず」。</p>
 
-            <p>資産運用に置き換えると、こうなります。</p>
+            <p>資産運用に置き換えると、これがそのまま当てはまります。</p>
 
             <div className="bg-emerald-900 text-white rounded-lg py-12 px-8 my-8">
               <p className="text-2xl font-bold text-center mb-8">
@@ -297,14 +343,33 @@ export default function RiskToleranceLPPage() {
           </div>
         </section>
 
+        {/* セクション: 急がない (gray-50) */}
+        <section className="bg-gray-50 py-20 md:py-28">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
+              急がない
+            </h2>
+
+            <p>
+              ジョージ・ソロスはこう言っています。「私の原則は、まず生き残ること。稼ぐのはそれからだ」と。1日1,500億円を稼いだ伝説の投資家の言葉です。お金の世界では、勝つことよりも負けないことの方がはるかに大事なんですよね。
+            </p>
+
+            <p>
+              致命的な失敗を一度すると、何年分もの積み上げが一瞬で消えます。だから、走るスピードよりも、走り続けられるかどうかが効いてくる。
+            </p>
+
+            <p>
+              資産形成はマラソンであって、短距離走ではない。焦って近道を探す人ほど、結局は遠回りになる。自分の経験でもそう思います。数百万から数千万に増えたところで「とりあえず売却」をやってしまったのは、急いでいたからかもしれません。市場に居続けるという当たり前のことが、急いでいるとできなくなるんですよね。
+            </p>
+          </div>
+        </section>
+
         {/* セクション8: 複利を味方につける (gray-50) */}
         <section className="bg-gray-50 py-20 md:py-28">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               複利を味方につける
             </h2>
-
-            <p>そして、複利を味方につける。</p>
 
             <p>
               最初の数年は正直、地味です。積み立てているのに思ったほど増えない。でも5年を超えたあたりから、曲線が変わり始めます。10年、20年と経つにつれて、加速度が全然違う。
@@ -342,8 +407,6 @@ export default function RiskToleranceLPPage() {
             <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               このツールについて
             </h2>
-
-            <p>このツールについて。</p>
 
             <p>
               このツールでは、リスク許容度を1から7の7段階で数値化します。スコアが高いほどリスクを取れる設計、低いほど安定重視の設計が向いています。
