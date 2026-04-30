@@ -81,11 +81,15 @@ export default function RiskToleranceLPPage() {
             <p>資産形成の構造は、シンプルです。</p>
 
             <div className="bg-gray-900 text-white text-center py-8 px-6 rounded-lg text-xl md:text-2xl font-mono my-10">
-              資産 ＝ 収入 － 支出 ＋（資産 × 利回り）
+              富 ＝ 収入 － 支出 ＋（資産 × 利回り）
             </div>
 
             <p>
-              収入はすでにある。支出も極端には変えられない。でも
+              橘玲さんの本で目にして、自分の感覚と一致した式です。富とは、自由に使えるお金のこと。
+            </p>
+
+            <p>
+              収入はある程度ある。支出も極端には変えられない。でも
               <span className="bg-yellow-200 px-1 rounded">「資産 × 利回り」の部分がちゃんと設計されていない人が、思いのほか多い。</span>
             </p>
 
