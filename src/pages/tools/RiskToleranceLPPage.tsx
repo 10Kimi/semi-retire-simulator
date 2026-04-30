@@ -160,7 +160,7 @@ export default function RiskToleranceLPPage() {
             </p>
 
             <p>
-              インデックスを長期で持つと決めていたから、形としては投資です。でも中身を見ると、ポートフォリオ全体が自分のリスク許容度を超えていた。下落に耐える設計になっていなかった。だから、画面の数字に振り回されて、売ってしまった。
+              インデックスを長期で持つと決めていたから、形としては投資です。でも中身を見ると、<span className="bg-yellow-200 px-1 rounded">ポートフォリオ全体が自分のリスク許容度を超えていた</span>。下落に耐える設計になっていなかった。だから、画面の数字に振り回されて、売ってしまった。
             </p>
 
             <p>
@@ -168,16 +168,16 @@ export default function RiskToleranceLPPage() {
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 my-2">
-              <div>
-                <h3 className="text-lg font-bold text-gray-800 mb-3">投資</h3>
+              <div className="space-y-3">
+                <h3 className="text-lg font-bold text-gray-800">投資</h3>
                 <ul className="space-y-1.5 text-sm">
                   <li>・データや分析にもとづいている</li>
                   <li>・長期的にリターンを取りに行く</li>
                   <li>・資産を「守る」ために使う</li>
                 </ul>
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-800 mb-3">投機</h3>
+              <div className="space-y-3">
+                <h3 className="text-lg font-bold text-gray-800">投機</h3>
                 <ul className="space-y-1.5 text-sm">
                   <li>・「上がるかもしれない」という期待がベース</li>
                   <li>・短期で大きな金額を入れる</li>
@@ -191,12 +191,14 @@ export default function RiskToleranceLPPage() {
             </p>
 
             <p>
-              怖いのは、形は投資なのに、中身が投機になっているケースの方だと思います。長期で持つつもりで買ったインデックス。でもポートフォリオ全体が自分のリスク許容度を超えていたら、下落のときに耐えられない。耐えられないものは、結果として投機と同じ動きになる。
+              怖いのは、<span className="underline decoration-blue-400 decoration-2 underline-offset-4">形は投資なのに、中身が投機になっているケース</span>の方だと思います。長期で持つつもりで買ったインデックス。でもポートフォリオ全体が自分のリスク許容度を超えていたら、下落のときに耐えられない。<span className="bg-yellow-200 px-1 rounded">耐えられないものは、結果として投機と同じ動きになる</span>。
             </p>
 
-            <p>
-              自分がそうでした。だから、自分のリスク許容度を知る必要があったんですよね。
-            </p>
+            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8 my-2">
+              <p className="text-xl font-medium text-blue-900">
+                自分がそうでした。だから、自分のリスク許容度を知る必要があったんですよね。
+              </p>
+            </div>
           </div>
         </section>
 
@@ -258,15 +260,15 @@ export default function RiskToleranceLPPage() {
             </h2>
 
             <p>
-              長期で資産運用をしている限り、一時的な下落は何度か通過することになります。リーマンショック、コロナショック、そして次の何か。名前はまだついていないけれど、来ます。来るか来ないかではなく、いつ来るかの問題です。
+              長期で資産運用をしている限り、一時的な下落は何度か通過することになります。リーマンショック、コロナショック、そして次の何か。名前はまだついていないけれど、来ます。<span className="bg-yellow-200 px-1 rounded">来るか来ないかではなく、いつ来るかの問題です</span>。
             </p>
 
             <p>
-              だからといって、逃げればいいわけでもありません。S&P500の過去30年のデータがあります。最良の10日間を逃し続けると、リターンは半減します。そしてその最良の日は、最悪の日の直後に来ることがほとんどです。下落が怖くて市場から出た瞬間に、急回復の日も一緒に逃してしまう。
+              だからといって、逃げればいいわけでもありません。S&P500の過去30年のデータがあります。<span className="bg-yellow-200 px-1 rounded">最良の10日間を逃し続けると、リターンは半減します</span>。そしてその最良の日は、最悪の日の直後に来ることがほとんどです。下落が怖くて市場から出た瞬間に、急回復の日も一緒に逃してしまう。
             </p>
 
             <p>
-              <span className="font-bold">市場に居続けることが、長期投資の唯一の正解です。</span>でも、それができなかった。自分のリスク許容度を把握していなかったから。
+              <span className="underline decoration-blue-400 decoration-2 underline-offset-4">市場に居続けることが、長期投資の唯一の正解です</span>。でも、それができなかった。自分のリスク許容度を把握していなかったから。
             </p>
           </div>
         </section>
@@ -305,7 +307,9 @@ export default function RiskToleranceLPPage() {
               己を知る、敵を知る
             </h2>
 
-            <p>「彼を知り己を知れば百戦殆うからず」。</p>
+            <p>
+              「<span className="underline decoration-blue-400 decoration-2 underline-offset-4">彼を知り己を知れば百戦殆うからず</span>」。
+            </p>
 
             <p>資産運用に置き換えると、これがそのまま当てはまります。</p>
 
@@ -350,8 +354,16 @@ export default function RiskToleranceLPPage() {
               急がない
             </h2>
 
+            <p>ジョージ・ソロスはこう言っています。</p>
+
+            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8 my-2">
+              <p className="text-xl font-medium text-blue-900">
+                私の原則は、まず生き残ること。稼ぐのはそれからだ
+              </p>
+            </div>
+
             <p>
-              ジョージ・ソロスはこう言っています。「私の原則は、まず生き残ること。稼ぐのはそれからだ」と。1日1,500億円を稼いだ伝説の投資家の言葉です。お金の世界では、勝つことよりも負けないことの方がはるかに大事なんですよね。
+              1日1,500億円を稼いだ伝説の投資家の言葉です。<span className="bg-yellow-200 px-1 rounded">お金の世界では、勝つことよりも負けないことの方がはるかに大事</span>なんですよね。
             </p>
 
             <p>
@@ -359,7 +371,7 @@ export default function RiskToleranceLPPage() {
             </p>
 
             <p>
-              資産形成はマラソンであって、短距離走ではない。焦って近道を探す人ほど、結局は遠回りになる。自分の経験でもそう思います。数百万から数千万に増えたところで「とりあえず売却」をやってしまったのは、急いでいたからかもしれません。市場に居続けるという当たり前のことが、急いでいるとできなくなるんですよね。
+              <span className="underline decoration-blue-400 decoration-2 underline-offset-4">資産形成はマラソンであって、短距離走ではない</span>。焦って近道を探す人ほど、結局は遠回りになる。自分の経験でもそう思います。数百万から数千万に増えたところで「とりあえず売却」をやってしまったのは、急いでいたからかもしれません。市場に居続けるという当たり前のことが、急いでいるとできなくなるんですよね。
             </p>
           </div>
         </section>
