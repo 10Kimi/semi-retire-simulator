@@ -1,4 +1,8 @@
 {
+  "redirects": [
+    { "source": "/privacy", "destination": "https://largogk.jp/privacy.html", "permanent": true },
+    { "source": "/tokushoho", "destination": "https://largogk.jp/tokushoho.html", "permanent": true }
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
