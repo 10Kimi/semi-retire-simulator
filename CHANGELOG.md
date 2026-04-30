@@ -1,5 +1,72 @@
 # CHANGELOG
 
+## 2026-04-30 — largogk.jp コーポレートサイト復活（別リポジトリ化）+ /privacy /tokushoho を corporate に移管
+
+### 概要
+2026-04-29 セッションで apex/www → fire の 308 redirect で復旧していた `largogk.jp` を、合同会社ラルゴの **コーポレートサイト本体** として復活。fire.largogk.jp は資産形成 PF ツール群として明確に分離。
+
+設計書 v6.3 §13 の最終確定方針:
+- **`largogk.jp`** = 合同会社ラルゴ corporate（新リポジトリ [10Kimi/largogk-corporate](https://github.com/10Kimi/largogk-corporate)、2026-04-30 新規作成）
+- **`fire.largogk.jp`** = 資産形成 PF ツール群（本リポジトリ semi-retire-simulator、既存維持）
+- **法的ページ統合**: `/privacy` `/tokushoho` は corporate 側に集約、fire 側からは削除して corporate に 308 redirect
+
+本リポジトリ側の変更は以下のみ。corporate 本体の作業は別リポジトリの履歴を参照。
+
+### 1. `/privacy` `/tokushoho` の削除（コミット 17e3760）
+- `src/pages/PrivacyPage.tsx` 削除
+- `src/pages/TokushohoPage.tsx` 削除
+- `src/content/legal/privacy.md` 削除
+- `src/content/legal/tokushoho.md` 削除
+- `src/App.tsx` の 3 認証ブロックすべてから `/privacy` `/tokushoho` ルートと import を削除
+- ※ Footer.tsx 内の `/privacy` `/tokushoho` リンクは触らない（次の redirect で連続するため）
+
+### 2. `largogk.jp` への 308 redirect 設定（コミット a2337af）
+`vercel.json` に `redirects` を追加:
+```json
+{
+  "redirects": [
+    { "source": "/privacy", "destination": "https://largogk.jp/privacy.html", "permanent": true },
+    { "source": "/tokushoho", "destination": "https://largogk.jp/tokushoho.html", "permanent": true }
+  ],
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
+```
+- 拡張子 `.html` 付き（corporate 側が静的 HTML で配信されるため）
+- `redirects` は `rewrites` より先に評価される Vercel 仕様で、SPA fallback と競合しない
+
+### 3. sitemap.xml と PRERENDER_ROUTES の更新（コミット abe55a8）
+- `public/sitemap.xml`: `/privacy` `/tokushoho` を削除（6 URL → 4 URL）
+- `scripts/prerender.ts` の `PRERENDER_ROUTES`: `/privacy` `/tokushoho` を削除（5 ルート → **3 ルート（`/risk /about /tools/risk`）**）
+
+### 4. 検証結果（本番反映後）
+| パス | 期待 | 実測 |
+|---|---|---|
+| `https://fire.largogk.jp/privacy` | 308 → `https://largogk.jp/privacy.html` | ✅ |
+| `https://fire.largogk.jp/tokushoho` | 308 → `https://largogk.jp/tokushoho.html` | ✅ |
+| `https://fire.largogk.jp/about` `/risk` `/tools/risk` | 200 OK | ✅ 影響なし |
+
+### 5. 作業順序（指示書遵守、本番断絶リスク回避）
+1. CC: corporate 側を構築 + GitHub push（別リポジトリ）
+2. ユーザー: corporate を Vercel に import + `largogk.jp` `www.largogk.jp` を attach（既存 `semi-retire-simulator` プロジェクトから redirect 設定を解除した上で移管）
+3. CC: 本リポジトリの 3 コミット（17e3760 / a2337af / abe55a8）をローカルコミットまで作って push 待機
+4. ユーザー: corporate の preview 動作確認 → CC に push 指示
+5. CC: push → fire 側本番反映 → 動作確認
+
+→ ユーザー手作業の後ろまで含めて本番断絶せず移行完了。
+
+### 関連: corporate 側で発見した Vercel Hobby plan の commit author 制約
+別リポジトリ `largogk-corporate` の deploy 復旧作業で以下が確定（公式 doc 参照: troubleshoot-project-collaboration#account-configuration）:
+
+- **Vercel Hobby plan は commit author email = Vercel team owner email でないと deployment を Block する**
+- 本リポジトリ `semi-retire-simulator` は既存（grandfathered）で `kiminori.chida@largogk.com` のまま動作中、変更不要
+- 新規 `largogk-corporate` は `wiseoutput@gmail.com`（Vercel アカウントメアド）必須に切替（local config のみ）
+
+詳細は `largogk-corporate` 側の `README.md` および 設計書 v6.4（後日反映予定）§8 を参照。
+
+---
+
 ## 2026-04-29 — prerender 復旧 + SEO Phase 1 Commit 4 先行（/tools/risk LP）+ largogk.jp SSL リダイレクト復旧
 
 ### 概要

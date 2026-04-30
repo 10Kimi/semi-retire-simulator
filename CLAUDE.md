@@ -74,6 +74,7 @@
   - Commit 3 完了（c702b58〜dffc08f, 2026-04-26）: 信頼性ページ /about /privacy /tokushoho 実装、react-markdown 新規導入、`src/content/legal/` 配下に md 配置、`MarkdownContent.tsx`・`Footer.tsx` 新設、Layout に sticky-footer 組み込み、ヘッダーナビに「運営者について」追加、本文幅 max-w-5xl(1024px)、Google Search Console 認証 meta タグ追加（index.html 直書き）、sitemap.xml に 3 URL 追加 + xmlns タイポ修正（sitemap.org → sitemaps.org）。**Search Console 認証完了 + サイトマップ送信成功（5 URL 検出）**
   - Commit 4 進行中（2026-04-29〜）: リスク許容度診断 LP `/tools/risk` を先行実装（eaf559c〜d09dff3）。ヒーロー伊豆背景画像 + 黒オーバーレイ、交互背景セクション、強調ブロック3点（方程式 = bg-gray-900 / 孫子 = bg-emerald-900 / 安心して眠れる夜 = bg-blue-50）、3 InlineCTA、70% スクロールポップアップ、装飾 12 箇所（マーカー 6 + 太字 4 + 下線 2）。`tone_guideline_lp.md` 準拠で本文 2 箇所微修正（「必ず来ます」→「来ます」、末尾「では、また。」削除）。残: `/tools/` ハブ + 残り LP 3本（simulation, age/50s, retirement）
   - Commit 5+: 内部リンク・品質チェック・Lighthouse
+- **largogk.jp コーポレートサイト復活**（2026-04-30、設計書 v6.3 §13、別リポジトリ [10Kimi/largogk-corporate](https://github.com/10Kimi/largogk-corporate) として独立構築）: apex `largogk.jp` で合同会社ラルゴ corporate を配信、`/risk /pf /portfolio /ma /rb /tools/risk /about /terms` は `vercel.json` で `https://fire.largogk.jp/*` に 308 redirect。fire 側からは `/privacy` `/tokushoho` を削除し `https://largogk.jp/*.html` への 308 redirect を設置（コミット 17e3760 / a2337af / abe55a8）。Footer 内のリンクは `/privacy` `/tokushoho` 相対パスのまま維持（redirect で連続）
 - **PF Step 2 完了**（46ef507, 2026-04-25）: リスク超過警告を 2回暴落シナリオに刷新（コロナ級1.7σ・リーマン級2.5σ、20年シミュ、3線チャート）+ `savePfWithSnapshot` で PF診断結果を `risk_gap_snapshots` と同トランザクション保存。`calculateRiskExcessImpact` の単体テストは別コミットで後追い予定
 - 次の優先: Phase 3.5（ステップメール + リスク乖離の損失体感UI改善）
 - 将来: Phase 4（詳細版リスク診断）
@@ -121,9 +122,10 @@ curl -s -H "apikey: $SUPABASE_SERVICE_KEY" \
 `puppeteer ^24` → **`@sparticuz/chromium ^148 + puppeteer-core ^24`** に置換、
 ローカル(macOS)/Vercel(Linux Lambda) 両対応の launch 分岐を `scripts/prerender.ts` に実装、
 `vercel.json` の `buildCommand: "npm run build:spa-only"` を削除して通常の `npm run build`
-に復帰。並行で `PRERENDER_ROUTES` に Commit 3 公開済みだった `/about /privacy /tokushoho`
-を追加（配列が追従していなかった）。Vercel build で 5 ルート（`/risk /about /privacy
-/tokushoho /tools/risk`）全 prerender 成功確認済み（Duration 32s、前回 spa-only 19s + 13s）。
+に復帰。Vercel build で prerender 成功確認済み。
+
+※ 2026-04-30 の corporate サイト復活作業で `/privacy /tokushoho` を `largogk-corporate` に
+移行したため、現在の `PRERENDER_ROUTES` は **3 ルート（`/risk /about /tools/risk`）** のみ。
 
 **ローカル/Vercel 切替の要点**:
 - Vercel/Lambda: `chromium.args` + `chromium.executablePath()` + `chromium.headless`
