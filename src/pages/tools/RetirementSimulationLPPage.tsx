@@ -59,9 +59,9 @@ export default function RetirementSimulationLPPage() {
         </section>
 
         {/* §2 巷の議論 (white) */}
-        <section className="bg-white">
+        <section className="bg-white pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mb-6 md:mb-8">
               「いくら必要か」から逆算される世界
             </h2>
 
@@ -94,9 +94,9 @@ export default function RetirementSimulationLPPage() {
         </section>
 
         {/* §3 許容度の範囲 (gray-50) */}
-        <section className="bg-gray-50">
+        <section className="bg-gray-50 pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mb-6 md:mb-8">
               でも、その利回り、自分の許容度の範囲内か
             </h2>
 
@@ -125,9 +125,9 @@ export default function RetirementSimulationLPPage() {
         </section>
 
         {/* §4 設計は自由 (white) */}
-        <section className="bg-white">
+        <section className="bg-white pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mb-6 md:mb-8">
               許容度の中なら、設計は自由
             </h2>
 
@@ -150,7 +150,7 @@ export default function RetirementSimulationLPPage() {
               リスク許容度を低く見積もっていると、本来取れるはずのリスクを取らずに、想定よりも控えめな運用をすることになる。それで本人が納得しているなら、それでいい。でも、選択肢の存在そのものを知らないまま、保守的に寄せているとしたら、それは「選んでいる」のではなく「狭めている」。
             </p>
 
-            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8 my-2">
+            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8">
               <p className="text-xl font-medium text-blue-900">
                 何が正しいかではなく、自分が納得して選べているかどうか。許容度の範囲内であれば、攻めるのも守るのも、自由でいい。
               </p>
@@ -159,9 +159,9 @@ export default function RetirementSimulationLPPage() {
         </section>
 
         {/* §5 設計は崩れる (gray-50) */}
-        <section className="bg-gray-50">
+        <section className="bg-gray-50 pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mb-6 md:mb-8">
               許容度を超えると、設計は崩れる
             </h2>
 
@@ -201,7 +201,7 @@ export default function RetirementSimulationLPPage() {
               範囲を超えた設計は、構造的に成立しない。「自分が納得しているなら自由」の話ではない。
             </p>
 
-            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8 my-2">
+            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8">
               <p className="text-xl font-medium text-blue-900">
                 大人の判断としては、許容度を超えた設計はNG。これは選択肢として成立しないラインだと考えている。
               </p>
@@ -210,9 +210,9 @@ export default function RetirementSimulationLPPage() {
         </section>
 
         {/* §6 目標に届かない場合 (white) */}
-        <section className="bg-white">
+        <section className="bg-white pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mb-6 md:mb-8">
               許容度の範囲内で目標に届かない場合
             </h2>
 
@@ -250,7 +250,7 @@ export default function RetirementSimulationLPPage() {
               このサイトでは、資産形成を以下の式で捉えている。
             </p>
 
-            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8 my-2">
+            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8">
               <p className="text-xl font-medium text-blue-900 text-center">
                 富 = 収入 − 支出 + (資産 × 利回り)
               </p>
@@ -263,9 +263,9 @@ export default function RetirementSimulationLPPage() {
         </section>
 
         {/* §7 順序の提示 (gray-50) */}
-        <section className="bg-gray-50">
+        <section className="bg-gray-50 pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mb-6 md:mb-8">
               だからまず、自分の許容度を知る
             </h2>
 
@@ -286,7 +286,7 @@ export default function RetirementSimulationLPPage() {
               <li>届かないなら、収入・支出・目標金額・時間軸の方を調整する</li>
             </ul>
 
-            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8 my-2">
+            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8">
               <p className="text-xl font-medium text-blue-900">
                 シミュレーターは、この順序の最後に使うもの。最初に使うものではない。
               </p>
@@ -299,9 +299,9 @@ export default function RetirementSimulationLPPage() {
         </section>
 
         {/* §8 ツール紹介 (white) — 最後 section: フッター余白として pb 維持 */}
-        <section className="bg-white pb-12 md:pb-20">
+        <section className="bg-white pt-12 md:pt-20 pb-12 md:pb-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mb-6 md:mb-8">
               このツールについて
             </h2>
 

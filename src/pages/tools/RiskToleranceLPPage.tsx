@@ -72,9 +72,9 @@ export default function RiskToleranceLPPage() {
         </section>
 
         {/* セクション1: 資産形成の構造 (white) */}
-        <section className="bg-white">
+        <section className="bg-white pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mt-12 md:mt-16 mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               資産形成の構造
             </h2>
 
@@ -130,9 +130,9 @@ export default function RiskToleranceLPPage() {
         </section>
 
         {/* セクション2: 正直に言います (gray-50) */}
-        <section className="bg-gray-50">
+        <section className="bg-gray-50 pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mt-12 md:mt-16 mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               正直に言います
             </h2>
 
@@ -153,9 +153,9 @@ export default function RiskToleranceLPPage() {
         </section>
 
         {/* セクション: 投資のつもりで、投機をやっていた (white) */}
-        <section className="bg-white">
+        <section className="bg-white pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mt-12 md:mt-16 mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               投資のつもりで、投機をやっていた
             </h2>
 
@@ -207,9 +207,9 @@ export default function RiskToleranceLPPage() {
         </section>
 
         {/* セクション3: リスク許容度次第と言いながら (white) */}
-        <section className="bg-white">
+        <section className="bg-white pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mt-12 md:mt-16 mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               リスク許容度次第と言いながら
             </h2>
 
@@ -234,9 +234,9 @@ export default function RiskToleranceLPPage() {
         </section>
 
         {/* セクション4: 転換点 (gray-50) — 末尾に InlineCTA */}
-        <section className="bg-gray-50">
+        <section className="bg-gray-50 pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mt-12 md:mt-16 mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               転換点
             </h2>
 
@@ -257,9 +257,9 @@ export default function RiskToleranceLPPage() {
         </section>
 
         {/* セクション5: 市場から出ない (white) */}
-        <section className="bg-white">
+        <section className="bg-white pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mt-12 md:mt-16 mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               市場から出ない
             </h2>
 
@@ -278,9 +278,9 @@ export default function RiskToleranceLPPage() {
         </section>
 
         {/* セクション6: 2択ではない (gray-50) — 末尾に InlineCTA */}
-        <section className="bg-gray-50">
+        <section className="bg-gray-50 pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mt-12 md:mt-16 mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               2択ではない
             </h2>
 
@@ -305,9 +305,9 @@ export default function RiskToleranceLPPage() {
         </section>
 
         {/* セクション7: 孫子 (white) — 中央に bg-emerald-900 ブロック */}
-        <section className="bg-white">
+        <section className="bg-white pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mt-12 md:mt-16 mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               己を知る、敵を知る
             </h2>
 
@@ -352,9 +352,9 @@ export default function RiskToleranceLPPage() {
         </section>
 
         {/* セクション: 急がない (gray-50) */}
-        <section className="bg-gray-50">
+        <section className="bg-gray-50 pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mt-12 md:mt-16 mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               急がない
             </h2>
 
@@ -381,9 +381,9 @@ export default function RiskToleranceLPPage() {
         </section>
 
         {/* セクション8: 複利を味方につける (gray-50) */}
-        <section className="bg-gray-50">
+        <section className="bg-gray-50 pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mt-12 md:mt-16 mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               複利を味方につける
             </h2>
 
@@ -407,7 +407,7 @@ export default function RiskToleranceLPPage() {
               市場に居続けられる自分を設計する。そのために必要なのは予測力ではなく、自分のリスク許容度の範囲内で組まれた、揺さぶられないポートフォリオです。
             </p>
 
-            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8 my-2">
+            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8">
               <p className="text-xl font-medium text-blue-900">
                 あなたが安心して眠れる夜は、
                 <span className="underline decoration-blue-400 decoration-2 underline-offset-4">設計の先にあります</span>
@@ -418,9 +418,9 @@ export default function RiskToleranceLPPage() {
         </section>
 
         {/* セクション9: このツールについて (white) */}
-        <section className="bg-white">
+        <section className="bg-white pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mt-12 md:mt-16 mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
               このツールについて
             </h2>
 
@@ -446,15 +446,11 @@ export default function RiskToleranceLPPage() {
             <p>
               数年に一度、あるいは大きなライフイベントのたびに、自分のポートフォリオが今の自分のリスク許容度の範囲に収まっているか確認する。その習慣が、長期運用を守ります。
             </p>
-
-            <p className="text-sm text-gray-500">
-              計測結果は投資の推奨ではありません。<span className="font-bold">設計の起点です</span>。
-            </p>
           </div>
         </section>
 
         {/* クロージング (gray-50) — InlineCTA で締める。最後 section: フッター余白として pb 維持 */}
-        <section className="bg-gray-50 pb-12 md:pb-20">
+        <section className="bg-gray-50 pt-12 md:pt-20 pb-12 md:pb-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
             <p>
               <span className="underline decoration-blue-400 decoration-2 underline-offset-4">己を知るところから</span>
