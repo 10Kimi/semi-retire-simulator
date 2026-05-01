@@ -59,7 +59,7 @@ export default function RetirementSimulationLPPage() {
         </section>
 
         {/* §2 巷の議論 (white) */}
-        <section className="bg-white py-12 md:py-20">
+        <section className="bg-white">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
             <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
               「いくら必要か」から逆算される世界
@@ -94,7 +94,7 @@ export default function RetirementSimulationLPPage() {
         </section>
 
         {/* §3 許容度の範囲 (gray-50) */}
-        <section className="bg-gray-50 py-12 md:py-20">
+        <section className="bg-gray-50">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
             <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
               でも、その利回り、自分の許容度の範囲内か
@@ -125,7 +125,7 @@ export default function RetirementSimulationLPPage() {
         </section>
 
         {/* §4 設計は自由 (white) */}
-        <section className="bg-white py-12 md:py-20">
+        <section className="bg-white">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
             <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
               許容度の中なら、設計は自由
@@ -159,7 +159,7 @@ export default function RetirementSimulationLPPage() {
         </section>
 
         {/* §5 設計は崩れる (gray-50) */}
-        <section className="bg-gray-50 py-12 md:py-20">
+        <section className="bg-gray-50">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
             <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
               許容度を超えると、設計は崩れる
@@ -210,7 +210,7 @@ export default function RetirementSimulationLPPage() {
         </section>
 
         {/* §6 目標に届かない場合 (white) */}
-        <section className="bg-white py-12 md:py-20">
+        <section className="bg-white">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
             <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
               許容度の範囲内で目標に届かない場合
@@ -263,7 +263,7 @@ export default function RetirementSimulationLPPage() {
         </section>
 
         {/* §7 順序の提示 (gray-50) */}
-        <section className="bg-gray-50 py-12 md:py-20">
+        <section className="bg-gray-50">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
             <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
               だからまず、自分の許容度を知る
@@ -298,8 +298,8 @@ export default function RetirementSimulationLPPage() {
           </div>
         </section>
 
-        {/* §8 ツール紹介 (white) */}
-        <section className="bg-white py-12 md:py-20">
+        {/* §8 ツール紹介 (white) — 最後 section: フッター余白として pb 維持 */}
+        <section className="bg-white pb-12 md:pb-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
             <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
               このツールについて
