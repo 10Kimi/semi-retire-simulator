@@ -495,7 +495,7 @@ export default function RiskToleranceLPPage() {
             onClick={handleDismiss}
             className="block text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
           >
-            5分で診断する →
+            5分で診断する（無料） →
           </Link>
         </div>
       )}

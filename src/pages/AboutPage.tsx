@@ -28,7 +28,7 @@ export default function AboutPage() {
               「お金の仕組み化」というテーマで、人生後半の資産設計を自分で組み立てるための計算ツール群を提供しています。
             </p>
 
-            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
               経歴
             </h2>
 
@@ -60,7 +60,7 @@ export default function AboutPage() {
               48歳でセミリタイア。息子が大学を卒業して、親としての役目が一段落した年でもありました。今は伊豆で、庭付きの家に暮らしています。金融資産の運用と、運営している数棟のアパートからの家賃収入で生活を支えています。
             </p>
 
-            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
               このサイトを始めた理由
             </h2>
 
@@ -98,7 +98,7 @@ export default function AboutPage() {
               自分が遠回りしてきたぶん、同じ道を辿らずに済む人がいるなら、その手助けがしたい。判断の枠組みを提供できれば、専門家に任せきりにしなくても、自分で設計できるようになる。それがこのサイトを始めた動機です。
             </p>
 
-            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
               いま伊豆で暮らしながら考えていること
             </h2>
 
@@ -130,7 +130,7 @@ export default function AboutPage() {
               だから、リスク許容度の診断は一度やって終わりではなくて、節目ごとに測り直すことが大事なんだと、今は実感しています。
             </p>
 
-            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
               運営方針
             </h2>
 

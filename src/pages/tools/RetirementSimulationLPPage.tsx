@@ -61,7 +61,7 @@ export default function RetirementSimulationLPPage() {
         {/* §2 巷の議論 (white) */}
         <section className="bg-white py-12 md:py-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
               「いくら必要か」から逆算される世界
             </h2>
 
@@ -96,7 +96,7 @@ export default function RetirementSimulationLPPage() {
         {/* §3 許容度の範囲 (gray-50) */}
         <section className="bg-gray-50 py-12 md:py-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
               でも、その利回り、自分の許容度の範囲内か
             </h2>
 
@@ -127,7 +127,7 @@ export default function RetirementSimulationLPPage() {
         {/* §4 設計は自由 (white) */}
         <section className="bg-white py-12 md:py-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
               許容度の中なら、設計は自由
             </h2>
 
@@ -161,7 +161,7 @@ export default function RetirementSimulationLPPage() {
         {/* §5 設計は崩れる (gray-50) */}
         <section className="bg-gray-50 py-12 md:py-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
               許容度を超えると、設計は崩れる
             </h2>
 
@@ -212,7 +212,7 @@ export default function RetirementSimulationLPPage() {
         {/* §6 目標に届かない場合 (white) */}
         <section className="bg-white py-12 md:py-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
               許容度の範囲内で目標に届かない場合
             </h2>
 
@@ -265,7 +265,7 @@ export default function RetirementSimulationLPPage() {
         {/* §7 順序の提示 (gray-50) */}
         <section className="bg-gray-50 py-12 md:py-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
               だからまず、自分の許容度を知る
             </h2>
 
@@ -301,7 +301,7 @@ export default function RetirementSimulationLPPage() {
         {/* §8 ツール紹介 (white) */}
         <section className="bg-white py-12 md:py-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
               このツールについて
             </h2>
 
@@ -350,7 +350,7 @@ export default function RetirementSimulationLPPage() {
                 to="/risk"
                 className="inline-block bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold px-10 py-5 rounded-lg transition-colors"
               >
-                5分で診断する →
+                5分で診断する（無料） →
               </Link>
             </div>
           </div>
@@ -378,7 +378,7 @@ export default function RetirementSimulationLPPage() {
             onClick={handleDismiss}
             className="block text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
           >
-            5分で診断する →
+            5分で診断する（無料） →
           </Link>
         </div>
       )}
