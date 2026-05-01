@@ -10,6 +10,7 @@ import RebalancePage from './pages/RebalancePage';
 import PortfolioCustomizePage from './pages/PortfolioCustomizePage';
 import AboutPage from './pages/AboutPage';
 import RiskToleranceLPPage from './pages/tools/RiskToleranceLPPage';
+import RetirementSimulationLPPage from './pages/tools/RetirementSimulationLPPage';
 import PremiumGate from './components/PremiumGate';
 // 有料版で復活予定
 // import AssessmentPage from './pages/AssessmentPage';
@@ -39,6 +40,7 @@ function App() {
         <Routes>
           <Route path="/risk" element={<RiskSimplePage />} />
           <Route path="/tools/risk" element={<RiskToleranceLPPage />} />
+          <Route path="/tools/retirement-simulation" element={<RetirementSimulationLPPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="*" element={<AuthGatePage />} />
         </Routes>
@@ -54,6 +56,7 @@ function App() {
         <Routes>
           <Route path="/risk" element={<RiskSimplePage />} />
           <Route path="/tools/risk" element={<RiskToleranceLPPage />} />
+          <Route path="/tools/retirement-simulation" element={<RetirementSimulationLPPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="*" element={<EmailConfirmationPending email={user.email ?? ''} />} />
         </Routes>
@@ -73,6 +76,7 @@ function App() {
         <Route path="/rb" element={<PremiumGate title="リバランスツール" description="ポートフォリオの乖離チェックとリバランス計画を作成します"><RebalancePage /></PremiumGate>} />
         <Route path="/portfolio" element={<PremiumGate title="ポートフォリオ カスタマイズ" description="アセット配分をカスタマイズし、リスク・リターンをシミュレーションできます"><PortfolioCustomizePage /></PremiumGate>} />
         <Route path="/tools/risk" element={<RiskToleranceLPPage />} />
+        <Route path="/tools/retirement-simulation" element={<RetirementSimulationLPPage />} />
         <Route path="/about" element={<AboutPage />} />
         {/* 有料版で復活予定 */}
         {/* <Route path="/assessment" element={<AssessmentPage />} /> */}
