@@ -32,9 +32,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-2 md:gap-4 min-w-0">
           <div className="shrink-0">
             <h1 className="text-sm md:text-lg font-bold text-gray-800">
-              セミリタイア シミュレーター
+              お金の仕組み化プログラム
             </h1>
-            <p className="text-xs text-gray-500 hidden sm:block">Semi-Retire Life & Money Simulator</p>
+            <p className="text-xs text-gray-500 hidden sm:block">Wealth Program</p>
           </div>
           {/* デスクトップ ナビ (md 以上) */}
           <nav className="hidden md:flex gap-1 md:gap-2 shrink-0">
