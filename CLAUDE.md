@@ -81,6 +81,11 @@
     - 残: `/tools/` ハブ + 残り LP 3本（simulation, age/50s, retirement）
   - Commit 5+: 内部リンク・品質チェック・Lighthouse
 - **largogk.jp コーポレートサイト復活**（2026-04-30、設計書 v6.3 §13、別リポジトリ [10Kimi/largogk-corporate](https://github.com/10Kimi/largogk-corporate) として独立構築）: apex `largogk.jp` で合同会社ラルゴ corporate を配信、`/risk /pf /portfolio /ma /rb /tools/risk /about /terms` は `vercel.json` で `https://fire.largogk.jp/*` に 308 redirect。fire 側からは `/privacy` `/tokushoho` を削除し `https://largogk.jp/*.html` への 308 redirect を設置（コミット 17e3760 / a2337af / abe55a8）。Footer 内のリンクは `/privacy` `/tokushoho` 相対パスのまま維持（redirect で連続）
+- **設計書 v6.5 関連の各種改修**（2026-05-01、4 コミット）:
+  - `/tools/risk` LP「資産形成の構造」セクションに**橘玲『お金持ちになれる黄金の羽根の拾い方』の出典を明記**（0a405da）。式の左辺「資産」→「富」（右辺の `資産 × 利回り` は維持）、出典段落追加、「収入はすでにある」→「収入はある程度ある」（ターゲット層 世帯年収1500-4000万への配慮）
+  - **ヘッダー モバイル overflow 修正**（4a269ab、設計書 v6.5 §13-12）: 375px viewport で 4 リンクが画面幅を超えていた問題を解消。`< 768px` でハンバーガーメニュー化（lucide-react の Menu / X アイコン使用）、メニュー 5 項目（シミュレーション / リスク診断 / PF診断 / 運営者について / ログイン）、ログインは強調 fill ボタン、ログイン済み時は gray 系ログアウトで色差別化、aria-label / aria-expanded 付与
+  - **ヘッダーサービス名変更**（328591d、設計書 v6.5 §3-5 / §13-1 関連）: 「セミリタイア シミュレーター」→「**お金の仕組み化プログラム**」、「Semi-Retire Life & Money Simulator」→「**Wealth Program**」。flagship project 名に統一、ドメインリネーム前の事前整備
+  - **`/about` ページ全面リライト**（9040914、設計書 v6.5 §3-4 / §9-3 / §4-3）: リード・経歴・このサイトを始めた理由・伊豆での暮らし・運営方針の 5 セクション構成。本人の実体験（数千万円突っ込んでの狼狽売り、リスク許容度との出会い、伊豆での朝のルーティン）を中心に再構成、`/tools/risk` LP との内容重複を整理（LP は理論、`/about` は人生経験で役割分担）。実装方式を **react-markdown + about.md → JSX 直書き** に変更し `src/content/legal/about.md` を削除。スタイルは v6.5 §4-3 基準（max-w-3xl / leading-loose / h2 mt-12 md:mt-16 / 段落間 space-y-6 md:space-y-8、p 自身に my-* なし）。「心穏やかに平常運行できていること」を黄色マーカーで強調。MarkdownContent.tsx + react-markdown 依存は他箇所での再利用余地として残置（別タスクで整理予定）
 - **PF Step 2 完了**（46ef507, 2026-04-25）: リスク超過警告を 2回暴落シナリオに刷新（コロナ級1.7σ・リーマン級2.5σ、20年シミュ、3線チャート）+ `savePfWithSnapshot` で PF診断結果を `risk_gap_snapshots` と同トランザクション保存。`calculateRiskExcessImpact` の単体テストは別コミットで後追い予定
 - 次の優先: Phase 3.5（ステップメール + リスク乖離の損失体感UI改善）
 - 将来: Phase 4（詳細版リスク診断）
