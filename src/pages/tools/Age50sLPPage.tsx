@@ -49,13 +49,7 @@ export default function Age50sLPPage() {
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight mb-6">
               50代の資産運用、これからの20年をどう設計するか
             </h1>
-            <p className="text-xl md:text-2xl text-white/80 mb-2">
-              50代の資産運用は、若い時のような無鉄砲は効かない。
-            </p>
-            <p className="text-xl md:text-2xl text-white/80 mb-2">
-              でも、運用期間はまだ20〜30年ある。
-            </p>
-            <p className="text-xl md:text-2xl text-white/80 mt-4">
+            <p className="text-xl md:text-2xl text-white/80">
               今からでも遅くない、いや今こそ設計し直す時期。
             </p>
           </div>
@@ -112,10 +106,6 @@ export default function Age50sLPPage() {
             <p className="leading-loose">
               「今からでも間に合うのか」と「もう遅いのでは」が同居している。これは50代の多くの人が抱える感覚だと思います。
             </p>
-
-            <p className="leading-loose">
-              このサイトを運営している自分は、<span className="underline decoration-blue-400 decoration-2 underline-offset-4">30代後半に一度大きな失敗をしました</span>。そこからリスク許容度の範囲内で設計し直して、48歳でセミリタイアに至っています。失敗を経験した分、50代から見直す方の気持ちは、自分なりに想像できるところがあります。
-            </p>
           </div>
         </section>
 
@@ -139,7 +129,7 @@ export default function Age50sLPPage() {
               </p>
 
               <p className="leading-loose">
-                ただ、これは「平均」の数字です。医療が発達している今、自分たちの世代は100歳まで生きる人が相当増えると言われています。50歳から数えて、まだ50年。
+                ただ、これは「平均」の数字です。医療が発達している今、自分たちの世代は100歳まで生きる人が相当増えると言われています。
               </p>
 
               <p className="leading-loose">
@@ -150,10 +140,12 @@ export default function Age50sLPPage() {
                 どちらにしても、複利の効果を享受するには十分な期間です。
               </p>
 
-              <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8">
-                <p className="text-xl font-medium text-blue-900">
-                  「もう遅い」というのは、長く生きる前提で考えると、案外当てはまらないかもしれません。
-                </p>
+              <div className="pt-8">
+                <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8">
+                  <p className="text-xl font-medium text-blue-900">
+                    「もう遅い」というのは、長く生きる前提で考えると、案外当てはまらないかもしれません。
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -180,7 +172,11 @@ export default function Age50sLPPage() {
               </p>
 
               <p className="leading-loose">
-                年齢で機械的に決まるものではない。じゃあ、何で決まるのか。
+                年齢で機械的に決まるものではない。
+              </p>
+
+              <p className="leading-loose font-bold pt-4">
+                じゃあ、何で決まるのか。
               </p>
             </div>
           </div>
@@ -190,7 +186,7 @@ export default function Age50sLPPage() {
         <section className="bg-white pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
             <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mb-6 md:mb-8">
-              残るのは、自分の許容度を知るというやり方
+              考えうる選択肢は、4つ
             </h2>
 
             <p className="leading-loose">
@@ -233,14 +229,18 @@ export default function Age50sLPPage() {
 
             {/* 選択肢D */}
             <div className="space-y-4 py-4">
-              <h3 className="text-xl font-bold">選択肢D：中立的な立場で測ったリスク許容度から逆算する</h3>
+              <h3 className="text-xl font-bold">選択肢D：中立的かつ詳細な計測でリスク許容度を測る</h3>
 
               <p className="leading-loose">
-                商品販売とつながらない第三者が、自分のリスク許容度を測る。その結果に基づいて、自分の許容度の範囲内でポートフォリオを設計する。
+                商品販売につながらない第三者が、自分のリスク許容度を客観的かつ詳細に測る。
               </p>
 
               <p className="leading-loose">
-                このサイトの診断ツールは、選択肢D の立場で作っています。商品を売っていないので、診断結果が特定の商品の販売に紐づくことはありません。
+                詳細にというのが大事で、リスク許容度は2つの観点から測る必要があります。<span className="font-bold">リスクを取れる客観的条件</span>（年齢・収入・家族構成・既存資産など、数値的に把握できる要素）と、<span className="font-bold">心理的に耐えられる範囲</span>（個人の性格や経験で決まる感覚的な要素）です。
+              </p>
+
+              <p className="leading-loose pt-8">
+                このサイトの診断ツールは、選択肢D の立場で、米国大学の学術調査をベースに日本向けに設計しています。商品を売っていないので、診断結果が特定の商品の販売に紐づくことはありません。
               </p>
             </div>
           </div>
@@ -305,11 +305,11 @@ export default function Age50sLPPage() {
             </p>
 
             <p className="leading-loose">
-              20〜30年という運用期間が残っている50代こそ、この手数料の差は無視できない論点だと思っています。
+              最大50年という長期の運用期間が残っている50代こそ、この手数料の差は無視できない論点だと思っています。
             </p>
 
             <p className="leading-loose">
-              ただし、これは大前提として「自分のリスク許容度の範囲内で運用している」ことが必要です。
+              ただし、<span className="bg-yellow-200 px-1 rounded">大前提として「自分のリスク許容度の範囲内で運用している」ことが必要</span>です。
             </p>
 
             <p className="leading-loose">
@@ -389,10 +389,12 @@ export default function Age50sLPPage() {
               今は伊豆で、株価下落のニュースを見ても「ああ、また下げているな」程度で済んでいます。朝、裸足で芝生を歩きながらコーヒーを飲んで、野鳥に餌をやる。海と伊豆大島が見える庭で、淡々とした日常が続いている。
             </p>
 
-            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8">
-              <p className="text-xl font-medium text-blue-900">
-                このサイトを運営している理由の一つは、自分と同じ過ちを犯してほしくないからです。特に、リカバリーが効きにくい50代以降の方には。
-              </p>
+            <div className="py-12 md:py-16">
+              <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8">
+                <p className="text-xl font-medium text-blue-900">
+                  このサイトを運営している理由の一つは、自分と同じ過ちを犯してほしくないからです。特に、リカバリーが効きにくい50代以降の方には。
+                </p>
+              </div>
             </div>
 
             <p className="leading-loose">
@@ -518,7 +520,6 @@ export default function Age50sLPPage() {
           >
             ✕
           </button>
-          <p className="text-sm text-gray-500 mb-1">己を知るところから</p>
           <p className="font-bold text-gray-900 mb-4">
             あなたのリスク許容度、
             <br />
