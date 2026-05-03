@@ -196,8 +196,13 @@ export default function Age50sLPPage() {
             {/* 選択肢A */}
             <div className="space-y-4 py-4">
               <h3 className="text-xl font-bold">選択肢A：年齢別の定型に従う</h3>
+
               <p className="leading-loose">
-                個別事情を無視するので、合わない人には合わない。§3 で見た通りです。
+                雑誌や FP 記事で目にする「50代は株式50%、債券50%」のような定型に従う方法です。
+              </p>
+
+              <p className="leading-loose">
+                ただ、同じ50代でも家族構成・収入・既存資産・性格は人によって全く違います。年齢だけで一律に決まる正解はないので、合わない人には合わない。
               </p>
             </div>
 
@@ -236,11 +241,16 @@ export default function Age50sLPPage() {
               </p>
 
               <p className="leading-loose">
-                詳細にというのが大事で、リスク許容度は2つの観点から測る必要があります。<span className="font-bold">リスクを取れる客観的条件</span>（年齢・収入・家族構成・既存資産など、数値的に把握できる要素）と、<span className="font-bold">心理的に耐えられる範囲</span>（個人の性格や経験で決まる感覚的な要素）です。
+                詳細にというのが大事で、リスク許容度は2つの観点から測る必要があります。
               </p>
 
+              <ul className="list-disc list-inside space-y-2 leading-loose">
+                <li><span className="font-bold">リスクを取れる客観的条件</span>：年齢・収入・家族構成・既存資産など、数値的に把握できる要素</li>
+                <li><span className="font-bold">心理的に耐えられる範囲</span>：個人の性格や経験で決まる感覚的な要素</li>
+              </ul>
+
               <p className="leading-loose pt-8">
-                このサイトの診断ツールは、選択肢D の立場で、米国大学の学術調査をベースに日本向けに設計しています。商品を売っていないので、診断結果が特定の商品の販売に紐づくことはありません。
+                このサイトの診断ツールは、選択肢D の立場で、米国大学の学術調査をベースに日本向けに設計しています。金融商品の販売を目的としていないので、診断結果が特定の商品の販売に紐づくことはありません。
               </p>
             </div>
           </div>
@@ -261,10 +271,12 @@ export default function Age50sLPPage() {
               金融機関は手数料で利益を上げているので、構造上、手数料の高い商品が勧められやすい。具体的には、信託報酬が年2%前後の投資信託をすすめられることも、珍しくありません。
             </p>
 
-            <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8">
-              <p className="text-xl font-medium text-blue-900">
-                ちゃんと勉強していない人ほど、こうした手数料の高い商品の「お客さん」になりやすいんですよね。
-              </p>
+            <div className="py-12 md:py-16">
+              <div className="bg-blue-50 border-l-4 border-blue-500 py-6 px-8">
+                <p className="text-xl font-medium text-blue-900">
+                  ちゃんと勉強していない人ほど、こうした手数料の高い商品の「お客さん」になりやすいんですよね。
+                </p>
+              </div>
             </div>
 
             <p className="leading-loose">
