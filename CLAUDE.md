@@ -82,6 +82,7 @@
   - Commit 5+: 内部リンク・品質チェック・Lighthouse
 - **largogk.jp コーポレートサイト復活**（2026-04-30、設計書 v6.3 §13、別リポジトリ [10Kimi/largogk-corporate](https://github.com/10Kimi/largogk-corporate) として独立構築）: apex `largogk.jp` で合同会社ラルゴ corporate を配信、`/risk /pf /portfolio /ma /rb /tools/risk /about /terms` は `vercel.json` で `https://fire.largogk.jp/*` に 308 redirect。fire 側からは `/privacy` `/tokushoho` を削除し `https://largogk.jp/*.html` への 308 redirect を設置（コミット 17e3760 / a2337af / abe55a8）。Footer 内のリンクは `/privacy` `/tokushoho` 相対パスのまま維持（redirect で連続）
 - **老後資産シミュレーション LP 新設**（2026-05-01、SEO Phase 1 Commit 4 の 2 本目 LP）: `/tools/retirement-simulation` を新設（コミット b0e05e3）。「老後資産 シミュレーション」キーワード（SEO 難易度 33・月間 170）狙い、8 セクション構成、装飾 11 箇所（黄色 4 + 青下線 3 + 引用ブロック 4）、§8 STEP 1/2 ブロック構造で `/risk` への送客。ニック・マジューリ・ジョージ・ソロス・橘玲などの引用を含む理論編。続いて CTA に「（無料）」表記を追加 + h2 下マージン拡大 (mb-4 → mb-6 md:mb-8)（コミット accf0a3）
+- **/tools/age50s LP 新設 + 14 項目修正**（2026-05-03、SEO Phase 1 Commit 4 の 3 本目 LP、3 コミット）: メインキーワード「**50代 資産運用**」（月間 390・難易度 40）狙いで `/tools/age50s` を新設（7a22da5）。RetirementSimulationLPPage を雛形に 8 セクション構成（ヒーロー / 50代になると見えてくるもの / 「もう遅い」と「年齢別の定型」二つの誤解 / 考えうる選択肢は4つ A〜D / 自分で設計するもう一つの意味――手数料 / 自分の場合のこと / 50代は節目の見直しの時期 / このツールについて）、装飾 9 箇所（黄色 5 + 青下線 1 + 引用 3）、ガイドライン v1.3 完全準拠。続いて 2 段階修正：**10 項目修正（905d221）**でヒーロー圧縮・「§3 を踏まえると」削除・選択肢B/C 強化・選択肢D 表現整備・「30代後半の失敗」削除・h2 整理、**4 項目修正（8d4ff6f）**で選択肢A 本文を 2 段落に強化（「雑誌や FP 記事で目にする定型」を明示）・選択肢D「2つの観点」を箇条書き化・末尾「商品を売っていない」→「金融商品の販売を目的としていない」に言い換え・§4.5 引用ブロック「お客さん」を `<div className="py-12 md:py-16">` で wrap して上下スペース調整。`Docs/lp_draft_age50s_v1.md` をドラフト保管
 - **LP 余白構造の本格整備とガイドライン v1.0→v1.3 整備**（2026-05-01、`Docs/lp_visual_text_guideline.md` 新規 + 3 回改訂、コミット a1bd444 / 8428fff）: simulation LP / risk LP の本番実機確認で「セクション間余白が空きすぎ」「背景の切り替わりと h2 位置のズレでぶつ切り感」「引用ブロック直後の段落が詰まる」を順次解消。最終的に v1.3 では section に `pt-12 md:pt-20` + 背景色、h2 から `mt-12 md:mt-16` 削除、引用ブロックから `my-2` 削除のパターンに統一。/about（A 型単一 main 構造）と LP（B 型複数 section 構造）の余白制御原則も整理。risk LP の不要な disclaimer「計測結果は投資の推奨ではありません」も削除
 - **設計書 v6.5 関連の各種改修**（2026-05-01、4 コミット）:
   - `/tools/risk` LP「資産形成の構造」セクションに**橘玲『お金持ちになれる黄金の羽根の拾い方』の出典を明記**（0a405da）。式の左辺「資産」→「富」（右辺の `資産 × 利回り` は維持）、出典段落追加、「収入はすでにある」→「収入はある程度ある」（ターゲット層 世帯年収1500-4000万への配慮）
@@ -138,7 +139,9 @@ curl -s -H "apikey: $SUPABASE_SERVICE_KEY" \
 に復帰。Vercel build で prerender 成功確認済み。
 
 ※ 2026-04-30 の corporate サイト復活作業で `/privacy /tokushoho` を `largogk-corporate` に
-移行したため、現在の `PRERENDER_ROUTES` は **3 ルート（`/risk /about /tools/risk`）** のみ。
+移行、その後 `/tools/retirement-simulation`（2026-05-01）と `/tools/age50s`（2026-05-03）を
+追加したため、現在の `PRERENDER_ROUTES` は **5 ルート（`/risk /about /tools/risk
+/tools/retirement-simulation /tools/age50s`）**。
 
 **ローカル/Vercel 切替の要点**:
 - Vercel/Lambda: `chromium.args` + `chromium.executablePath()` + `chromium.headless`
