@@ -11,6 +11,7 @@ import PortfolioCustomizePage from './pages/PortfolioCustomizePage';
 import AboutPage from './pages/AboutPage';
 import RiskToleranceLPPage from './pages/tools/RiskToleranceLPPage';
 import RetirementSimulationLPPage from './pages/tools/RetirementSimulationLPPage';
+import Age50sLPPage from './pages/tools/Age50sLPPage';
 import PremiumGate from './components/PremiumGate';
 // 有料版で復活予定
 // import AssessmentPage from './pages/AssessmentPage';
@@ -41,6 +42,7 @@ function App() {
           <Route path="/risk" element={<RiskSimplePage />} />
           <Route path="/tools/risk" element={<RiskToleranceLPPage />} />
           <Route path="/tools/retirement-simulation" element={<RetirementSimulationLPPage />} />
+          <Route path="/tools/age50s" element={<Age50sLPPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="*" element={<AuthGatePage />} />
         </Routes>
@@ -57,6 +59,7 @@ function App() {
           <Route path="/risk" element={<RiskSimplePage />} />
           <Route path="/tools/risk" element={<RiskToleranceLPPage />} />
           <Route path="/tools/retirement-simulation" element={<RetirementSimulationLPPage />} />
+          <Route path="/tools/age50s" element={<Age50sLPPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="*" element={<EmailConfirmationPending email={user.email ?? ''} />} />
         </Routes>
@@ -77,6 +80,7 @@ function App() {
         <Route path="/portfolio" element={<PremiumGate title="ポートフォリオ カスタマイズ" description="アセット配分をカスタマイズし、リスク・リターンをシミュレーションできます"><PortfolioCustomizePage /></PremiumGate>} />
         <Route path="/tools/risk" element={<RiskToleranceLPPage />} />
         <Route path="/tools/retirement-simulation" element={<RetirementSimulationLPPage />} />
+        <Route path="/tools/age50s" element={<Age50sLPPage />} />
         <Route path="/about" element={<AboutPage />} />
         {/* 有料版で復活予定 */}
         {/* <Route path="/assessment" element={<AssessmentPage />} /> */}

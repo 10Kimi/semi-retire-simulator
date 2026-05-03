@@ -3,8 +3,8 @@
   sitemap.xml - Phase 1 手書き版
 
   Commit 1: / (FIREシミュレーター) と /risk のみ（prerender 対応済みの公開ルート）
-  Commit 3: /about, /privacy, /tokushoho を追加（信頼性ページ）
-  Commit 4 で /tools, /tools/simulation, /tools/age/50s, /tools/retirement を追加予定
+  Commit 3: /about を追加（信頼性ページ。/privacy /tokushoho は largogk.jp に移管済み）
+  Commit 4: /tools/risk, /tools/retirement-simulation, /tools/age50s を追加（残: /tools/ ハブ）
   Phase 2 でビルド時自動生成へ移行予定
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -27,6 +27,12 @@
   <url>
     <loc>https://fire.largogk.jp/tools/retirement-simulation</loc>
     <lastmod>2026-05-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fire.largogk.jp/tools/age50s</loc>
+    <lastmod>2026-05-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
