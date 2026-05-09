@@ -41,8 +41,8 @@
 - `src/pages/` — ページ単位コンポーネント（6ページ稼働中）
 - `src/logic/` — 計算エンジン（simulator, riskScoring, pfSimple, monteCarlo等）
 - `src/components/` — UIコンポーネント
-- `src/components/assessment/` — リスク診断系（Phase 4用、現在コメントアウト）
-- `src/components/riskSimple/` — 簡易版リスク診断UI
+- `src/components/assessment/` — 旧 v1 リスク診断（App.tsx でコメントアウト中、デッドコード扱い）
+- `src/components/risk/` — リスク診断UI（2026-05-09 §13-35 Phase B-2 で `riskSimple/` からリネーム）
 - `src/components/rb/` — リバランスツールUI
 - `src/components/auth/` — 認証UI
 - `src/components/seo/` — SEO 共通コンポーネント（SEOHead・JsonLd、React 19 ネイティブ metadata hoisting）
@@ -90,8 +90,12 @@
   - **ヘッダーサービス名変更**（328591d、設計書 v6.5 §3-5 / §13-1 関連）: 「セミリタイア シミュレーター」→「**お金の仕組み化プログラム**」、「Semi-Retire Life & Money Simulator」→「**Wealth Program**」。flagship project 名に統一、ドメインリネーム前の事前整備
   - **`/about` ページ全面リライト**（9040914、設計書 v6.5 §3-4 / §9-3 / §4-3）: リード・経歴・このサイトを始めた理由・伊豆での暮らし・運営方針の 5 セクション構成。本人の実体験（数千万円突っ込んでの狼狽売り、リスク許容度との出会い、伊豆での朝のルーティン）を中心に再構成、`/tools/risk` LP との内容重複を整理（LP は理論、`/about` は人生経験で役割分担）。実装方式を **react-markdown + about.md → JSX 直書き** に変更し `src/content/legal/about.md` を削除。スタイルは v6.5 §4-3 基準（max-w-3xl / leading-loose / h2 mt-12 md:mt-16 / 段落間 space-y-6 md:space-y-8、p 自身に my-* なし）。「心穏やかに平常運行できていること」を黄色マーカーで強調。MarkdownContent.tsx + react-markdown 依存は他箇所での再利用余地として残置（別タスクで整理予定）
 - **PF Step 2 完了**（46ef507, 2026-04-25）: リスク超過警告を 2回暴落シナリオに刷新（コロナ級1.7σ・リーマン級2.5σ、20年シミュ、3線チャート）+ `savePfWithSnapshot` で PF診断結果を `risk_gap_snapshots` と同トランザクション保存。`calculateRiskExcessImpact` の単体テストは別コミットで後追い予定
+- **§13-35 簡易診断削除タスク 完了**（2026-05-08〜2026-05-09、Phase A 調査 → B-1 機能変更 → hotfix → B-2 リネーム）:
+  - **Phase B-1 機能変更**（eba1b21, 2026-05-08）: `/risk` ページから version_select UI（簡易/詳細選択画面）削除、詳細診断（20問）一本化、過去 `version='simple'` のみのユーザー向け強制リダイレクト UI 実装、SEO 文言「11問」→「20問」、`PfDiagnosisSimplePage.tsx:110` の `assessmentSource: 'simple'` 固定値を `'detailed'` に修正、マジックリンク復元時の version も `'simple'` → `'detail'`、簡易専用 `riskSimpleQuestions.ts` 削除（11問定義）
+  - **マジックリンク無限ローディング hotfix**（b83f877, 2026-05-08）: B-1 で初期 phase を `'version_select'` → `'loading'` に変更したことで、復元失敗時にフォールバック画面なしで loading が継続するリグレッション発生。マジックリンク復元 useEffect の else 節で `setSearchParams` で `?show_result=1` を消し、初期判定 useEffect の通常フロー（`loadLatestRiskSimple` → `simple_only_redirect` or `questions`）に委ねる方式で対処（+6行）。localStorage 空 + 別ブラウザ着地のレアケースもこれで救済
+  - **DB マイグレーション 025 実行**（2026-05-08）: `risk_assessment_simple` から `version='simple'` レコード 6 件を DELETE、`risk_gap_snapshots` の既存 'simple' 25 件を 'detailed' に UPDATE（B1-X 修正前の固定値バグの整合化）。`version` カラム自体は削除せず温存（過去ユーザー誘導判定で使用）
+  - **Phase B-2 純粋リネーム**（1984fcb, 2026-05-09）: `riskSimple*` 命名を実態（詳細版でも参照される共通モジュール）に合わせて整理。`src/types/riskSimple.ts → risk.ts`、`src/logic/riskSimpleScoring.ts → riskScoring.ts`（テストも併せ）、`src/lib/riskSimpleDb.ts → riskDb.ts`、`src/components/riskSimple/ → risk/`、`src/pages/RiskSimplePage.tsx → RiskPage.tsx`。型 `RiskSimpleResult → RiskResult`、関数 `saveRiskSimpleResult → saveRiskResult` / `loadLatestRiskSimple → loadLatestRisk`。すべて `git mv` で履歴維持、20 ファイル / +52 / -52 完全対称（純リネームの数値証跡）。`calculateRiskSimpleResult`（実コードからは未使用、テストでのみ参照のデッドコード）と localStorage キー `'risk_simple_answers'`（UX 互換性）は意図的に温存
 - 次の優先: Phase 3.5（ステップメール + リスク乖離の損失体感UI改善）
-- 将来: Phase 4（詳細版リスク診断）
 
 ### SEO基盤 Phase 1 の設計方針（サマリ）
 - URL 構造: ハブ型 `/tools/*`。既存 `/risk /pf /portfolio` はそのまま残す
@@ -177,3 +181,40 @@ curl -s -H "apikey: $SUPABASE_SERVICE_KEY" \
 **修復方針**: `supabase migration repair --status applied 012..023` で schema_migrations
 を書き戻す + 未tracked ファイルを `023_risk_gap_snapshots.sql` へリネーム + `012_invite_codes.sql`
 は `018_invite_codes_profiles.sql` の重複なので削除。
+
+---
+
+### §13-42 候補: `calculateRiskSimpleResult` デッドコード削除
+
+🔲 **未対応（後続タスク）**
+
+`src/logic/riskScoring.ts:52` に定義されている `calculateRiskSimpleResult` 関数は、
+2026-05-08 §13-35 Phase B-1 で `RiskSimplePage.tsx` の import が削除されて以降、
+**実プロダクトコードからは参照されない**。残る参照は `src/logic/riskScoring.test.ts`
+のテスト 5 ケースのみ（define 1 + describe 1 + 関数呼び出し 3）。
+
+§13-35 Phase B-2 では「機能変更しない」鉄則のため温存したが、後続タスクで
+**関数本体 + テスト 5 ケースをまとめて削除可能**。削除しても build / typecheck /
+test に影響なし（テストごと消えるため）。リスクゼロ。
+
+実施タイミング: Phase 3.5 の合間や、別件で `riskScoring.ts` を触る際の「ついで」で
+よい。緊急性なし。
+
+---
+
+### §13-43 候補: `src/components/assessment/` 旧 v1 リスク診断デッドコード整理
+
+🔲 **未対応（後続タスク）**
+
+`src/components/assessment/` 配下の 16 ファイル（`AssessmentResultPage.tsx`,
+`StepBasicInfo.tsx` など）と `src/pages/AssessmentPage.tsx` / `PortfolioDiagnosisPage.tsx`
+/ `PortfolioDiagnosisResultPage.tsx` は、`App.tsx` の Routes でコメントアウトされ
+（L86-88: `// <Route path="/assessment" ... />` など）デッドコード化している。
+
+設計書の文言は「Phase 4 用、現在コメントアウト」だったが、§13-35 Phase B-1 で
+詳細版リスク診断（20問）が稼働開始したため、**Phase 4 を待つ必要はなくなった**。
+旧 v1 系は完全な不要コードとなる。
+
+実施: フォルダ削除 + import 元（コメントアウト中）削除 + 関連マイグレ
+（`001_assessment_tables.sql` の対象テーブル `assessment` 系の扱い）の再整理。
+DB テーブルは外部キー参照を確認してから慎重に削除する必要あり。
