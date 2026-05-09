@@ -1,4 +1,4 @@
-import type { RiskQuestion } from '../../types/riskSimple';
+import type { RiskQuestion } from '../../types/risk';
 
 interface Props {
   question: RiskQuestion;

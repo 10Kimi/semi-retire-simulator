@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { ASSET_CLASSES } from '../logic/portfolioAllocation';
-import { RISK_LEVEL_DEFS, getRiskLevelDef } from '../logic/riskSimpleScoring';
+import { RISK_LEVEL_DEFS, getRiskLevelDef } from '../logic/riskScoring';
 import {
   calculatePfDiagnosis,
   analyzePfGap,
@@ -10,10 +10,10 @@ import {
   type PfGapResult,
 } from '../logic/pfSimple';
 import { loadAssetClassParams, buildMarketDataFromParams } from '../lib/assetClassParamsDb';
-import { loadLatestRiskSimple } from '../lib/riskSimpleDb';
+import { loadLatestRisk } from '../lib/riskDb';
 import { savePfWithSnapshot } from '../lib/diagnosisDb';
 import { useAuth } from '../contexts/AuthContext';
-import RiskExcessWarning from '../components/riskSimple/RiskExcessWarning';
+import RiskExcessWarning from '../components/risk/RiskExcessWarning';
 import { SEOHead } from '../components/seo/SEOHead';
 import { JsonLd } from '../components/seo/JsonLd';
 import { softwareApplicationSchema } from '../lib/seo/schemas';
@@ -55,7 +55,7 @@ export default function PfDiagnosisSimplePage() {
     async function init() {
       // リスク診断スコアを読み込み
       if (user) {
-        const latest = await loadLatestRiskSimple(user.id);
+        const latest = await loadLatestRisk(user.id);
         if (latest) {
           setAssessmentLevel(latest.final_level);
           setAssessmentId(latest.id);

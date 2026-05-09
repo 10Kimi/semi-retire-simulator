@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
-import type { RiskAnswer } from '../types/riskSimple';
+import type { RiskAnswer } from '../types/risk';
 
-export async function saveRiskSimpleResult(
+export async function saveRiskResult(
   userId: string,
   capacityScore: number,
   toleranceScore: number,
@@ -29,7 +29,7 @@ export async function saveRiskSimpleResult(
   return data?.id ?? null;
 }
 
-export async function loadLatestRiskSimple(userId: string) {
+export async function loadLatestRisk(userId: string) {
   const { data } = await supabase
     .from('risk_assessment_simple')
     .select('*')

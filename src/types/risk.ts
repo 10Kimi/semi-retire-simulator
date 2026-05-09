@@ -33,7 +33,7 @@ export interface RiskLevelDef {
 }
 
 /** 診断結果 */
-export interface RiskSimpleResult {
+export interface RiskResult {
   capacityScore: number;    // 1〜7
   toleranceScore: number;   // 1〜7
   finalLevel: number;       // 1〜7

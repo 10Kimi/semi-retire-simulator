@@ -5,7 +5,7 @@ import { ASSET_CLASSES, MODEL_ALLOCATIONS, MODEL_META } from '../lib/rb/types';
 import type { Holdings, TargetAllocation, DeviationItem, AdjustmentItem, AdjustmentMode } from '../lib/rb/types';
 import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, estimateMonthsToRebalance, calculateEmergencyFund, applyEmergencyFund, calculatePeriodByAmount, calculatePeriodByMonths, simulateMonthly, getTotalAssets, formatCurrency, formatThousands } from '../lib/rb/logic';
 import { fetchTargetAllocation, saveTargetAllocation, fetchLatestSnapshot, saveSnapshot, fetchRbProfile, saveRbProfile } from '../lib/rb/db';
-import { loadLatestRiskSimple } from '../lib/riskSimpleDb';
+import { loadLatestRisk } from '../lib/riskDb';
 import MfImportFlow from '../components/rb/MfImportFlow';
 import AllocationDisclaimer from '../components/AllocationDisclaimer';
 import { supabase } from '../lib/supabase';
@@ -96,7 +96,7 @@ export default function RebalancePage() {
         fetchTargetAllocation(user.id),
         fetchLatestSnapshot(user.id),
         fetchRbProfile(user.id),
-        loadLatestRiskSimple(user.id),
+        loadLatestRisk(user.id),
       ]);
       if (riskData?.final_level) setUserRiskLevel(riskData.final_level);
 

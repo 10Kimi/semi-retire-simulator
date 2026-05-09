@@ -1,15 +1,15 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
-import RiskProgressBar from '../components/riskSimple/RiskProgressBar';
-import RiskQuestionStep from '../components/riskSimple/RiskQuestionStep';
-import RiskSectionTransition from '../components/riskSimple/RiskSectionTransition';
-import RiskAuthGate from '../components/riskSimple/RiskAuthGate';
+import RiskProgressBar from '../components/risk/RiskProgressBar';
+import RiskQuestionStep from '../components/risk/RiskQuestionStep';
+import RiskSectionTransition from '../components/risk/RiskSectionTransition';
+import RiskAuthGate from '../components/risk/RiskAuthGate';
 import {
   loadAnswersFromStorage,
   clearAnswersStorage,
-} from '../components/riskSimple/RiskAuthGate';
-import RiskResultDisplay from '../components/riskSimple/RiskResultDisplay';
+} from '../components/risk/RiskAuthGate';
+import RiskResultDisplay from '../components/risk/RiskResultDisplay';
 import NicknameModal from '../components/NicknameModal';
 import {
   RISK_DETAIL_QUESTIONS,
@@ -17,9 +17,9 @@ import {
   DETAIL_TOTAL_QUESTIONS,
 } from '../logic/riskDetailQuestions';
 import { calculateDetailResult } from '../logic/riskDetailScoring';
-import { saveRiskSimpleResult, loadLatestRiskSimple } from '../lib/riskSimpleDb';
+import { saveRiskResult, loadLatestRisk } from '../lib/riskDb';
 import { useAuth } from '../contexts/AuthContext';
-import type { RiskAnswer, RiskSimpleResult } from '../types/riskSimple';
+import type { RiskAnswer, RiskResult } from '../types/risk';
 import { SEOHead } from '../components/seo/SEOHead';
 import { JsonLd } from '../components/seo/JsonLd';
 import { softwareApplicationSchema } from '../lib/seo/schemas';
@@ -35,7 +35,7 @@ type Phase =
 const TOTAL_QUESTIONS = DETAIL_TOTAL_QUESTIONS;
 const CAPACITY_COUNT = DETAIL_CAPACITY_QUESTIONS.length;
 
-export default function RiskSimplePage() {
+export default function RiskPage() {
   const { user, loading: authLoading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -44,7 +44,7 @@ export default function RiskSimplePage() {
   const [answers, setAnswers] = useState<(RiskAnswer | null)[]>(
     () => new Array(TOTAL_QUESTIONS).fill(null)
   );
-  const [result, setResult] = useState<RiskSimpleResult | null>(null);
+  const [result, setResult] = useState<RiskResult | null>(null);
   const [saving, setSaving] = useState(false);
   const [restored, setRestored] = useState(false);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
@@ -65,7 +65,7 @@ export default function RiskSimplePage() {
     }
 
     let cancelled = false;
-    loadLatestRiskSimple(user.id)
+    loadLatestRisk(user.id)
       .then((data) => {
         if (cancelled) return;
         if (data && data.version === 'simple') {
@@ -101,7 +101,7 @@ export default function RiskSimplePage() {
       }
 
       setSaving(true);
-      saveRiskSimpleResult(
+      saveRiskResult(
         user.id, res.capacityScore, res.toleranceScore, res.finalLevel, saved, 'detail'
       ).then(() => {
         setSaving(false);
@@ -112,7 +112,7 @@ export default function RiskSimplePage() {
     } else {
       // 復元データ無効（localStorage 空 / 長さ不一致 / 別ブラウザ着地など）
       // URL から show_result を消し、初期判定 useEffect の通常フロー
-      // （loadLatestRiskSimple → simple_only_redirect or questions）に委ねる
+      // （loadLatestRisk → simple_only_redirect or questions）に委ねる
       setRestored(true);
       setSearchParams({}, { replace: true });
     }
@@ -129,7 +129,7 @@ export default function RiskSimplePage() {
 
       if (user) {
         setSaving(true);
-        await saveRiskSimpleResult(
+        await saveRiskResult(
           user.id, res.capacityScore, res.toleranceScore, res.finalLevel, validAnswers, 'detail'
         );
         setSaving(false);

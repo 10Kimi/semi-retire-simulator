@@ -3,7 +3,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { useAuth } from './contexts/AuthContext';
 import AuthGatePage from './pages/AuthGatePage';
 import SimulatorPage from './pages/SimulatorPage';
-import RiskSimplePage from './pages/RiskSimplePage';
+import RiskPage from './pages/RiskPage';
 import PfDiagnosisSimplePage from './pages/PfDiagnosisSimplePage';
 import MonthlyAdvisorPage from './pages/MonthlyAdvisorPage';
 import RebalancePage from './pages/RebalancePage';
@@ -39,7 +39,7 @@ function App() {
     return (
       <>
         <Routes>
-          <Route path="/risk" element={<RiskSimplePage />} />
+          <Route path="/risk" element={<RiskPage />} />
           <Route path="/tools/risk" element={<RiskToleranceLPPage />} />
           <Route path="/tools/retirement-simulation" element={<RetirementSimulationLPPage />} />
           <Route path="/tools/age50s" element={<Age50sLPPage />} />
@@ -56,7 +56,7 @@ function App() {
     return (
       <>
         <Routes>
-          <Route path="/risk" element={<RiskSimplePage />} />
+          <Route path="/risk" element={<RiskPage />} />
           <Route path="/tools/risk" element={<RiskToleranceLPPage />} />
           <Route path="/tools/retirement-simulation" element={<RetirementSimulationLPPage />} />
           <Route path="/tools/age50s" element={<Age50sLPPage />} />
@@ -73,7 +73,7 @@ function App() {
     <>
       <Routes>
         <Route path="/" element={<SimulatorPage />} />
-        <Route path="/risk" element={<RiskSimplePage />} />
+        <Route path="/risk" element={<RiskPage />} />
         <Route path="/pf" element={<PfDiagnosisSimplePage />} />
         <Route path="/ma" element={<PremiumGate title="月次投資アドバイザー" description="市場環境に応じた月次の投資配分を計算します"><MonthlyAdvisorPage /></PremiumGate>} />
         <Route path="/rb" element={<PremiumGate title="リバランスツール" description="ポートフォリオの乖離チェックとリバランス計画を作成します"><RebalancePage /></PremiumGate>} />

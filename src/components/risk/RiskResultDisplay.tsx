@@ -1,11 +1,11 @@
-import type { RiskSimpleResult } from '../../types/riskSimple';
-import { RISK_LEVEL_DEFS, getRiskLevelDef } from '../../logic/riskSimpleScoring';
+import type { RiskResult } from '../../types/risk';
+import { RISK_LEVEL_DEFS, getRiskLevelDef } from '../../logic/riskScoring';
 import { MODEL_ALLOCATIONS, MODEL_META, ASSET_CLASSES } from '../../lib/rb/types';
 import { Link } from 'react-router-dom';
 import AllocationDisclaimer from '../AllocationDisclaimer';
 
 interface Props {
-  result: RiskSimpleResult;
+  result: RiskResult;
   onRetry: () => void;
 }
 

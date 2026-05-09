@@ -1,4 +1,4 @@
-import type { RiskAnswer, RiskLevelDef, RiskSimpleResult } from '../types/riskSimple';
+import type { RiskAnswer, RiskLevelDef, RiskResult } from '../types/risk';
 
 // ── リスクレベル定義（7段階） ──
 
@@ -49,13 +49,13 @@ export function calculateToleranceScore(answers: RiskAnswer[]): number {
 
 // ── 最終スコア ──
 
-export function calculateRiskSimpleResult(answers: RiskAnswer[]): RiskSimpleResult {
+export function calculateRiskSimpleResult(answers: RiskAnswer[]): RiskResult {
   const capacityScore = calculateCapacityScore(answers);
   const toleranceScore = calculateToleranceScore(answers);
   const finalLevel = Math.min(capacityScore, toleranceScore);
   const levelDef = getRiskLevelDef(finalLevel);
 
-  let gapType: RiskSimpleResult['gapType'];
+  let gapType: RiskResult['gapType'];
   let gapMessage: string;
 
   if (capacityScore === toleranceScore) {

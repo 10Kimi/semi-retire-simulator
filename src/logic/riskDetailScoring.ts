@@ -1,5 +1,5 @@
-import type { RiskAnswer, RiskSimpleResult } from '../types/riskSimple';
-import { getRiskLevelDef } from './riskSimpleScoring';
+import type { RiskAnswer, RiskResult } from '../types/risk';
+import { getRiskLevelDef } from './riskScoring';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -43,13 +43,13 @@ export function calculateDetailToleranceScore(answers: RiskAnswer[]): number {
 }
 
 /** 詳細版 最終スコア計算 */
-export function calculateDetailResult(answers: RiskAnswer[]): RiskSimpleResult {
+export function calculateDetailResult(answers: RiskAnswer[]): RiskResult {
   const capacityScore = calculateDetailCapacityScore(answers);
   const toleranceScore = calculateDetailToleranceScore(answers);
   const finalLevel = Math.min(capacityScore, toleranceScore);
   const levelDef = getRiskLevelDef(finalLevel);
 
-  let gapType: RiskSimpleResult['gapType'];
+  let gapType: RiskResult['gapType'];
   let gapMessage: string;
 
   if (capacityScore === toleranceScore) {

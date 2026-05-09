@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import type { RiskAnswer } from '../../types/riskSimple';
+import type { RiskAnswer } from '../../types/risk';
 
 const STORAGE_KEY = 'risk_simple_answers';
 

@@ -7,7 +7,7 @@ import {
   calculateRiskExcessImpact,
   type RiskExcessImpact,
 } from '../../logic/pfSimple';
-import { getRiskLevelDef } from '../../logic/riskSimpleScoring';
+import { getRiskLevelDef } from '../../logic/riskScoring';
 
 interface Props {
   totalAmount: number;

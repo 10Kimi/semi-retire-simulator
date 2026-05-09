@@ -2,7 +2,7 @@
  * PF診断（簡易版）— 7段階リスクレベルに対応
  *
  * ポートフォリオのボラティリティから7段階リスクレベルに変換。
- * リスク診断ツール簡易版（riskSimpleScoring.ts）と同じスケールを使用。
+ * リスク診断ツール（riskScoring.ts）と同じスケールを使用。
  */
 
 import { ASSET_CLASSES } from './portfolioAllocation';
@@ -11,8 +11,8 @@ import {
   FALLBACK_ASSET_RISKS,
   FALLBACK_CORRELATION_MATRIX,
 } from './portfolioDiagnosis';
-import { getRiskLevelDef } from './riskSimpleScoring';
-import type { RiskLevelDef } from '../types/riskSimple';
+import { getRiskLevelDef } from './riskScoring';
+import type { RiskLevelDef } from '../types/risk';
 
 export interface PfHoldings {
   [assetKey: string]: number; // 万円
@@ -36,7 +36,7 @@ export interface PfGapResult {
 
 /**
  * ボラティリティ → 7段階リスクレベル
- * riskSimpleScoringのリスクレベル定義に準拠
+ * riskScoringのリスクレベル定義に準拠
  */
 export function classifyRiskLevel7(volatility: number): number {
   if (volatility <= 3) return 1;

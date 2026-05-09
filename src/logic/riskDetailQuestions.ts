@@ -1,4 +1,4 @@
-import type { RiskQuestion } from '../types/riskSimple';
+import type { RiskQuestion } from '../types/risk';
 
 export const RISK_DETAIL_QUESTIONS: RiskQuestion[] = [
   // ── Capacity（8問） ──

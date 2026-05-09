@@ -4,8 +4,8 @@ import {
   calculateToleranceScore,
   calculateRiskSimpleResult,
   getRiskLevelDef,
-} from './riskSimpleScoring';
-import type { RiskAnswer } from '../types/riskSimple';
+} from './riskScoring';
+import type { RiskAnswer } from '../types/risk';
 
 /** ヘルパー: 指定IDと値でRiskAnswer配列を構築 */
 function makeAnswers(values: Record<string, number>): RiskAnswer[] {

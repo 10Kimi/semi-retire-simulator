@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateDetailCapacityScore, calculateDetailToleranceScore, calculateDetailResult } from './riskDetailScoring';
-import type { RiskAnswer } from '../types/riskSimple';
+import type { RiskAnswer } from '../types/risk';
 
 function ans(id: string, value: number): RiskAnswer {
   return { questionId: id, selectedIndex: 0, value };

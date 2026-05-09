@@ -6,8 +6,8 @@ import AllocationDisclaimer from '../components/AllocationDisclaimer';
 import { ASSET_CLASSES, MODEL_ALLOCATIONS, MODEL_META } from '../lib/rb/types';
 import { FALLBACK_ASSET_RETURNS, FALLBACK_ASSET_RISKS, FALLBACK_CORRELATION_MATRIX } from '../logic/portfolioDiagnosis';
 import { classifyRiskLevel7 } from '../logic/pfSimple';
-import { getRiskLevelDef } from '../logic/riskSimpleScoring';
-import { loadLatestRiskSimple } from '../lib/riskSimpleDb';
+import { getRiskLevelDef } from '../logic/riskScoring';
+import { loadLatestRisk } from '../lib/riskDb';
 import { supabase } from '../lib/supabase';
 import { runMonteCarlo } from '../logic/monteCarlo';
 import type { MonteCarloResult } from '../logic/monteCarlo';
@@ -56,7 +56,7 @@ export default function PortfolioCustomizePage() {
 
   useEffect(() => {
     if (!user) return;
-    loadLatestRiskSimple(user.id).then(data => {
+    loadLatestRisk(user.id).then(data => {
       if (data?.final_level) setUserLevel(data.final_level);
     });
   }, [user]);
