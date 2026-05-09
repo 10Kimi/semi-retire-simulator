@@ -171,7 +171,7 @@ export default function AboutPage() {
             </p>
 
             <p className="leading-loose">
-              リスク許容度を超えた配分で運用していたから、下落で売ってしまう。下落で売ってしまったから、その後の回復局面に乗れない。これが、土台のない設計が【<Link to="/tools/risk" className="text-blue-600 hover:underline">砂上の楼閣になる構造</Link>】です。
+              リスク許容度を超えた配分で運用していたから、下落で売ってしまう。下落で売ってしまったから、その後の回復局面に乗れない。これが、土台のない設計が【<Link to="/tools/risk" onClick={() => setTimeout(() => window.scrollTo(0, 0), 0)} className="text-blue-600 hover:underline">砂上の楼閣になる構造</Link>】です。
             </p>
 
             <p className="leading-loose">
