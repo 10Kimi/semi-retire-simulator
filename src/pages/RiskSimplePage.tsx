@@ -109,6 +109,12 @@ export default function RiskSimplePage() {
       });
 
       setSearchParams({}, { replace: true });
+    } else {
+      // 復元データ無効（localStorage 空 / 長さ不一致 / 別ブラウザ着地など）
+      // URL から show_result を消し、初期判定 useEffect の通常フロー
+      // （loadLatestRiskSimple → simple_only_redirect or questions）に委ねる
+      setRestored(true);
+      setSearchParams({}, { replace: true });
     }
   }, [authLoading, user, searchParams, restored, setSearchParams]);
 
