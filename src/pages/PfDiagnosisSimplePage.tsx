@@ -107,7 +107,7 @@ export default function PfDiagnosisSimplePage() {
         riskLevel: result.riskLevel,
         riskLevelKey: `level_${result.riskLevel}`,
         assessmentRiskLevel: assessmentLevel !== null ? `level_${assessmentLevel}` : null,
-        assessmentSource: assessmentId ? 'simple' : null,
+        assessmentSource: assessmentId ? 'detailed' : null,
         assessmentId,
         assessmentLevel7: assessmentLevel,
         assessedAt,

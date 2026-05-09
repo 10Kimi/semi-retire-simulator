@@ -7,7 +7,6 @@ import AllocationDisclaimer from '../AllocationDisclaimer';
 interface Props {
   result: RiskSimpleResult;
   onRetry: () => void;
-  onSwitchToDetail?: () => void;
 }
 
 function LevelBar({ level, label }: { level: number; label: string }) {
@@ -25,7 +24,7 @@ function LevelBar({ level, label }: { level: number; label: string }) {
   );
 }
 
-export default function RiskResultDisplay({ result, onRetry, onSwitchToDetail }: Props) {
+export default function RiskResultDisplay({ result, onRetry }: Props) {
   const { capacityScore, toleranceScore, finalLevel, gapMessage, levelDef } = result;
 
   return (
@@ -154,25 +153,6 @@ export default function RiskResultDisplay({ result, onRetry, onSwitchToDetail }:
               </p>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* 詳細版への導線（簡易版の場合のみ） */}
-      {onSwitchToDetail && (
-        <div className="bg-blue-50 rounded-xl border border-blue-200 p-5 text-center">
-          <h3 className="text-sm font-bold text-blue-800 mb-2">
-            より精度の高い診断はこちら
-          </h3>
-          <p className="text-xs text-blue-600 mb-4">
-            米国大学の学術調査をベースに日本向けに設計した20問の詳細版診断で、<br />
-            より正確なリスク許容度を判定します。
-          </p>
-          <button
-            onClick={onSwitchToDetail}
-            className="px-6 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors min-h-[44px]"
-          >
-            詳細版を試す
-          </button>
         </div>
       )}
 

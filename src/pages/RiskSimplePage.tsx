@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import RiskProgressBar from '../components/riskSimple/RiskProgressBar';
@@ -12,33 +12,34 @@ import {
 import RiskResultDisplay from '../components/riskSimple/RiskResultDisplay';
 import NicknameModal from '../components/NicknameModal';
 import {
-  RISK_SIMPLE_QUESTIONS,
-  CAPACITY_QUESTIONS,
-  TOTAL_QUESTIONS,
-} from '../logic/riskSimpleQuestions';
-import {
   RISK_DETAIL_QUESTIONS,
   DETAIL_CAPACITY_QUESTIONS,
   DETAIL_TOTAL_QUESTIONS,
 } from '../logic/riskDetailQuestions';
-import { calculateRiskSimpleResult } from '../logic/riskSimpleScoring';
 import { calculateDetailResult } from '../logic/riskDetailScoring';
-import { saveRiskSimpleResult } from '../lib/riskSimpleDb';
+import { saveRiskSimpleResult, loadLatestRiskSimple } from '../lib/riskSimpleDb';
 import { useAuth } from '../contexts/AuthContext';
 import type { RiskAnswer, RiskSimpleResult } from '../types/riskSimple';
 import { SEOHead } from '../components/seo/SEOHead';
 import { JsonLd } from '../components/seo/JsonLd';
 import { softwareApplicationSchema } from '../lib/seo/schemas';
 
-type Phase = 'version_select' | 'questions' | 'section_transition' | 'auth_gate' | 'result';
-type DiagVersion = 'simple' | 'detail';
+type Phase =
+  | 'loading'
+  | 'simple_only_redirect'
+  | 'questions'
+  | 'section_transition'
+  | 'auth_gate'
+  | 'result';
+
+const TOTAL_QUESTIONS = DETAIL_TOTAL_QUESTIONS;
+const CAPACITY_COUNT = DETAIL_CAPACITY_QUESTIONS.length;
 
 export default function RiskSimplePage() {
   const { user, loading: authLoading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [version, setVersion] = useState<DiagVersion>('simple');
-  const [phase, setPhase] = useState<Phase>('version_select');
+  const [phase, setPhase] = useState<Phase>('loading');
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<(RiskAnswer | null)[]>(
     () => new Array(TOTAL_QUESTIONS).fill(null)
@@ -48,29 +49,42 @@ export default function RiskSimplePage() {
   const [restored, setRestored] = useState(false);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
 
-  // 現在のバージョンに応じた質問セット
-  const questions = useMemo(
-    () => version === 'detail' ? RISK_DETAIL_QUESTIONS : RISK_SIMPLE_QUESTIONS,
-    [version]
-  );
-  const capacityCount = useMemo(
-    () => version === 'detail' ? DETAIL_CAPACITY_QUESTIONS.length : CAPACITY_QUESTIONS.length,
-    [version]
-  );
-  const totalQuestions = useMemo(
-    () => version === 'detail' ? DETAIL_TOTAL_QUESTIONS : TOTAL_QUESTIONS,
-    [version]
-  );
-  const currentQuestion = questions[questionIndex];
+  const currentQuestion = RISK_DETAIL_QUESTIONS[questionIndex];
   const selectedAnswer = answers[questionIndex];
 
-  const calcResult = useCallback((validAnswers: RiskAnswer[]) => {
-    return version === 'detail'
-      ? calculateDetailResult(validAnswers)
-      : calculateRiskSimpleResult(validAnswers);
-  }, [version]);
+  // 初期判定: ログイン済みで過去 version='simple' のみのユーザーは強制リダイレクト画面に遷移
+  // マジックリンク復元中（show_result=1）は別 useEffect で処理するため、ここではスキップ
+  useEffect(() => {
+    if (authLoading) return;
+    if (phase !== 'loading') return;
+    if (searchParams.get('show_result') === '1' && user) return;
 
-  // マジックリンクから着地
+    if (!user) {
+      setPhase('questions');
+      return;
+    }
+
+    let cancelled = false;
+    loadLatestRiskSimple(user.id)
+      .then((data) => {
+        if (cancelled) return;
+        if (data && data.version === 'simple') {
+          setPhase('simple_only_redirect');
+        } else {
+          setPhase('questions');
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPhase('questions');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, user, phase, searchParams]);
+
+  // マジックリンクから着地（?show_result=1）
   useEffect(() => {
     if (authLoading || restored) return;
     if (searchParams.get('show_result') !== '1') return;
@@ -79,7 +93,7 @@ export default function RiskSimplePage() {
     const saved = loadAnswersFromStorage();
     if (saved && saved.length === TOTAL_QUESTIONS) {
       setRestored(true);
-      const res = calculateRiskSimpleResult(saved);
+      const res = calculateDetailResult(saved);
       setResult(res);
       setPhase('result');
       if (!user.user_metadata?.full_name && !user.user_metadata?.nickname_skipped) {
@@ -88,7 +102,7 @@ export default function RiskSimplePage() {
 
       setSaving(true);
       saveRiskSimpleResult(
-        user.id, res.capacityScore, res.toleranceScore, res.finalLevel, saved, 'simple'
+        user.id, res.capacityScore, res.toleranceScore, res.finalLevel, saved, 'detail'
       ).then(() => {
         setSaving(false);
         clearAnswersStorage();
@@ -100,7 +114,7 @@ export default function RiskSimplePage() {
 
   const showResult = useCallback(
     async (validAnswers: RiskAnswer[]) => {
-      const res = calcResult(validAnswers);
+      const res = calculateDetailResult(validAnswers);
       setResult(res);
       setPhase('result');
       if (user && !user.user_metadata?.full_name && !user.user_metadata?.nickname_skipped) {
@@ -110,18 +124,16 @@ export default function RiskSimplePage() {
       if (user) {
         setSaving(true);
         await saveRiskSimpleResult(
-          user.id, res.capacityScore, res.toleranceScore, res.finalLevel, validAnswers, version
+          user.id, res.capacityScore, res.toleranceScore, res.finalLevel, validAnswers, 'detail'
         );
         setSaving(false);
       }
     },
-    [user, calcResult, version]
+    [user]
   );
 
-  const startDiagnosis = useCallback((v: DiagVersion) => {
-    setVersion(v);
-    const total = v === 'detail' ? DETAIL_TOTAL_QUESTIONS : TOTAL_QUESTIONS;
-    setAnswers(new Array(total).fill(null));
+  const startDiagnosis = useCallback(() => {
+    setAnswers(new Array(TOTAL_QUESTIONS).fill(null));
     setQuestionIndex(0);
     setPhase('questions');
   }, []);
@@ -146,7 +158,7 @@ export default function RiskSimplePage() {
 
     const nextIndex = questionIndex + 1;
 
-    if (nextIndex >= totalQuestions) {
+    if (nextIndex >= TOTAL_QUESTIONS) {
       const validAnswers = answers.filter((a): a is RiskAnswer => a !== null);
       if (user) {
         showResult(validAnswers);
@@ -156,14 +168,14 @@ export default function RiskSimplePage() {
       return;
     }
 
-    if (questionIndex < capacityCount && nextIndex >= capacityCount) {
+    if (questionIndex < CAPACITY_COUNT && nextIndex >= CAPACITY_COUNT) {
       setQuestionIndex(nextIndex);
       setPhase('section_transition');
       return;
     }
 
     setQuestionIndex(nextIndex);
-  }, [questionIndex, answers, user, showResult, totalQuestions, capacityCount]);
+  }, [questionIndex, answers, user, showResult]);
 
   const handleBack = useCallback(() => {
     if (questionIndex > 0) {
@@ -182,23 +194,19 @@ export default function RiskSimplePage() {
   }, [answers, showResult]);
 
   const handleRetry = useCallback(() => {
-    setPhase('version_select');
     setQuestionIndex(0);
     setAnswers(new Array(TOTAL_QUESTIONS).fill(null));
     setResult(null);
     setRestored(false);
+    setPhase('questions');
   }, []);
-
-  const handleSwitchToDetail = useCallback(() => {
-    startDiagnosis('detail');
-  }, [startDiagnosis]);
 
   if (authLoading && searchParams.get('show_result') === '1') {
     return (
       <>
         <SEOHead
-          title="リスク許容度診断｜11問で資産運用の適正レベルを判定"
-          description="Risk Capacity（財務体力）とRisk Tolerance（心理耐性）の両軸で、あなたに合ったリスクレベル（1〜7）を算出します。無料・約3〜5分。"
+          title="リスク許容度診断｜20問で資産運用の適正レベルを判定"
+          description="Risk Capacity（財務体力）とRisk Tolerance（心理耐性）の両軸で、あなたに合ったリスクレベル（1〜7）を算出します。米国大学の学術調査ベースで日本向けに設計した20問・約8〜10分。"
           canonical="/risk"
         />
       <Layout>
@@ -213,77 +221,64 @@ export default function RiskSimplePage() {
   return (
     <>
       <SEOHead
-        title="リスク許容度診断｜11問で資産運用の適正レベルを判定"
-        description="Risk Capacity（財務体力）とRisk Tolerance（心理耐性）の両軸で、あなたに合ったリスクレベル（1〜7）を算出します。無料・約3〜5分。"
+        title="リスク許容度診断｜20問で資産運用の適正レベルを判定"
+        description="Risk Capacity（財務体力）とRisk Tolerance（心理耐性）の両軸で、あなたに合ったリスクレベル（1〜7）を算出します。米国大学の学術調査ベースで日本向けに設計した20問・約8〜10分。"
         canonical="/risk"
       />
       <JsonLd
         data={softwareApplicationSchema({
           name: 'リスク許容度診断',
           description:
-            '11問の質問で投資家としてのリスク許容度（1〜7のレベル）を判定する診断ツール。',
+            '20問の質問で投資家としてのリスク許容度（1〜7のレベル）を判定する診断ツール。米国大学の学術調査ベースで日本向けに設計。',
           url: '/risk',
         })}
       />
     <Layout>
       <main className="max-w-lg mx-auto px-4 py-6 md:py-10">
-        {/* バージョン選択 */}
-        {phase === 'version_select' && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h1 className="text-lg md:text-xl font-bold text-gray-800 mb-2">
-                リスク許容度を診断します
-              </h1>
-            </div>
+        {/* 初期判定中 */}
+        {phase === 'loading' && (
+          <p className="text-center text-sm text-gray-500 py-20">読み込み中...</p>
+        )}
 
-            <div className="space-y-3">
-              <button
-                onClick={() => startDiagnosis('simple')}
-                className="w-full text-left bg-white rounded-xl border-2 border-blue-200 p-5 hover:border-blue-400 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full border-2 border-blue-500 flex items-center justify-center">
-                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-800">簡易診断（約3〜5分）</p>
-                    <p className="text-xs text-gray-500 mt-0.5">まずざっくり確認したい方向け</p>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => startDiagnosis('detail')}
-                className="w-full text-left bg-white rounded-xl border-2 border-gray-200 p-5 hover:border-purple-400 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full border-2 border-gray-400" />
-                  <div>
-                    <p className="text-sm font-bold text-gray-800">詳細診断（約8〜10分）</p>
-                    <p className="text-xs text-gray-500 mt-0.5">より正確に把握したい方向け</p>
-                    <p className="text-xs text-purple-600 mt-0.5">※米国大学の学術調査をベースに日本向けに設計</p>
-                  </div>
-                </div>
-              </button>
+        {/* 過去 simple のみユーザー向け案内（強制リダイレクト UX） */}
+        {phase === 'simple_only_redirect' && (
+          <div className="space-y-6 py-8">
+            <h1 className="text-lg md:text-xl font-bold text-gray-800">
+              詳細診断（20問）に統一しています
+            </h1>
+            <div className="text-sm text-gray-700 leading-loose space-y-4">
+              <p>以前、簡易診断を受けていただきありがとうございます。</p>
+              <p>
+                サイトのリニューアルに伴い、現在は詳細診断（20問・米国大学の学術調査ベース）に統一しました。
+              </p>
+              <p>
+                過去の簡易診断結果は保管されません。お手数ですが、改めて詳細診断をお受けください。
+              </p>
             </div>
+            <button
+              onClick={startDiagnosis}
+              className="w-full bg-blue-600 text-white text-sm font-semibold rounded-lg py-3 md:py-2.5 hover:bg-blue-700 transition-colors min-h-[44px]"
+            >
+              詳細診断を始める →
+            </button>
           </div>
         )}
 
         {/* Header */}
-        {phase !== 'result' && phase !== 'version_select' && (
+        {phase !== 'result' && phase !== 'loading' && phase !== 'simple_only_redirect' && (
           <div className="text-center mb-6">
             <h1 className="text-lg md:text-xl font-bold text-gray-800 mb-1">
-              リスク許容度診断{version === 'detail' ? '（詳細版）' : ''}
+              リスク許容度診断
             </h1>
             <p className="text-xs text-gray-500">
-              {version === 'detail' ? '約8〜10分' : '約3〜5分'} ・ 全{totalQuestions}問
+              約8〜10分 ・ 全{TOTAL_QUESTIONS}問
             </p>
           </div>
         )}
 
         {/* Progress bar */}
         {(phase === 'questions' || phase === 'section_transition') && (
-          <RiskProgressBar current={questionIndex + 1} total={totalQuestions} />
+          <RiskProgressBar current={questionIndex + 1} total={TOTAL_QUESTIONS} />
         )}
 
         {/* Section label */}
@@ -335,7 +330,6 @@ export default function RiskSimplePage() {
             <RiskResultDisplay
               result={result}
               onRetry={handleRetry}
-              onSwitchToDetail={version === 'simple' ? handleSwitchToDetail : undefined}
             />
             {showNicknameModal && (
               <NicknameModal onDone={() => setShowNicknameModal(false)} />
