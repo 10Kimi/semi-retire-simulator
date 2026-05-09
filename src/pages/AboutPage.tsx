@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import Layout from '../components/Layout'
 import { SEOHead } from '../components/seo/SEOHead'
 
@@ -152,6 +153,43 @@ export default function AboutPage() {
             <p className="leading-loose">
               判断の枠組みさえ手に入れば、自分の人生の資産設計は、自分でできる。それが、4年以上のセミリタイア経験を通じて、今いちばん確信していることです。
             </p>
+
+            <h2 className="text-2xl md:text-3xl font-bold border-b border-gray-200 pb-2 mt-12 md:mt-16 mb-6 md:mb-8">
+              このサイトの中核は、リスク許容度の診断です
+            </h2>
+
+            <p className="leading-loose">
+              個人投資家にとって最も勝率が高いのは、王道の長期運用――インデックス中心の分散投資を、20年・30年と続けることです。ただし、それに耐えられる設計をしていることが前提になります。
+            </p>
+
+            <p className="leading-loose">
+              その設計の最重要の土台が、リスク許容度の診断です。
+            </p>
+
+            <p className="leading-loose">
+              実際、リーマンショックで狼狽売りした人と、保ち続けることができた人。その後の数年で口座残高は、前者が2%、後者が50%増という差になりました（Fidelity 調査）。
+            </p>
+
+            <p className="leading-loose">
+              リスク許容度を超えた配分で運用していたから、下落で売ってしまう。下落で売ってしまったから、その後の回復局面に乗れない。これが、土台のない設計が【<Link to="/tools/risk" className="text-blue-600 hover:underline">砂上の楼閣になる構造</Link>】です。
+            </p>
+
+            <p className="leading-loose">
+              だから、運用を始める前に――あるいは運用中であっても、一度ちゃんとあなたのリスク許容度を客観的に測っておく。それだけで、その後の20年・30年がまったく違うものになります。
+            </p>
+
+            <p className="leading-loose">
+              診断は米国大学の学術調査をベースに日本向けに設計したもの。20問・5分で完了します。
+            </p>
+
+            <div className="text-center pt-4">
+              <Link
+                to="/risk"
+                className="inline-block bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold px-10 py-5 rounded-lg transition-colors"
+              >
+                5分で診断する（無料） →
+              </Link>
+            </div>
           </div>
         </main>
       </Layout>
