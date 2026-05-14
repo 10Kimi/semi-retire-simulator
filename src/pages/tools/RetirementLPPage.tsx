@@ -313,7 +313,7 @@ export default function RetirementLPPage() {
         <section className="bg-white pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 border-b border-gray-200 pb-2 mb-6 md:mb-8">
-              資産寿命を伸ばす王道――リスク許容度に合わせた PF を、節目ごとに見直し続ける
+              資産寿命を伸ばす王道――リスク許容度に合わせた ポートフォリオ（PF） を、節目ごとに見直し続ける
             </h2>
             <p className="leading-loose">
               4つの偏りのどれでもなく、自分の事情から逆算する設計。
