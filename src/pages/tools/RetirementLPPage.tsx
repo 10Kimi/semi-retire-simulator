@@ -47,7 +47,7 @@ export default function RetirementLPPage() {
           <div className="absolute inset-0 bg-black/50" />
           <div className="relative z-10 max-w-3xl mx-auto px-6 py-32 text-white">
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight mb-6">
-              老後の資産運用、資産寿命を伸ばす王道の設計
+              老後の資産運用――<br />大事なのは、資産寿命をいかに伸ばすか
             </h1>
             <p className="text-lg md:text-xl text-white/90 leading-loose mb-4">
               老後の資産を支えるための最も大事な考え方は、「いくら増やすか」ではなく、資産寿命をどれだけ伸ばせるか。
@@ -69,7 +69,7 @@ export default function RetirementLPPage() {
         {/* §2 リタイアを意識する頃に、見えてくるもの (white) */}
         <section className="bg-white pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 md:mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 border-b border-gray-200 pb-2 mb-6 md:mb-8">
               リタイアを意識する頃に、見えてくるもの
             </h2>
             <p className="leading-loose">
@@ -99,9 +99,9 @@ export default function RetirementLPPage() {
         </section>
 
         {/* §3 攻めすぎ・守りすぎ――両極のどちらも、資産寿命を縮める (gray-50) */}
-        <section className="bg-gray-50 pt-12 md:pt-20">
+        <section className="bg-white pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 md:mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 border-b border-gray-200 pb-2 mb-6 md:mb-8">
               攻めすぎ・守りすぎ――両極のどちらも、資産寿命を縮める
             </h2>
             <p className="leading-loose">
@@ -113,7 +113,7 @@ export default function RetirementLPPage() {
               順番に見ていく。
             </p>
 
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 pt-4 mb-2">
+            <h3 className="text-xl font-bold">
               偏り①：攻めすぎる――2つのパターンがある
             </h3>
             <p className="leading-loose">
@@ -121,7 +121,7 @@ export default function RetirementLPPage() {
               そんな状態で運用を始めると、無自覚に「攻めすぎ」る方向に振れることがある。
             </p>
 
-            <h4 className="text-lg md:text-xl font-bold text-gray-900 pt-2">
+            <h4 className="text-lg font-bold">
               パターンA：無謀型
             </h4>
             <p className="leading-loose">
@@ -150,7 +150,7 @@ export default function RetirementLPPage() {
               問題は金額の大きさではなく、自分の輪郭を超えた配分にあった。
             </p>
 
-            <h4 className="text-lg md:text-xl font-bold text-gray-900 pt-4">
+            <h4 className="text-lg font-bold">
               パターンB：インデックス過信型
             </h4>
             <p className="leading-loose">
@@ -199,7 +199,7 @@ export default function RetirementLPPage() {
               それが、インデックス投資にたどり着いた人にとっての次の一歩になる。
             </p>
 
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 pt-8 mb-2">
+            <h3 className="text-xl font-bold">
               偏り②：守りすぎる――2つのパターンがある
             </h3>
             <p className="leading-loose">
@@ -210,7 +210,7 @@ export default function RetirementLPPage() {
               ただし、この「守りすぎ」にも、見た目が違う2つのパターンがある。
             </p>
 
-            <h4 className="text-lg md:text-xl font-bold text-gray-900 pt-4">
+            <h4 className="text-lg font-bold">
               パターンA：完全防御型
             </h4>
             <p className="leading-loose">
@@ -240,7 +240,7 @@ export default function RetirementLPPage() {
               通帳の数字は変わらないのに、その1億円で買えるものは、年々静かに減っていく。
             </p>
 
-            <h4 className="text-lg md:text-xl font-bold text-gray-900 pt-4">
+            <h4 className="text-lg font-bold">
               パターンB：専門家任せ型
             </h4>
             <p className="leading-loose">
@@ -285,7 +285,7 @@ export default function RetirementLPPage() {
               そのとき、戻ってきたはずの複利は、もう取り戻せない。
             </p>
 
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 pt-8 mb-2">
+            <h3 className="text-xl font-bold">
               どの偏りも、資産寿命を縮める方向に働く
             </h3>
             <p className="leading-loose">
@@ -312,7 +312,7 @@ export default function RetirementLPPage() {
         {/* §4 資産寿命を伸ばす王道 (white) */}
         <section className="bg-white pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 md:mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 border-b border-gray-200 pb-2 mb-6 md:mb-8">
               資産寿命を伸ばす王道――リスク許容度に合わせた PF を、節目ごとに見直し続ける
             </h2>
             <p className="leading-loose">
@@ -320,7 +320,7 @@ export default function RetirementLPPage() {
               それを支えるのは、ひとつのシンプルな考え方になる。
             </p>
 
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 pt-4 mb-2">
+            <h3 className="text-xl font-bold">
               リスク許容度に合わせた PF こそが、長期運用を継続させる礎になる
             </h3>
             <p className="leading-loose">
@@ -336,7 +336,7 @@ export default function RetirementLPPage() {
               そしてその PF は、金融機関に作ってもらうのではなく、自分で設計できる力が必要になる。
             </p>
 
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 pt-4 mb-2">
+            <h3 className="text-xl font-bold">
               そして、長期継続そのものが、資産寿命を最大化する
             </h3>
             <p className="leading-loose">
@@ -349,7 +349,7 @@ export default function RetirementLPPage() {
               これが、<span className="underline decoration-blue-400 decoration-2 underline-offset-2">資産寿命を伸ばす王道になる</span>。
             </p>
 
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 pt-4 mb-2">
+            <h3 className="text-xl font-bold">
               ただし、リスク許容度はライフイベントごとに変化する
             </h3>
             <p className="leading-loose">
@@ -383,9 +383,9 @@ export default function RetirementLPPage() {
         </section>
 
         {/* §5 では、リスク許容度はどう測るか (gray-50) */}
-        <section className="bg-gray-50 pt-12 md:pt-20">
+        <section className="bg-white pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 md:mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 border-b border-gray-200 pb-2 mb-6 md:mb-8">
               では、リスク許容度はどう測るか
             </h2>
             <p className="leading-loose">
@@ -397,7 +397,7 @@ export default function RetirementLPPage() {
               けれど、これらでは届かない範囲がある。
             </p>
 
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 pt-4 mb-2">
+            <h3 className="text-xl font-bold">
               「100−年齢」のような定型ルール
             </h3>
             <p className="leading-loose">
@@ -421,7 +421,7 @@ export default function RetirementLPPage() {
               定型ルールでは、ここに届かない。
             </p>
 
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 pt-4 mb-2">
+            <h3 className="text-xl font-bold">
               金融機関の簡易な質問
             </h3>
             <p className="leading-loose">
@@ -433,7 +433,7 @@ export default function RetirementLPPage() {
               許容度の判定が「あなたに合うのはこの商品」という提案につながりやすい構造は、<span className="underline decoration-blue-400 decoration-2 underline-offset-2">客観的な計測とは別物として扱ったほうがいい</span>。
             </p>
 
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 pt-4 mb-2">
+            <h3 className="text-xl font-bold">
               中立的かつ詳細な計測
             </h3>
             <p className="leading-loose">
@@ -457,7 +457,7 @@ export default function RetirementLPPage() {
         {/* §6 運営者の場合のこと (white) */}
         <section className="bg-white pt-12 md:pt-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 md:mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 border-b border-gray-200 pb-2 mb-6 md:mb-8">
               運営者の場合のこと
             </h2>
             <p className="leading-loose">
@@ -491,9 +491,9 @@ export default function RetirementLPPage() {
         </section>
 
         {/* §7 このツールについて (gray-50) */}
-        <section className="bg-gray-50 pt-12 md:pt-20 pb-12 md:pb-20">
+        <section className="bg-white pt-12 md:pt-20 pb-12 md:pb-20">
           <div className="max-w-3xl mx-auto px-4 md:px-6 text-gray-700 leading-relaxed space-y-6 md:space-y-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 md:mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 border-b border-gray-200 pb-2 mb-6 md:mb-8">
               このツールについて
             </h2>
             <p className="leading-loose">
