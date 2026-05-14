@@ -52,6 +52,7 @@ const PRERENDER_ROUTES: string[] = [
   '/tools/risk',
   '/tools/retirement-simulation',
   '/tools/age50s',
+  '/tools/retirement',
 ]
 
 type PrerenderResult =

@@ -37,6 +37,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://fire.largogk.jp/tools/retirement</loc>
+    <lastmod>2026-05-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://fire.largogk.jp/about</loc>
     <changefreq>yearly</changefreq>
     <priority>0.7</priority>
