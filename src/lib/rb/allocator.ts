@@ -68,25 +68,7 @@ export function summarizeAllocations(allocated: AllocatedHolding[]): Holdings {
   const result: Holdings = {};
   ASSET_CLASSES.forEach(ac => { result[ac.key] = 0; });
 
-  // [diag2] revert予定 — 年金合計問題、ループ各イテレーション内部の動作を追跡
-  // 集計: us_equity に寄与する全 delta を記録 + 年金は前後値も詳細記録
-  const usDeltas: Array<{ name: string; section: string; delta: number; runningSum: number }> = [];
-  console.log('[diag2/summarize/start]', {
-    inputCount: allocated.length,
-    inputClassified: allocated.filter(a => a.matched).length,
-    inputPensionRaw: allocated
-      .filter(a => a.holding.section === '年金')
-      .map(a => ({
-        name: a.holding.name,
-        matched: a.matched,
-        allocations: a.allocations,
-        manualClass: a.manualClass,
-      })),
-  });
-
   for (const item of allocated) {
-    const beforeUs = result['us_equity'];
-
     if (item.matched && item.allocations.length > 0) {
       for (const alloc of item.allocations) {
         if (alloc.assetClass in result) {
@@ -100,35 +82,7 @@ export function summarizeAllocations(allocated: AllocatedHolding[]): Holdings {
       }
     }
     // manualClass === 'exclude' or undefined → 含めない
-
-    const afterUs = result['us_equity'];
-    if (afterUs !== beforeUs) {
-      usDeltas.push({
-        name: item.holding.name.slice(0, 40),
-        section: item.holding.section,
-        delta: afterUs - beforeUs,
-        runningSum: afterUs,
-      });
-    }
-    if (item.holding.section === '年金') {
-      console.log('[diag2/summarize/pension-iter]', {
-        name: item.holding.name,
-        matched: item.matched,
-        allocations: item.allocations,
-        manualClass: item.manualClass,
-        us_before: beforeUs,
-        us_after: afterUs,
-        deltaApplied: afterUs - beforeUs,
-      });
-    }
   }
-
-  console.log('[diag2/summarize/end]', {
-    final_us_equity: result['us_equity'],
-    totalUsDelta_count: usDeltas.length,
-    pensionDeltas: usDeltas.filter(d => d.section === '年金'),
-    allUsDeltas: usDeltas,
-  });
 
   return result;
 }
