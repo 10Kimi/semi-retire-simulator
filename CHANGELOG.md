@@ -1,5 +1,54 @@
 # CHANGELOG
 
+## 2026-05-16 — fund_master JEPI 誤分類修正 + 日本個別株 16 銘柄 seed（migration 028 + 029）
+
+### 概要
+2026-05-16 のリバランス計算で発覚した 2 つの分類問題を Supabase マイグレーションで修正。`mfParser.ts` に分類ロジックは存在せず、判定は `fund_master` テーブルとの ticker 照合で行われる構造なので、コード変更なしの SQL 修正のみで完結。
+
+### 1. 発覚した問題
+- **JEPI コモディティ誤分類**: コモディティ合計 ¥5,685,924 のうち、DBA ¥4,418 は正しい一方、**JEPI ¥5,681,506 が混入**。migration 021 で JEPI/QYLD/RYLD を `alternative → commodity` に一括 UPDATE したのが誤判断（カバードコール戦略でも原資産は米国株式 ETF）
+- **日本個別株 16 銘柄が全て「未分類」**: seed 013 が投信 + 米国 ETF + 米国個別株のみで日本個別株を含まず、`fund_master` に 4 桁数字 ticker が 0 件だった
+
+### 2. Phase A 調査の重要知見
+- **`mfParser.ts` (191 行) に分類ロジックなし** — Excel から `{ name, ticker, amount }` を抽出するだけ。分類は `fund_master` の ticker 照合で `MfImportFlow.tsx` の allocator が決定
+- **`fund_master.ticker` に UNIQUE 制約なし** — PK は uuid `id` のみ（migration 012 L7-14）
+- **UI 経由で既存行を訂正する手段がない** — `submitFundRequest()` (db.ts:163-170) は ticker 既存で INSERT スキップ。SQL UPDATE が唯一の手段
+- **ticker 保存形式**: `parseStockRow` の `String(col0).trim()` で日本株は `"1605"`（裸の 4 桁、`.T` なし）
+- **既存 asset_class 値**: `commodity / developed_bond / developed_equity / emerging_equity / gold / japan_bond / japan_equity / us_equity` の 8 種
+
+### 3. migration 028: JEPI 誤分類修正
+- **UPDATE 3 行**: JEPI/QYLD/RYLD を `commodity → us_equity` に訂正（021 の逆操作）
+- **INSERT 4 行（予防的 seed）**: JEPQ / XYLD / SCHD / VYM を `us_equity` で登録
+  - JEPQ: stockanalysis.com/etf/jepq 確認、Nasdaq-100 covered call
+  - XYLD: globalxetfs.com/funds/xyld（発行元公式）確認、S&P 500 covered call
+  - SCHD: stockanalysis.com/etf/schd 確認、Dow Jones US Dividend 100 連動
+  - VYM: stockanalysis.com/etf/vym 確認、FTSE US High Dividend Yield 連動
+- **NUSI 除外**: 発行元（Nationwide）公式ページ接続不能、stockanalysis 404、Morningstar 403 で確証取れず → 推測排除原則で除外（021 と同じ轍を踏まない）
+
+### 4. migration 029: 日本個別株 16 銘柄 seed
+| ticker | fund_name |
+|---|---|
+| 1605 | INPEX | 2914 | JT | 3003 | ヒューリック | 4792 | 山田コンサル |
+| 4967 | 小林製薬 | 5938 | LIXIL | 6365 | 電業社 | 6652 | IDEC |
+| 8267 | イオン | 8395 | 佐賀銀 | 8630 | SOMPOHD | 8697 | JPX |
+| 8725 | MS&AD | 8871 | ゴールドクレ | 8894 | REVOLUTION | 9651 | 日プロ |
+
+全 16 銘柄を `asset_class = 'japan_equity'` で INSERT。fund_name は 2026-05-16 のきみさん MF Excel 出力（R21-R36）の表記そのまま採用（将来 MF 側の表記が変わったら別マイグレーションで UPDATE 想定）。
+
+### 5. 適用と検証
+- **適用方式**: Supabase Dashboard SQL Editor 直接実行（CLI 未使用）。`schema_migrations` テーブルは触らず、migration 027 と同じ案 A を継続
+- **適用前**: fund_master 総行数 44、028 対象 3 行が `commodity`（誤分類確定）、4 行未登録、029 対象 16 行未登録
+- **適用後**: 総行数 **64**（+4 from 028 INSERT, +16 from 029 INSERT）、028 対象 7 行すべて `us_equity`、029 対象 16 行すべて `japan_equity`、いずれも tsx 経由の SELECT で確認済
+
+### 6. 設計書
+[Docs/migration_028_029_plan.md](Docs/migration_028_029_plan.md) — Phase A 結論サマリ / 各マイグレーションの想定影響範囲 / ロールバック SQL / 検証 SELECT / 適用順序チェックリスト
+
+### 関連コミット
+- migrations 028 + 029 + 設計書: 本コミット
+- Phase A 調査時に発見した既存実装: `src/lib/rb/mfParser.ts` / `src/components/rb/MfImportFlow.tsx` / `src/lib/rb/db.ts` / 設計の経緯は 011（rb_snapshots）/ 012（fund_master）/ 013（seed）/ 021（asset_class fix の誤判断）
+
+---
+
 ## 2026-05-03 — /tools/age50s LP 新設 + 14 項目修正（SEO Phase 1 Commit 4 の 3 本目）
 
 ### 概要
