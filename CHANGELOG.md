@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 2026-05-16 — fund_master JEPI 誤分類修正 + 日本個別株 16 銘柄 seed（migration 028 + 029）
+## 2026-05-16 — fund_master JEPI 誤分類修正 + 日本個別株 16 銘柄 seed + 年金 2 銘柄 seed（migration 028 + 029 + 030）
 
 ### 概要
 2026-05-16 のリバランス計算で発覚した 2 つの分類問題を Supabase マイグレーションで修正。`mfParser.ts` に分類ロジックは存在せず、判定は `fund_master` テーブルとの ticker 照合で行われる構造なので、コード変更なしの SQL 修正のみで完結。
@@ -35,10 +35,22 @@
 
 全 16 銘柄を `asset_class = 'japan_equity'` で INSERT。fund_name は 2026-05-16 のきみさん MF Excel 出力（R21-R36）の表記そのまま採用（将来 MF 側の表記が変わったら別マイグレーションで UPDATE 想定）。
 
-### 5. 適用と検証
+### 5. migration 030: 年金セクション 2 銘柄 seed
+028 / 029 適用後に MF 取込で年金セクション（R94-R95）の 2 銘柄が「未分類」で残ったため追加対応。
+
+| ticker（照合キー、MF 出力そのまま） | fund_name（表示用短縮） | asset_class |
+|---|---|---|
+| `iFree NYダウ・インデックス(iFree NYダウ・インデックス)` | `iFree NYダウ・インデックス` | us_equity |
+| `農林中金<パートナーズ>長期厳選投資 おおぶね(農林中金(パートナーズ)長期厳選投資 おおぶね)` | `農林中金<パートナーズ>長期厳選投資 おおぶね` | us_equity |
+
+**Phase A 追加知見**: `mfParser.ts:154-167` の `parsePensionRow` は `{ name, ticker: '' }` を返す（ticker は空文字列固定、投信 / 債券も同じ）。`allocator.ts:45-49` の照合ロジックは **fund_master の `ticker` カラムだけ**を使う（`fund_name` は表示用で照合には使われない、コメントは「銘柄名一致」だが実装は `fm.ticker === h.name`）。投信 / 債券 / 年金の seed は **ticker カラムに MF 出力 name の完全一致文字列**を入れる規約（既存パターン: `('eMAXIS Slim 全世界株式(オール・カントリー)', 'eMAXIS Slim 全世界株式(オール・カントリー)', ...)`、013 seed L7 以降）。030 もこれに準拠。
+
+### 6. 適用と検証
 - **適用方式**: Supabase Dashboard SQL Editor 直接実行（CLI 未使用）。`schema_migrations` テーブルは触らず、migration 027 と同じ案 A を継続
-- **適用前**: fund_master 総行数 44、028 対象 3 行が `commodity`（誤分類確定）、4 行未登録、029 対象 16 行未登録
-- **適用後**: 総行数 **64**（+4 from 028 INSERT, +16 from 029 INSERT）、028 対象 7 行すべて `us_equity`、029 対象 16 行すべて `japan_equity`、いずれも tsx 経由の SELECT で確認済
+- **適用前**: fund_master 総行数 44、028 対象 3 行が `commodity`（誤分類確定）、4 行未登録、029 対象 16 行未登録、030 対象 2 行未登録
+- **適用後（028 + 029）**: 総行数 **64**（+4 from 028 INSERT, +16 from 029 INSERT）、028 対象 7 行すべて `us_equity`、029 対象 16 行すべて `japan_equity`
+- **適用後（030 追加）**: 総行数 **66**（+2 from 030 INSERT）、030 対象 2 行すべて `us_equity`
+- いずれも tsx 経由の SELECT で確認済
 
 ### 6. 設計書
 [Docs/migration_028_029_plan.md](Docs/migration_028_029_plan.md) — Phase A 結論サマリ / 各マイグレーションの想定影響範囲 / ロールバック SQL / 検証 SELECT / 適用順序チェックリスト
