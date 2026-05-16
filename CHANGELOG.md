@@ -1,5 +1,94 @@
 # CHANGELOG
 
+## 2026-05-16 — 月次投資アドバイザー(/ma) 5 枠 asset_class 選択式リファクタ + 新興国モメンタム追加（migration 031 + fetch_indicators 拡張）
+
+### 概要
+`/ma` の 5 枠を「税制口座種別 + 資産クラス固定」構造から「資産クラス選択式」構造へリファクタ。同日に発生した PF リバランス需要（米国偏重 → JP + 新興国へ）の中で「ゴールド枠に日経225 を入れると GSR 連動で月次投資額が振れる」「銘柄名がリロードで消える」問題が顕在化したことを発端に着手。
+
+| コミット | 内容 |
+|---|---|
+| `0901864` | `fetch_indicators.py` に VWO (新興国 ETF) momentum を追加 |
+| `2b39b4e` | migration 031 + types/logic/db/UI/test の 5 ファイル + 設計書を 1 コミットで投入 |
+
+### 1. Phase A 仕様確定（Q1〜Q4 判断）
+- **Q1: 新興国指標 = 案A モメンタムのみ**（VWO 10ヶ月MA 比較。バリュエーション拡張は Phase 2 で）
+- **Q2: スロット数 = 案A 5 枠維持**（可変化のメリット薄）
+- **Q3: モード補正範囲 = 案B 株 + Gold に適用、債券は除外**
+- **Q4: DB スキーマ = 案B カラム名リネーム + asset_class 列追加**
+
+設計書: [Docs/migration_031_ma_refactor_plan.md](Docs/migration_031_ma_refactor_plan.md)（440 行、Phase A 結論 / DB 設計 / コード変更 / リスク・ロールバック・適用順序まで網羅）
+
+### 2. DB スキーマ変更（migration 031）
+旧 schema:
+```
+nisa_tsumitate / nisa_growth / tokutei_ac_base / tokutei_gold_base / tokutei_bond
+```
+
+新 schema（rename 5 + add 10 = 計 15 操作 + CHECK 制約 5）:
+```
+slot1_amount / slot1_fund_name / slot1_asset_class
+slot2_amount / slot2_fund_name / slot2_asset_class
+slot3_amount / slot3_fund_name / slot3_asset_class
+slot4_amount / slot4_fund_name / slot4_asset_class
+slot5_amount / slot5_fund_name / slot5_asset_class
+```
+
+DEFAULT で旧挙動を概ね保持: slot1='none', slot2='none', slot3='us', slot4='gold', slot5='bond'。CHECK 制約は `IN ('us','jp','em','gold','bond','none')`。
+
+### 3. `AC_US_RATIO` 廃止と新乗数体系
+旧: `acMultiplier = 0.666 × usMultiplier + 0.334 × 1.0`（66% US + 33% その他の暗黙 mix）
+新: 各 slot が単一の asset_class に対応する純粋な乗数を取る。`acMultiplier` 概念を完全廃止。
+- 'us' → `CAPE × momentumUS`（× mode 補正）
+- 'jp' → `PBR × momentumJP`（× mode 補正）
+- 'em' → `momentumEM`（バリュエーション無し、× mode 補正）
+- 'gold' → `GSR × momentumGold`（× mode 補正）
+- 'bond' → `1.0`（mode 補正非適用）
+- 'none' → `1.0`（mode 補正非適用、純粋固定）
+
+旧 `tokutei_ac_base ¥500K + CAPE 割高(0.75x)` の挙動: 旧 ¥500K × 0.834 ≒ ¥42万 → 新 ¥500K × 0.75 = ¥38万。**設計通りの挙動変化、ユーザーは新興国に移行予定のため実害なし**（テストで明示的に確認）。
+
+### 4. `reserveDeployment` ロジック改修
+旧: CAPE 割安時、`tokutei_ac_base` に reserve × 25/50% を加算（固定）
+新: 最初に asset_class='us' のスロットに加算。'us' スロットが無ければ `reserveDeployment=0` で待機残高そのまま（テストで境界条件確認）
+
+### 5. fetch_indicators.py 拡張
+`targets` dict に `"em": {"ticker": "VWO", "label": "新興国(VWO)"}` を 1 行追加。スキーマ変更なし（既存 JSON カラムに 1 キー増えるだけ）。手動実行で 2026-05-16 14:04 時点の VWO momentum (58.44 vs MA10 54.90, above_ma=true) を `market_data` に投入済み。
+
+### 6. UI 変更（MonthlyAdvisorPage.tsx）
+- `fundNames` local state（揮発）を削除、`settings.slot{N}.fund_name` 経由で DB 永続化
+- 各 slot に **資産クラス dropdown** を追加（6 オプション、`MA_ASSET_CLASS_OPTIONS` 経由）
+- ラベル中立化: 旧「特定口座（株式/ゴールド/債券）ベース」→ 新「特定口座 1 / 2 / 3」
+- モメンタムセクションに「新興国株」トグル追加
+- 「判定詳細」セクションに「新興国株 最終倍率」表示追加
+- 結果表示は `result.perSlotAmount[idx]` をループで描画。reserve deployment 表示は最初の 'us' スロットにバッジ表示
+
+### 7. テスト変更（logic.test.ts）
+既存 26 ケース（getCapeMultiplier / getPbrMultiplier / getGsrMultiplier）を維持。新規 `describe('calculateAllocation')` に 8 ケース追加:
+- 全 slot 'none' で固定積立
+- 適正水準で全 slot 等倍
+- us 割高で us slot だけ 0.5x
+- em は momentum のみで 0.5x / 1.0x
+- mode=bullish で us/jp/em/gold が +0.25、bond/none は補正なし（Q3 案B 確認）
+- reserve deployment が最初の 'us' スロットに行く
+- 'us' スロット無し時、reserveDeployment=0 で待機残高維持
+- `AC_US_RATIO` 廃止の挙動差（旧 ¥42万 vs 新 ¥38万）
+
+最終: **98/98 pass + build OK + 6 routes prerender OK**。
+
+### 8. 適用と検証
+- **適用方式**: Vercel deploy Ready 確認後、SQL Editor で migration 031 を即時実行（短時間の不整合窓を最小化）。`schema_migrations` テーブルは案 A 継続で触らず
+- **適用後 DB 検証**: tsx 経由 SELECT で 20 カラム構造確認、きみさんの user_id で `slot3_asset_class='em' / slot4_asset_class='jp'` まで切替済みを目視確認
+- **実機 UI**: `/ma` で 5 枠 + 3 入力（金額 / 銘柄名 / 資産クラス dropdown）+ 新興国モメンタムトグル + 新興国株 最終倍率行が全て表示されていることを確認
+
+### 9. 既知の制約と後続タスク
+- **VWO バリュエーション指標** は未実装（Phase 2 で VWO P/E + 5 年 MA 乖離判定）
+- **`saveSnapshot` 重複 INSERT バグ**（rb 側、2026-05-16 発覚）は別タスクで対応予定、本変更には含めない
+
+### 10. ロールバック手順
+設計書 `Docs/migration_031_ma_refactor_plan.md §2-4` 参照。DROP COLUMN 10 列 + RENAME COLUMN 5 列（旧名復元）+ フロントコード revert がセットで必要。
+
+---
+
 ## 2026-05-16 — fund_master JEPI 誤分類修正 + 日本個別株 16 銘柄 seed + 年金 2 銘柄 seed（migration 028 + 029 + 030）
 
 ### 概要
