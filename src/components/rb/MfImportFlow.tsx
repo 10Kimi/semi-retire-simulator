@@ -254,6 +254,23 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
             <h3 className="text-sm text-slate-400 mb-3">アセットクラス別 合計</h3>
             {(() => {
               const summary = summarizeAllocations(allocated);
+              // [diagnostic] revert予定 — 年金合計問題の真因特定用、本番反映後 console で 1 行取得して即削除
+              console.log('[diag/MfImport/confirm]', {
+                allocatedCount: allocated.length,
+                classifiedCount: allocated.filter(a => a.matched).length,
+                pensionEntries: allocated
+                  .filter(a => a.holding.section === '年金')
+                  .map(a => ({
+                    name: a.holding.name,
+                    nameLength: a.holding.name.length,
+                    amount: a.holding.amount,
+                    matched: a.matched,
+                    manualClass: a.manualClass,
+                    allocations: a.allocations,
+                  })),
+                summary_us_equity: summary.us_equity,
+                summary,
+              });
               return ASSET_CLASSES.filter(ac => summary[ac.key] > 0).map(ac => (
                 <div key={ac.key} className="flex justify-between py-2 border-b border-slate-800 last:border-0">
                   <span className="text-sm">{ac.label}</span>
