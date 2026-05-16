@@ -1,7 +1,11 @@
-import type { ValuationResult, AllocationResult, UserMaSettings, MarketMode } from './types';
-
-const AC_US_RATIO = 0.666;
-const AC_OTHER_RATIO = 0.334;
+import type {
+  ValuationResult,
+  AllocationResult,
+  UserMaSettings,
+  MarketMode,
+  MaAssetClass,
+  MaSlot,
+} from './types';
 
 // --- バリュエーション判定（index.htmlから移植） ---
 
@@ -57,9 +61,38 @@ function applyModeCorrection(multiplier: number, mode: MarketMode): number {
 // --- 待機資金投入判定 ---
 
 function getReserveDeployment(capeLevel: string | undefined, currentReserve: number): number {
-  if (capeLevel === 'low') return Math.round(currentReserve * 0.25 / 10000) * 10000;
-  if (capeLevel === 'very-low') return Math.round(currentReserve * 0.5 / 10000) * 10000;
+  if (capeLevel === 'low') return Math.round((currentReserve * 0.25) / 10000) * 10000;
+  if (capeLevel === 'very-low') return Math.round((currentReserve * 0.5) / 10000) * 10000;
   return 0;
+}
+
+// --- スロット単位の乗数ルックアップ ---
+
+interface MultiplierSet {
+  us: number;
+  jp: number;
+  em: number;
+  gold: number;
+}
+
+/**
+ * 資産クラスに対応する乗数を返す。
+ * Q3 案B: us / jp / em / gold には mode 補正を適用、bond / none には適用しない。
+ */
+function getSlotMultiplier(ac: MaAssetClass, m: MultiplierSet, mode: MarketMode): number {
+  switch (ac) {
+    case 'us':
+      return applyModeCorrection(m.us, mode);
+    case 'jp':
+      return applyModeCorrection(m.jp, mode);
+    case 'em':
+      return applyModeCorrection(m.em, mode);
+    case 'gold':
+      return applyModeCorrection(m.gold, mode);
+    case 'bond':
+    case 'none':
+      return 1.0;
+  }
 }
 
 // --- メイン計算 ---
@@ -70,6 +103,7 @@ export function calculateAllocation(
   gsr: number,
   momentumUS: boolean,
   momentumJP: boolean,
+  momentumEM: boolean,
   momentumGold: boolean,
   cape5yMA: number | null,
   settings: UserMaSettings,
@@ -79,36 +113,55 @@ export function calculateAllocation(
   const pbrResult = getPbrMultiplier(pbr);
   const gsrResult = getGsrMultiplier(gsr);
 
-  // モード補正はACとゴールドの変動枠にのみ適用
-  const correctedCapeMultiplier = applyModeCorrection(capeResult.multiplier, mode);
-  const correctedPbrMultiplier = applyModeCorrection(pbrResult.multiplier, mode);
-  const correctedGsrMultiplier = applyModeCorrection(gsrResult.multiplier, mode);
+  // ベース乗数（mode 補正前）
+  const usBase = capeResult.multiplier * (momentumUS ? 1.0 : 0.5);
+  const jpBase = pbrResult.multiplier * (momentumJP ? 1.0 : 0.5);
+  const emBase = momentumEM ? 1.0 : 0.5; // バリュエーション無し、モメンタムのみ
+  const goldBase = gsrResult.multiplier * (momentumGold ? 1.0 : 0.5);
 
-  const usMultiplier = correctedCapeMultiplier * (momentumUS ? 1.0 : 0.5);
-  const jpMultiplier = correctedPbrMultiplier * (momentumJP ? 1.0 : 0.5);
-  const goldMultiplier = correctedGsrMultiplier * (momentumGold ? 1.0 : 0.5);
-  const acMultiplier = (AC_US_RATIO * usMultiplier) + (AC_OTHER_RATIO * 1.0);
+  const slots: MaSlot[] = [
+    settings.slot1,
+    settings.slot2,
+    settings.slot3,
+    settings.slot4,
+    settings.slot5,
+  ];
 
-  const acAmountBase = Math.round(settings.tokutei_ac_base * acMultiplier / 10000) * 10000;
-  const goldAmountBase = Math.round(settings.tokutei_gold_base * goldMultiplier / 10000) * 10000;
-  const fixedAmount = settings.nisa_tsumitate + settings.nisa_growth + settings.tokutei_bond;
+  // 各スロットの最終投資額を 1 万円単位に丸めて算出
+  const perSlotAmount = slots.map((slot) => {
+    const multiplier = getSlotMultiplier(slot.asset_class, { us: usBase, jp: jpBase, em: emBase, gold: goldBase }, mode);
+    return Math.round((slot.amount * multiplier) / 10000) * 10000;
+  });
 
-  const baseInvest = fixedAmount + acAmountBase + goldAmountBase;
+  const baseInvest = perSlotAmount.reduce((sum, v) => sum + v, 0);
   const monthlyReserve = Math.max(0, settings.monthly_budget - baseInvest);
 
-  const reserveDeployment = getReserveDeployment(capeResult.level, settings.reserve_balance);
-  const acAmountFinal = acAmountBase + reserveDeployment;
-  const totalInvest = fixedAmount + acAmountFinal + goldAmountBase;
+  // 待機資金投入: 最初に asset_class='us' のスロットに加算（'us' スロットがなければ 0）
+  const firstUsIdx = slots.findIndex((s) => s.asset_class === 'us');
+  const reserveDeployment =
+    firstUsIdx >= 0 ? getReserveDeployment(capeResult.level, settings.reserve_balance) : 0;
+  if (reserveDeployment > 0) {
+    perSlotAmount[firstUsIdx] += reserveDeployment;
+  }
+
+  const totalInvest = perSlotAmount.reduce((sum, v) => sum + v, 0);
   const newReserveBalance = settings.reserve_balance + monthlyReserve - reserveDeployment;
 
   return {
-    acAmount: acAmountFinal,
-    goldAmount: goldAmountBase,
+    perSlotAmount,
     monthlyReserve,
     reserveDeployment,
     totalInvest,
     newReserveBalance,
-    details: { capeResult, pbrResult, gsrResult, usMultiplier, jpMultiplier, goldMultiplier, acMultiplier },
+    details: {
+      capeResult,
+      pbrResult,
+      gsrResult,
+      usMultiplier: applyModeCorrection(usBase, mode),
+      jpMultiplier: applyModeCorrection(jpBase, mode),
+      emMultiplier: applyModeCorrection(emBase, mode),
+      goldMultiplier: applyModeCorrection(goldBase, mode),
+    },
   };
 }
 
