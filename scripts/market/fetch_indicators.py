@@ -191,6 +191,7 @@ def fetch_momentum():
     targets = {
         "us": {"ticker": "^GSPC", "label": "S&P 500"},
         "jp": {"ticker": "^N225", "label": "日経225"},
+        "em": {"ticker": "VWO", "label": "新興国(VWO)"},
         "gold": {"ticker": "GC=F", "label": "ゴールド"},
     }
 
