@@ -49,6 +49,7 @@ const TIMEOUT_MS = 30_000
 const PRERENDER_ROUTES: string[] = [
   '/risk',
   '/about',
+  '/tools',
   '/tools/risk',
   '/tools/retirement-simulation',
   '/tools/age50s',

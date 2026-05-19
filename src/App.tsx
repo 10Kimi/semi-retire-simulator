@@ -13,6 +13,7 @@ import RiskToleranceLPPage from './pages/tools/RiskToleranceLPPage';
 import RetirementSimulationLPPage from './pages/tools/RetirementSimulationLPPage';
 import Age50sLPPage from './pages/tools/Age50sLPPage';
 import RetirementLPPage from './pages/tools/RetirementLPPage';
+import ToolsHubPage from './pages/tools/ToolsHubPage';
 import PremiumGate from './components/PremiumGate';
 // 有料版で復活予定
 // import AssessmentPage from './pages/AssessmentPage';
@@ -41,6 +42,7 @@ function App() {
       <>
         <Routes>
           <Route path="/risk" element={<RiskPage />} />
+          <Route path="/tools" element={<ToolsHubPage />} />
           <Route path="/tools/risk" element={<RiskToleranceLPPage />} />
           <Route path="/tools/retirement-simulation" element={<RetirementSimulationLPPage />} />
           <Route path="/tools/age50s" element={<Age50sLPPage />} />
@@ -59,6 +61,7 @@ function App() {
       <>
         <Routes>
           <Route path="/risk" element={<RiskPage />} />
+          <Route path="/tools" element={<ToolsHubPage />} />
           <Route path="/tools/risk" element={<RiskToleranceLPPage />} />
           <Route path="/tools/retirement-simulation" element={<RetirementSimulationLPPage />} />
           <Route path="/tools/age50s" element={<Age50sLPPage />} />
@@ -81,6 +84,7 @@ function App() {
         <Route path="/ma" element={<PremiumGate title="月次投資アドバイザー" description="市場環境に応じた月次の投資配分を計算します"><MonthlyAdvisorPage /></PremiumGate>} />
         <Route path="/rb" element={<PremiumGate title="リバランスツール" description="ポートフォリオの乖離チェックとリバランス計画を作成します"><RebalancePage /></PremiumGate>} />
         <Route path="/portfolio" element={<PremiumGate title="ポートフォリオ カスタマイズ" description="アセット配分をカスタマイズし、リスク・リターンをシミュレーションできます"><PortfolioCustomizePage /></PremiumGate>} />
+        <Route path="/tools" element={<ToolsHubPage />} />
         <Route path="/tools/risk" element={<RiskToleranceLPPage />} />
         <Route path="/tools/retirement-simulation" element={<RetirementSimulationLPPage />} />
         <Route path="/tools/age50s" element={<Age50sLPPage />} />
