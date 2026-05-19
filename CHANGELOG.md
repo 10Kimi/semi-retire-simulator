@@ -1,5 +1,88 @@
 # CHANGELOG
 
+## 2026-05-19 — `/tools` ハブページ新設（SEO Phase 1 Commit 4 完全クローズ）
+
+### 概要
+設計書 v7.0 §3-9「後半生を設計し、回し続けるための6つのツール」の主軸メッセージを具現化する `/tools` ハブを新設。`/tools/*` 下に既存 4 LP（risk / retirement-simulation / age50s / retirement）+ 新規ハブ 1 ページの構成が確定し、SEO Phase 1 Commit 4「/tools/ ハブ + LP 4 本」が完全クローズ。
+
+| コミット | 内容 |
+|---|---|
+| **`f88f85c`** | `/tools` ハブページ新設（4 ファイル / +371 行）|
+
+### 1. ToolsHubPage.tsx 新規（約 320 行）
+
+**§1a ヒーロー（写真 + h1 + サブ）**
+- 既存 LP と同じパターン: `bg-image (/images/hero-izu.jpeg) + bg-black/50 overlay + min-h-screen flex justify-center`
+- h1: 「後半生を設計し、回し続けるための6つのツール」（`text-3xl md:text-4xl lg:text-5xl font-bold`）
+- サブ: 「資産形成は意志ではなく、仕組みの力で実現しよう。」（既存 LP の `text-xl md:text-2xl text-white/80 mt-4` 規約に揃え）
+
+**§1b リード文 5 段落（写真の下、白背景、装飾 3 点）**
+- 黄色マーカー: 「100万円単位でお金が毎日溶けていく」
+- 青下線: 「パニック売り」
+- 引用ブロック: 「長期投資に耐え得る仕組みを事前に作っておかないと、暴落時の恐怖心に意志の力だけで抗うのは、ほぼ無理です。」
+- 末尾「48歳でリタイアしました（詳しくはこちら）」→ `/about` リンク
+
+**§2 サイクル説明**
+- h2: 「設計して、淡々と回し続ける」+ 段落 1 つ
+
+**§3 6 ツールカード一覧**
+- `grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6` で横並び
+- フェーズ別 `border-l-4` アクセント: 設計フェーズ無料 = `border-l-blue-500` / 設計フェーズ有料 = `border-l-indigo-500` / 運用フェーズ有料 = `border-l-amber-500`
+- カード = アイコン + 番号 + タイトル + tagline 1 行のコンパクト表示。tagline は `mt-auto pt-3` で下揃え（タイトルの 1/2 行差を吸収）
+- クリックでモーダル展開（`NicknameModal.tsx` 規約踏襲: `fixed inset-0 z-50 bg-black/50` + 中央寄せ + X ボタン + オーバーレイクリックで閉じる）
+- モーダル内で `description.split('\n\n').map(<p>)` で段落分割（2-3 文/段落）+ CTA ボタン
+
+**ツール構成と区分**
+| # | タイトル | tagline | phase | CTA (ログイン後) |
+|---|---|---|---|---|
+| ① | リスク許容度診断 | 客観 × 心理の2軸で測る、設計の出発点 | 設計無料 | `/risk`（認証不要）|
+| ② | PF診断 | 今のPFが許容度の範囲内か即チェック | 設計無料 | `/pf`（認証必須）|
+| ③ | 資産寿命シミュレーター | 自分のLv基準の利回りで試算する | 設計無料 | `/`（認証必須）|
+| ④ | PFカスタマイズ | 13資産スライダー × 1000試行モンテカルロ | 設計有料 | なし（招待制）|
+| ⑤ | 月次投資アドバイザー | 市場指標で月次投資額を自動調整 | 運用有料 | なし（招待制）|
+| ⑥ | リバランス | ズレを可視化、リバランス計画を自動算出 | 運用有料 | なし（招待制）|
+
+**ゲート挙動**:
+- ログイン未完了の ②③ は opacity-50 + モーダル内に「リスク許容度診断を完了するとご利用いただけます」amber バナー + CTA 非表示
+- 有料 ④⑤⑥ は opacity-60 + Lock アイコン + 常時 CTA なし
+- 「※ 有料ツールは現在、招待制で提供しています」注記を §3 末尾に配置
+
+**§4 SEO LP 別枠**
+- h2: 「資産運用の考え方を深めたい方へ」
+- pill 型ボタン 4 個で既存 LP に送客（`/tools/risk` / `/tools/retirement-simulation` / `/tools/age50s` / `/tools/retirement`）
+
+### 2. ルーティング・SEO 配線
+
+- **`App.tsx`**: `<Route path="/tools" element={<ToolsHubPage />} />` を 3 auth ブロックすべてに追加（認証不要）
+- **`sitemap.xml`**: `/tools` を `priority 0.8` / `lastmod 2026-05-19` で追加（7 → 8 URL）
+- **`scripts/prerender.ts`**: `PRERENDER_ROUTES` に `/tools` 追加（6 → 7 ルート）
+
+### 3. 設計判断（実装時に確認）
+
+- アイコン: lucide-react で対応（BarChart3 / SlidersHorizontal / Calculator / Lock / X / ChevronDown）→ Tabler Icons 新規依存追加せず
+- `/tools` の sitemap priority: 0.8（既存 LP と同等）
+- 未ログイン ②③ の挙動: グレーアウト + モーダル内メッセージ（指示通り）
+
+### 4. 検証
+
+- legal-check baseline: **7 件維持**（新規 NG なし）
+- build + prerender: 7 routes すべて成功（`/risk`, `/about`, `/tools`, `/tools/risk`, `/tools/retirement-simulation`, `/tools/age50s`, `/tools/retirement`）
+- 本番デプロイ: Vercel `dpl_BdT6ESQFVmzputEZ3SxfU8PrPy4i`（commit 時刻 12:54:42 → deploy 完了 12:54:46、4 秒差で同一コミットのデプロイ）
+
+### 5. これで SEO Phase 1 Commit 4 完全クローズ
+
+| 残作業 | 状態 |
+|---|---|
+| `/tools/` ハブ | ✅ 完了（本コミット）|
+| `/tools/risk` LP | ✅ 既存 |
+| `/tools/retirement-simulation` LP | ✅ 既存 |
+| `/tools/age50s` LP | ✅ 既存 |
+| `/tools/retirement` LP | ✅ 既存 |
+
+次は SEO Phase 1 Commit 5+（内部リンク・品質チェック・Lighthouse）または Phase 3.5（ステップメール）へ移行。
+
+---
+
 ## 2026-05-16 — 月次投資アドバイザー(/ma) 5 枠 asset_class 選択式リファクタ + 新興国モメンタム追加（migration 031 + fetch_indicators 拡張）
 
 ### 概要
