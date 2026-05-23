@@ -40,7 +40,7 @@ const TIMEOUT_MS = 30_000
  * Prerender 対象ルート一覧
  *
  * Commit 1: /risk のみ（既存の公開ルート）
- * Commit 3: /about, /privacy, /tokushoho を追加
+ * Commit 3: /about を追加
  * Commit 4: /tools, /tools/simulation, /tools/age/50s, /tools/retirement を追加
  *
  * 認証ゲートがかかるルート（/, /pf, /ma, /rb, /portfolio）は除外。

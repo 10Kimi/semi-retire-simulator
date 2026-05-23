@@ -17,9 +17,14 @@ export default function Footer() {
           <span className="text-gray-300" aria-hidden="true">
             ·
           </span>
-          <Link to="/tokushoho" className="hover:text-gray-900 hover:underline">
+          <a
+            href="https://largogk.jp/tokushoho.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-gray-900 hover:underline"
+          >
             特定商取引法に基づく表記
-          </Link>
+          </a>
         </nav>
         <p className="text-xs text-gray-400">© 2026 合同会社ラルゴ</p>
       </div>
