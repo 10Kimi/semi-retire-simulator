@@ -1,5 +1,61 @@
 # CHANGELOG
 
+## 2026-05-23 — Footer の特商法リンクを largogk.jp 直リンク化 + prerender コメント清掃
+
+### 概要
+2026-04-30 に `/tokushoho` `/privacy` を largogk-corporate に移管した時の残骸を整理。Footer のリンクが Vercel 308 redirect 1 段中継経由になっていたのを直リンク化、`prerender.ts` のコメントから既に消えた route 言及を削除。
+
+| コミット | 内容 |
+|---|---|
+| **`b36277e`** | fix: direct footer tokushoho link to largogk.jp, clean prerender comment (2 files / +8 / -3) |
+
+### 1. Footer.tsx の `/tokushoho` リンク直接化
+
+旧:
+```tsx
+<Link to="/tokushoho" className="hover:text-gray-900 hover:underline">
+  特定商取引法に基づく表記
+</Link>
+```
+
+新:
+```tsx
+<a
+  href="https://largogk.jp/tokushoho.html"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="hover:text-gray-900 hover:underline"
+>
+  特定商取引法に基づく表記
+</a>
+```
+
+→ クリック時の流れ: SPA 内部遷移 → Vercel 308 redirect → largogk.jp/tokushoho.html (3 段) から、**新規タブで largogk.jp/tokushoho.html へ直接遷移 (1 段)** に短縮。`import { Link }` は `/about` `/privacy` で継続使用のため維持。
+
+### 2. prerender.ts コメント整理
+
+旧 (L43):
+```
+* Commit 3: /about, /privacy, /tokushoho を追加
+```
+新:
+```
+* Commit 3: /about を追加
+```
+
+→ `/privacy` `/tokushoho` は既に PRERENDER_ROUTES から除外済み（corporate 移管で）、コメントだけ古い情報が残っていたのを清掃。実 PRERENDER_ROUTES（7 ルート）と整合。
+
+### 3. 検証
+
+- build + prerender 7 routes 成功（`/risk`, `/about`, `/tools`, `/tools/risk`, `/tools/retirement-simulation`, `/tools/age50s`, `/tools/retirement`）
+- legal-check baseline 7 件維持
+
+### 補足 (2026-05-24 追加)
+
+`src/content/legal/tokushoho.md`（L15 に `静岡県伊東市池893-354` の番地が記載されたローカル残骸）を物理削除。`git ls-files` で確認した結果、このファイルは元から **untracked（本番未公開）** だったため commit 不要、物理削除のみで完全クリーン化。corporate / fire 両 repo に対する住所・資産額一括 grep 監査の結果として実施。
+
+---
+
 ## 2026-05-19 — `/tools` ハブページ新設（SEO Phase 1 Commit 4 完全クローズ）
 
 ### 概要
