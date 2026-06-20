@@ -307,6 +307,21 @@ export default function PfDiagnosisSimplePage() {
               </div>
             )}
 
+            {/* 合っている場合: PFカスタマイズ導線 */}
+            {gapResult && gapResult.gapType === 'match' && (
+              <div className="rounded-xl border border-green-200 bg-green-50 p-5 text-center">
+                <p className="text-sm text-gray-700 leading-relaxed mb-4">
+                  同じレベルの中でも、配分を最適化することで期待リターンを高めたり、ボラティリティを下げたりできます。
+                </p>
+                <a
+                  href="/portfolio"
+                  className="inline-block px-8 py-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  ポートフォリオを最適化する
+                </a>
+              </div>
+            )}
+
             {/* リスク超過警告 */}
             {gapResult && gapResult.gapType === 'pf_higher' && diagResult && (
               <RiskExcessWarning
