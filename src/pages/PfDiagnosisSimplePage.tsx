@@ -169,7 +169,7 @@ export default function PfDiagnosisSimplePage() {
             {/* リスク診断スコア表示 */}
             {assessmentLevel !== null && (
               <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                <p className="text-xs text-blue-600 mb-1">あなたのリスク許容度（簡易診断結果）</p>
+                <p className="text-xs text-blue-600 mb-1">あなたのリスク許容度</p>
                 <p className="text-sm font-bold text-blue-800">
                   レベル {assessmentLevel} — {getRiskLevelDef(assessmentLevel).name}
                 </p>
