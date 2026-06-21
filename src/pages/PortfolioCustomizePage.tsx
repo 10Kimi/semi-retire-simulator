@@ -8,7 +8,6 @@ import { FALLBACK_ASSET_RETURNS, FALLBACK_ASSET_RISKS, FALLBACK_CORRELATION_MATR
 import { classifyRiskLevel7 } from '../logic/pfSimple';
 import { getRiskLevelDef } from '../logic/riskScoring';
 import { loadLatestRisk } from '../lib/riskDb';
-import { supabase } from '../lib/supabase';
 import { runMonteCarlo } from '../logic/monteCarlo';
 import type { MonteCarloResult } from '../logic/monteCarlo';
 
@@ -74,7 +73,6 @@ export default function PortfolioCustomizePage() {
   const [mcYears, setMcYears] = useState('');
   const [mcResult, setMcResult] = useState<MonteCarloResult | null>(null);
   const [mcRunning, setMcRunning] = useState(false);
-  const [optimalLoading, setOptimalLoading] = useState(false);
 
   useEffect(() => {
     const base = MODEL_ALLOCATIONS[baseLevel] ?? MODEL_ALLOCATIONS[4];
@@ -124,28 +122,19 @@ export default function PortfolioCustomizePage() {
     setResult({ riskLevel, expectedReturn, volatility, sharpeRatio, overLimit: volatility > volLimit });
   }, [alloc, baseLevel]);
 
-  const handleLoadOptimal = useCallback(async () => {
-    setOptimalLoading(true);
-    const { data } = await supabase
-      .from('optimal_portfolios')
-      .select('allocations')
-      .eq('risk_level', baseLevel)
-      .single();
-
-    if (data?.allocations) {
-      const optimal = data.allocations as Record<string, number>;
-      const newAlloc: Record<string, number> = {};
-      const newKeys: string[] = [];
-      ASSET_CLASSES.forEach(ac => {
-        newAlloc[ac.key] = optimal[ac.key] ?? 0;
-        if ((optimal[ac.key] ?? 0) > 0) newKeys.push(ac.key);
-      });
-      setAlloc(newAlloc);
-      setActiveKeys(newKeys);
-      setResult(null);
-      setMcResult(null);
-    }
-    setOptimalLoading(false);
+  // 初期配分（リスクレベル別モデル配分）に戻す
+  const handleReset = useCallback(() => {
+    const base = MODEL_ALLOCATIONS[baseLevel] ?? MODEL_ALLOCATIONS[4];
+    const newAlloc: Record<string, number> = {};
+    const newKeys: string[] = [];
+    ASSET_CLASSES.forEach(ac => {
+      newAlloc[ac.key] = base[ac.key] ?? 0;
+      if ((base[ac.key] ?? 0) > 0) newKeys.push(ac.key);
+    });
+    setAlloc(newAlloc);
+    setActiveKeys(newKeys);
+    setResult(null);
+    setMcResult(null);
   }, [baseLevel]);
 
   const handleRunMonteCarlo = useCallback(() => {
@@ -184,11 +173,10 @@ export default function PortfolioCustomizePage() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-gray-800">アセット配分（%）</h3>
               <button
-                onClick={handleLoadOptimal}
-                disabled={optimalLoading}
-                className="text-xs px-3 py-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-50"
+                onClick={handleReset}
+                className="text-xs px-3 py-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
               >
-                {optimalLoading ? '読込中...' : '理論上の最適PFを表示'}
+                初期配分に戻す
               </button>
             </div>
             <div className="space-y-4">
