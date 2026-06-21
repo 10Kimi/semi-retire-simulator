@@ -307,11 +307,17 @@ export default function PfDiagnosisSimplePage() {
               </div>
             )}
 
-            {/* 合っている場合: PFカスタマイズ導線 */}
-            {gapResult && gapResult.gapType === 'match' && (
-              <div className="rounded-xl border border-green-200 bg-green-50 p-5 text-center">
+            {/* 合っている / 保守的すぎる場合: PFカスタマイズ導線 */}
+            {gapResult && (gapResult.gapType === 'match' || gapResult.gapType === 'pf_lower') && (
+              <div className={`rounded-xl border p-5 text-center ${
+                gapResult.gapType === 'match'
+                  ? 'bg-green-50 border-green-200'
+                  : 'bg-yellow-50 border-yellow-200'
+              }`}>
                 <p className="text-sm text-gray-700 leading-relaxed mb-4">
-                  同じレベルの中でも、配分を最適化することで期待リターンを高めたり、ボラティリティを下げたりできます。
+                  {gapResult.gapType === 'match'
+                    ? '同じレベルの中でも、配分を最適化することで期待リターンを高めたり、ボラティリティを下げたりできます。'
+                    : 'リスク許容度に見合った、もう少しリターンを狙える配分に最適化できます。'}
                 </p>
                 <a
                   href="/portfolio"
