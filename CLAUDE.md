@@ -55,6 +55,9 @@
 - `scripts/` — 招待コード生成、法的チェック、prerender
 - `scripts/prerender.ts` — Puppeteer ベース post-build prerender（SEO用、各公開ルートのHTML静的化）
 - `scripts/market/` — 市場データ取得スクリプト（fetch_and_optimize.py, fetch_indicators.py）
+  - `fetch_indicators.py` — `/ma`（月次投資アドバイザー）用の指標を取得し Supabase `indicators` テーブルへ upsert（画面の「自動取得済み」ブロックの元データ）。取得: 米国CAPE（multpl.com スクレイプ, lxml 必須）/ TOPIX PBR・金銀比率・モメンタムは yfinance。専用 `.venv` + `.env`（SUPABASE_URL / SUPABASE_SERVICE_KEY）。**スクリプト自身は dotenv を読まない**ため手動実行時は `set -a; source .env; set +a` で env を渡す
+  - **cron（2026-06-23 追加）**: 毎月 1・15 日 9:00 に自動実行（≒隔週）。crontab 行は `cd <dir> && set -a && . ./.env && set +a && .venv/bin/python fetch_indicators.py >> cron.log 2>&1`。ローカル cron なので Mac 起動時のみ走る。ログは `scripts/market/cron.log`
+  - **gotcha**: プロジェクトを `~/semi-retire-app` → 現パスへ移動した影響で `.venv/bin/pip` の shebang が旧パス参照で壊れている。pip 操作は `.venv/bin/python -m pip ...` で回避（python 本体は動作する）
 - `public/robots.txt`, `public/sitemap.xml` — SEO 基盤
 - `supabase/migrations/` — DBマイグレーション（22件。番号衝突あり、TODO参照）
 
@@ -100,6 +103,15 @@
 - **§13-30 /about CTA セクション追加 + スクロール修正 完了**（2026-05-09）: /about 末尾にリスク許容度診断への CTA セクションを新設し、診断ツールへの動線を確保。
   - **CTA セクション追加**（d949a84）: AboutPage.tsx 末尾（運営方針セクションの直後）に新規 h2 セクション「このサイトの中核は、リスク許容度の診断です」を追加。Fidelity 調査データ（リーマンショック後、狼狽売り組 +2% vs 保有継続組 +50%）で下落時の行動差を提示し、「砂上の楼閣になる構造」を `/tools/risk` LP へのテキストリンク（`text-blue-600 hover:underline`）に、最後にメインCTAボタン「5分で診断する（無料） →」（`/risk` 直リンク、age50s LP と同一スタイル）を配置。スタイル基準は AboutPage.tsx 既存セクションと統一（max-w-3xl / leading-loose / h2 mt-12 md:mt-16 mb-6 md:mb-8 / 装飾なし、/about の抑制基調を維持）
   - **スクロール修正 hotfix**（ee235df）: 上記 CTA セクション追加後の実機検証で、「砂上の楼閣になる構造」リンクで `/tools/risk` に遷移したときページ最上部ではなく中央付近で表示される現象を発見。React Router v7 Declarative Mode のデフォルト挙動（ページ遷移時に scroll 位置を自動リセットしない）が原因。`<ScrollRestoration />` は Data Mode 限定で使えないため、該当 `<Link>` の onClick で `setTimeout(() => window.scrollTo(0, 0), 0)` を呼ぶ局所修正で対処（+1/-1 の極小修正）。CTA ボタン `<Link to="/risk">` 等の他リンクには触れず影響範囲は当該 1 リンクのみ
+- **PF診断〜最適PFの一本化 + データ品質修正 完了**（2026-06-21、semi-retire-app 6 commit + FI_project 2 commit + SQL Editor 適用）:
+  - **PF診断ラベル修正**（`4bc7857`）: PF診断結果のスコア表示ラベル「あなたのリスク許容度（簡易診断結果）」→「あなたのリスク許容度」。`PfDiagnosisSimplePage.tsx:172` の 1 行のみ
+  - **PF診断 → /portfolio 導線追加**（`54c3ea3` match / `3a62545` pf_lower）: ギャップ分析で `gapType==='match'`（合っている）と `'pf_lower'`（保守的すぎ）の場合に「ポートフォリオを最適化する」CTA（`<a href="/portfolio">`、薄緑/黄でケース別配色）を追加。`/portfolio` は `PremiumGate` で有料・招待制のため、無料ユーザーには 🔒 招待画面が出る**アップセル導線**として意図的に設置。`pf_higher` は既存 `RiskExcessWarning`（暴落シミュ + 調整導線）を維持。リスクレベルは `/portfolio` 側が DB から取得するため素リンクで OK
+  - **最適PF再設計**（`9b6f7b6`、`scripts/optimize_portfolios.py`）: 旧実装は「5アセット以上・乱択200試行・vol帯下限張り付き」で 8〜9 資産に分散しがちだった。**①上限5資産（サイズ2〜5の部分集合を総当たり）②vol目標を実効上限の90%（上部帯狙い）③新興債≤25%・新興株≤50%（全レベル）④Lv7 のみ新興株≤65%・新興REIT≤15%・最低4資産・vol下限20%（VOL_UPPER[7]=50 はセンチネルで実効上限24%を採用しても0.9×24=21.6%が到達不能なため）⑤--apply 無しは dry-run** に刷新。検証で「分散はLv4で5資産が頭打ち（9資産はシャープ+0.006のみ）」を実測した上での設計判断
+  - **optimal_portfolios テーブル更新**（SQL Editor 直接適用、7 レベル upsert）: 上記の確定配分を反映。vol が帯上部へ・資産数すっきり5以下・Lv4 の新興債40%偏重も解消
+  - **MODEL_ALLOCATIONS/MODEL_META を一本化**（`687ba68`、`src/lib/rb/types.ts`）: 初期表示用のハードコード配分を optimal_portfolios の確定値と一致させ、`/risk`（無料・RiskResultDisplay）/ `/portfolio` 初期表示 / `/rb` プリセット の値ズレを解消。MODEL_META の期待リターン/ボラ/シャープも同一PFの計算結果に同期（旧 MODEL_META のシャープ Lv1=0.75 等は根拠不明だった）
+  - **「理論上の最適PF」ボタン→「初期配分に戻す」**（`833ebcb`、`PortfolioCustomizePage.tsx`）: 一本化で初期表示=optimal_portfolios になり DB フェッチボタンが同値を返すだけになったため、同期で MODEL_ALLOCATIONS を復元するリセットボタンに変更。不要な `supabase` import / `optimalLoading` state を削除
+  - **日本株ボラ逆転バグ修正**（FI_project `50a65ce`、`content-pipeline/fetch_volatility.py`）: PF診断で「日本株+現金=Lv5、米国株+現金=Lv3」と逆転していた根本原因は、`asset_class_params.japan_equity.volatility=27.40%`（全資産で最大という異常値）。1306.T(TOPIX ETF)の **2026-03 10:1株式分割が Yahoo データで未調整のまま -91% の偽月次リターンとして混入**し、年率ボラを ~17%→27.4% に押し上げていた（`auto_adjust=True` でも未補正）。月次±50%超を分割等の価格不連続とみなして除外する `clean_monthly_returns` を追加し、vol と相関の両方をクリーンに再計算。再実行で japan_equity vol 16.96% に正常化、両ケースとも Lv3 に収束（cron 毎月1日も以後クリーン）
+  - **期待リターンを全13資産GPIFベースに統一**（FI_project `9b7a97e`、同スクリプト）: 従来は GPIF4資産以外が Yahoo 実現リターンにフォールバックし gold 13.4%・emerging_equity 16.1%・developed_reit 11.5% 等が過大だった。`GPIF_EXPECTED_RETURNS` を全13資産に拡張し `optimize_portfolios.py` の RETURNS と一致させ、診断の期待リターンと最適PF/モデル配分の前提を整合（ボラは引き続き Yahoo 実績、リターンのみ前向き推計）
 - 次の優先: Phase 3.5（ステップメール + リスク乖離の損失体感UI改善）
 
 ### SEO基盤 Phase 1 の設計方針（サマリ）
