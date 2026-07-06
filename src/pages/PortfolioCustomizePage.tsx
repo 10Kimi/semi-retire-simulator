@@ -212,12 +212,17 @@ export default function PortfolioCustomizePage() {
                 ％で調整（モデル配分から）
               </button>
               <button
-                onClick={() => { setInputMode('amount'); setResult(null); }}
+                onClick={() => { setInputMode('amount'); setResult(null); setActiveKeys(prev => (prev.includes('cash') ? prev : ['cash', ...prev])); }}
                 className={`flex-1 py-1.5 rounded-md font-medium transition-colors ${inputMode === 'amount' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}
               >
                 金額で入力（今の保有額）
               </button>
             </div>
+            {inputMode === 'amount' && (
+              <p className="text-xs text-gray-500 mb-3 -mt-1">
+                ※ 緊急避難資金は除き、投資用に置いている「余剰現金」も現金として入力してください（入れないとリスクが過大に計算されます）。
+              </p>
+            )}
             <div className="space-y-4">
               {activeKeys.map(key => {
                 const ac = ASSET_CLASSES.find(a => a.key === key);
@@ -283,6 +288,11 @@ export default function PortfolioCustomizePage() {
                     </button>
                   ))}
                 </div>
+                {inputMode === 'percent' && availableToAdd.some(ac => ac.key === 'cash') && (
+                  <p className="text-xs text-blue-600 bg-blue-50 rounded px-2 py-1.5 mt-3">
+                    💡 リスクを抑えたい場合は「現金」を加えると全体のリスクが下がります（緊急避難資金とは別に）。
+                  </p>
+                )}
               </div>
             )}
 
