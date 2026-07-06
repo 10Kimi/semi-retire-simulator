@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import { SEOHead } from '../../components/seo/SEOHead'
 import { useAuth } from '../../contexts/AuthContext'
+import { useIsPremium } from '../../hooks/useIsPremium'
+import InviteCodeModal from '../../components/InviteCodeModal'
 import { BarChart3, SlidersHorizontal, Calculator, Lock, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -70,6 +72,7 @@ const TOOLS: Tool[] = [
     tagline: '13資産スライダー × 1000試行モンテカルロ',
     description:
       '無料版のPF診断をベースに、13資産クラスのスライダーで配分を精緻に設計します。\n\nシャープレシオ(同じリスクでより多くのリターンを取れているかを示す指標)を最大化する配分を参考にしながら、自分の好みに合わせて微調整し、モンテカルロシミュレーション(将来起こりうる1000通りのシナリオを試算)で資産目標に届くかを確認できます。\n\n目標に届かないとき、リスクを上げるのではなく入金力を上げる方向で考える。その判断の土台になるツールです。',
+    cta: { label: 'PFカスタマイズを開く →', to: '/portfolio' },
     requiresLogin: false,
     premium: true,
   },
@@ -82,6 +85,7 @@ const TOOLS: Tool[] = [
     tagline: '市場指標で月次投資額を自動調整',
     description:
       '長期資産形成の基本は、積立を継続することです。ただし、ただ毎月同じ額を買い続けるだけでなく、市場の状態に応じて購入額を微調整できれば、長期的により大きなリターンを目指せます。\n\n買われすぎの局面では一部を待機資金としてリザーブし、売られすぎの局面でそれも活用して大きく投資する。これが理想ですが、危機状態のとき、感情に任せると人間はやるべきことと逆のことをしてしまいます。\n\n平時から仕組みを導入しておくことで、感情に振り回されることなく、淡々と設計通りに実行できるようになります。米国CAPE・日本PBR・新興国モメンタム・ゴールドGSRの4指標をもとに、今月の投資配分を自動計算することで、毎月の積立投資をレベルアップします。',
+    cta: { label: '月次投資アドバイザーを開く →', to: '/ma' },
     requiresLogin: false,
     premium: true,
   },
@@ -94,6 +98,7 @@ const TOOLS: Tool[] = [
     tagline: 'ズレを可視化、リバランス計画を自動算出',
     description:
       '長期投資を続けていると、資産の値動きによって目標配分と現在配分にズレが生じてきます。そのまま放置すると、いつの間にかリスク許容度を超えた設計になっていることがあります。\n\n現在の保有額を入力すると(MoneyForwardのExcelからの取り込みにも対応)、アセットクラスごとのズレを可視化し、リバランス計画を自動計算します。売却を含めて調整する、積立のみで対応する、期間を指定して段階的に戻す、の3つのモードから選べます。\n\n3ヶ月〜半年に一度実施することで、当初の設計が長期にわたって機能し続け、感情に左右されない資産形成を実現できます。',
+    cta: { label: 'リバランスを開く →', to: '/rb' },
     requiresLogin: false,
     premium: true,
   },
@@ -114,8 +119,10 @@ const SEO_LP_LINKS = [
 
 export default function ToolsHubPage() {
   const { user } = useAuth()
+  const { isPremium, refresh: refreshPremium } = useIsPremium()
   const isLoggedIn = !!(user && user.email_confirmed_at)
   const [modalId, setModalId] = useState<string | null>(null)
+  const [showInvite, setShowInvite] = useState(false)
 
   const modalTool = modalId ? TOOLS.find((t) => t.id === modalId) ?? null : null
 
@@ -162,8 +169,8 @@ export default function ToolsHubPage() {
     if (!modalTool) return null
     const tool = modalTool
     const isPremiumGated = tool.premium
+    const isPremiumLocked = tool.premium && !isPremium
     const isLoginGated = tool.requiresLogin && !isLoggedIn
-    const isDisabled = isPremiumGated || isLoginGated
     const Icon = tool.icon
 
     return (
@@ -207,15 +214,41 @@ export default function ToolsHubPage() {
             </p>
           )}
 
-          {!isDisabled && tool.cta && (
+          {isPremiumLocked ? (
             <div className="mt-6">
-              <Link
-                to={tool.cta.to}
-                className="inline-block px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
-              >
-                {tool.cta.label}
-              </Link>
+              {isLoggedIn ? (
+                <>
+                  <button
+                    onClick={() => setShowInvite(true)}
+                    className="inline-block px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+                  >
+                    招待コードをお持ちの方はこちら
+                  </button>
+                  <p className="mt-2 text-xs text-gray-500">
+                    招待コードは講座（お金の仕組み化プログラム）購入者に配布しています。
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-gray-600">
+                  招待コードの入力にはログインが必要です。
+                  <Link to="/" className="text-blue-600 hover:underline ml-1">
+                    トップページからログイン →
+                  </Link>
+                </p>
+              )}
             </div>
+          ) : (
+            !isLoginGated &&
+            tool.cta && (
+              <div className="mt-6">
+                <Link
+                  to={tool.cta.to}
+                  className="inline-block px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+                >
+                  {tool.cta.label}
+                </Link>
+              </div>
+            )
           )}
         </div>
       </div>
@@ -355,6 +388,16 @@ export default function ToolsHubPage() {
 
       {/* モーダル (Layout 外、最前面) */}
       {renderModal()}
+
+      {showInvite && (
+        <InviteCodeModal
+          onSuccess={() => {
+            refreshPremium()
+            setShowInvite(false)
+          }}
+          onClose={() => setShowInvite(false)}
+        />
+      )}
     </>
   )
 }
