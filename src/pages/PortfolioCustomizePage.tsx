@@ -67,6 +67,10 @@ export default function PortfolioCustomizePage() {
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [result, setResult] = useState<AnalysisResult | null>(null);
 
+  // 入力モード（% or 金額）と金額state（万円）
+  const [inputMode, setInputMode] = useState<'percent' | 'amount'>('percent');
+  const [amounts, setAmounts] = useState<Record<string, number>>({});
+
   // モンテカルロ
   const [mcInitialAsset, setMcInitialAsset] = useState('');
   const [mcMonthly, setMcMonthly] = useState('');
@@ -88,28 +92,44 @@ export default function PortfolioCustomizePage() {
   }, [baseLevel]);
 
   const totalPercent = ASSET_CLASSES.reduce((s, ac) => s + (alloc[ac.key] ?? 0), 0);
-  const isValid = Math.abs(totalPercent - 100) < 0.01;
+  const totalAmount = ASSET_CLASSES.reduce((s, ac) => s + (amounts[ac.key] ?? 0), 0);
+  const isValid = inputMode === 'percent' ? Math.abs(totalPercent - 100) < 0.01 : totalAmount > 0;
+  const derivedPercent = (key: string) => (totalAmount > 0 ? Math.round(((amounts[key] ?? 0) / totalAmount) * 1000) / 10 : 0);
 
   const handleSlider = useCallback((key: string, newVal: number) => {
     setAlloc(prev => ({ ...prev, [key]: newVal }));
     setResult(null); // 変更時に結果をクリア
   }, []);
 
+  const handleAmount = useCallback((key: string, newVal: number) => {
+    setAmounts(prev => ({ ...prev, [key]: newVal }));
+    setResult(null);
+  }, []);
+
   const addAsset = useCallback((key: string) => {
     setActiveKeys(prev => [...prev, key]);
     setAlloc(prev => ({ ...prev, [key]: 0 }));
+    setAmounts(prev => ({ ...prev, [key]: 0 }));
     setResult(null);
   }, []);
 
   const removeAsset = useCallback((key: string) => {
     setActiveKeys(prev => prev.filter(k => k !== key));
     setAlloc(prev => ({ ...prev, [key]: 0 }));
+    setAmounts(prev => ({ ...prev, [key]: 0 }));
     setResult(null);
   }, []);
 
   const handleAnalyze = useCallback(() => {
+    const total = ASSET_CLASSES.reduce((s, ac) => s + (amounts[ac.key] ?? 0), 0);
     const weights: Record<string, number> = {};
-    ASSET_CLASSES.forEach(ac => { weights[ac.key] = (alloc[ac.key] ?? 0) / 100; });
+    if (inputMode === 'amount' && total > 0) {
+      ASSET_CLASSES.forEach(ac => { weights[ac.key] = (amounts[ac.key] ?? 0) / total; });
+      setMcInitialAsset(String(total)); // 現PFの合計額をモンテカルロ初期資産へ
+      setMcResult(null);
+    } else {
+      ASSET_CLASSES.forEach(ac => { weights[ac.key] = (alloc[ac.key] ?? 0) / 100; });
+    }
 
     const volatility = calcVolatility(weights);
     const expectedReturn = calcExpectedReturn(weights);
@@ -120,7 +140,7 @@ export default function PortfolioCustomizePage() {
     const volLimit = VOL_UPPER[baseLevel] ?? 100;
 
     setResult({ riskLevel, expectedReturn, volatility, sharpeRatio, overLimit: volatility > volLimit });
-  }, [alloc, baseLevel]);
+  }, [alloc, amounts, inputMode, baseLevel]);
 
   // 初期配分（リスクレベル別モデル配分）に戻す
   const handleReset = useCallback(() => {
@@ -133,6 +153,8 @@ export default function PortfolioCustomizePage() {
     });
     setAlloc(newAlloc);
     setActiveKeys(newKeys);
+    setAmounts({});
+    setInputMode('percent');
     setResult(null);
     setMcResult(null);
   }, [baseLevel]);
@@ -170,13 +192,30 @@ export default function PortfolioCustomizePage() {
         <div className="space-y-6">
           {/* スライダー */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-gray-800">アセット配分（%）</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-gray-800">
+                アセット配分（{inputMode === 'percent' ? '%' : '金額'}）
+              </h3>
               <button
                 onClick={handleReset}
                 className="text-xs px-3 py-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
               >
                 初期配分に戻す
+              </button>
+            </div>
+            {/* % / 金額 トグル */}
+            <div className="flex gap-1 mb-4 bg-gray-100 rounded-lg p-1 text-xs">
+              <button
+                onClick={() => { setInputMode('percent'); setResult(null); }}
+                className={`flex-1 py-1.5 rounded-md font-medium transition-colors ${inputMode === 'percent' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}
+              >
+                ％で調整（モデル配分から）
+              </button>
+              <button
+                onClick={() => { setInputMode('amount'); setResult(null); }}
+                className={`flex-1 py-1.5 rounded-md font-medium transition-colors ${inputMode === 'amount' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}
+              >
+                金額で入力（今の保有額）
               </button>
             </div>
             <div className="space-y-4">
@@ -188,7 +227,11 @@ export default function PortfolioCustomizePage() {
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-gray-600">{ac.label}</span>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-800 w-8 text-right">{alloc[key]}%</span>
+                        {inputMode === 'percent' ? (
+                          <span className="font-medium text-gray-800 w-8 text-right">{alloc[key]}%</span>
+                        ) : (
+                          <span className="text-gray-400 w-12 text-right">{derivedPercent(key)}%</span>
+                        )}
                         <button
                           onClick={() => removeAsset(key)}
                           className="text-gray-400 hover:text-red-500 text-xs"
@@ -198,15 +241,29 @@ export default function PortfolioCustomizePage() {
                         </button>
                       </div>
                     </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={5}
-                      value={alloc[key]}
-                      onChange={e => handleSlider(key, Number(e.target.value))}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                    />
+                    {inputMode === 'percent' ? (
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={5}
+                        value={alloc[key]}
+                        onChange={e => handleSlider(key, Number(e.target.value))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          value={amounts[key] || ''}
+                          onChange={e => handleAmount(key, Number(e.target.value))}
+                          placeholder="例: 500"
+                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                        />
+                        <span className="text-xs text-gray-500 shrink-0">万円</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -233,10 +290,15 @@ export default function PortfolioCustomizePage() {
             <div className="mt-4 pt-3 border-t border-gray-100">
               <div className={`flex justify-between text-sm ${isValid ? 'text-gray-800' : 'text-red-500'}`}>
                 <span>合計</span>
-                <span className="font-bold">{totalPercent}%</span>
+                <span className="font-bold">
+                  {inputMode === 'percent' ? `${totalPercent}%` : `${totalAmount.toLocaleString()}万円`}
+                </span>
               </div>
-              {!isValid && (
+              {inputMode === 'percent' && !isValid && (
                 <p className="text-xs text-red-500 mt-1">合計: {totalPercent}%（100%になるよう調整してください）</p>
+              )}
+              {inputMode === 'amount' && !isValid && (
+                <p className="text-xs text-red-500 mt-1">保有額を入力してください</p>
               )}
               <button
                 onClick={handleAnalyze}
