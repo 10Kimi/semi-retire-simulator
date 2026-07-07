@@ -6,7 +6,7 @@
 「セミリタイア資産運用パッケージ」の中核プロダクト。
 
 - 本番URL: https://fire.largogk.jp
-- パッケージ全体設計書: ../../Docs/設計書_v7_15_main.md（最新版。過去版は ../../Docs/archive/）
+- パッケージ全体設計書: ../../Docs/設計書_v7_16_main.md（最新版。過去版は ../../Docs/archive/）
 - パッケージ全体の判断文脈: ../../CLAUDE.md
 
 ## ターゲット像
@@ -112,6 +112,10 @@
   - **「理論上の最適PF」ボタン→「初期配分に戻す」**（`833ebcb`、`PortfolioCustomizePage.tsx`）: 一本化で初期表示=optimal_portfolios になり DB フェッチボタンが同値を返すだけになったため、同期で MODEL_ALLOCATIONS を復元するリセットボタンに変更。不要な `supabase` import / `optimalLoading` state を削除
   - **日本株ボラ逆転バグ修正**（FI_project `50a65ce`、`content-pipeline/fetch_volatility.py`）: PF診断で「日本株+現金=Lv5、米国株+現金=Lv3」と逆転していた根本原因は、`asset_class_params.japan_equity.volatility=27.40%`（全資産で最大という異常値）。1306.T(TOPIX ETF)の **2026-03 10:1株式分割が Yahoo データで未調整のまま -91% の偽月次リターンとして混入**し、年率ボラを ~17%→27.4% に押し上げていた（`auto_adjust=True` でも未補正）。月次±50%超を分割等の価格不連続とみなして除外する `clean_monthly_returns` を追加し、vol と相関の両方をクリーンに再計算。再実行で japan_equity vol 16.96% に正常化、両ケースとも Lv3 に収束（cron 毎月1日も以後クリーン）
   - **期待リターンを全13資産GPIFベースに統一**（FI_project `9b7a97e`、同スクリプト）: 従来は GPIF4資産以外が Yahoo 実現リターンにフォールバックし gold 13.4%・emerging_equity 16.1%・developed_reit 11.5% 等が過大だった。`GPIF_EXPECTED_RETURNS` を全13資産に拡張し `optimize_portfolios.py` の RETURNS と一致させ、診断の期待リターンと最適PF/モデル配分の前提を整合（ボラは引き続き Yahoo 実績、リターンのみ前向き推計）
+- **/portfolio 金額入力 + /tools 招待コード導線 + 現PF vs 最適配分の比較**（2026-07-07〜08、設計書 v7.15〜v7.16、3 commit）:
+  - **金額入力**（`1d77a06`）: アセット配分を %／金額で切替可能に（金額→自動%換算、合計額をモンテカルロ初期資産へ反映）。金額モードは 'cash' を activeKeys に含め、余剰現金の入力を促す
+  - **/tools 招待コード導線**（`11701fa`, `ToolsHubPage.tsx`）: 有料ロックカードのモーダルから招待コード入力（ログイン済→`InviteCodeModal`、未ログイン→トップ誘導）、成功で is_premium refresh し全ツール解放
+  - **現PF vs 最適配分の比較 + MC比較**（`3a2dbd0`, `PortfolioCustomizePage.tsx`）: ボタン「初期配分に戻す」→「**最適配分に戻す**」に改称。分析結果に「今の配分／最適配分（`MODEL_ALLOCATIONS[baseLevel]`）」の指標比較（期待リターン・ボラ・シャープ）を並記。最適の指標は `MODEL_META` の生値ではなく現PFと同じ `calcExpectedReturn`/`calcVolatility` で算出し同一基準に。モンテカルロも最適配分で同条件実行し 3シナリオ＋中央値差を並記（`mcOptimalResult` state 追加、表示は `mcResult && mcOptimalResult` でゲート）。未使用化した `getRiskLevelDef` import 削除。tsc 0エラー・vite build 成功
 - 次の優先: Phase 3.5（ステップメール + リスク乖離の損失体感UI改善）
 
 ### SEO基盤 Phase 1 の設計方針（サマリ）
