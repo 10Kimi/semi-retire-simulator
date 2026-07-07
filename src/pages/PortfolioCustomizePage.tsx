@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
@@ -6,7 +6,6 @@ import AllocationDisclaimer from '../components/AllocationDisclaimer';
 import { ASSET_CLASSES, MODEL_ALLOCATIONS, MODEL_META } from '../lib/rb/types';
 import { FALLBACK_ASSET_RETURNS, FALLBACK_ASSET_RISKS, FALLBACK_CORRELATION_MATRIX } from '../logic/portfolioDiagnosis';
 import { classifyRiskLevel7 } from '../logic/pfSimple';
-import { getRiskLevelDef } from '../logic/riskScoring';
 import { loadLatestRisk } from '../lib/riskDb';
 import { runMonteCarlo } from '../logic/monteCarlo';
 import type { MonteCarloResult } from '../logic/monteCarlo';
@@ -76,7 +75,21 @@ export default function PortfolioCustomizePage() {
   const [mcMonthly, setMcMonthly] = useState('');
   const [mcYears, setMcYears] = useState('');
   const [mcResult, setMcResult] = useState<MonteCarloResult | null>(null);
+  const [mcOptimalResult, setMcOptimalResult] = useState<MonteCarloResult | null>(null);
   const [mcRunning, setMcRunning] = useState(false);
+
+  // 最適配分（モデル配分）の指標。現PFと同じ計算関数で算出し、同一基準で比較する。
+  const optimal = useMemo(() => {
+    const base = MODEL_ALLOCATIONS[baseLevel] ?? MODEL_ALLOCATIONS[4];
+    const w: Record<string, number> = {};
+    ASSET_CLASSES.forEach(ac => { w[ac.key] = (base[ac.key] ?? 0) / 100; });
+    const expectedReturn = calcExpectedReturn(w);
+    const volatility = calcVolatility(w);
+    const sharpeRatio = volatility > 0
+      ? Math.round((expectedReturn - RISK_FREE_RATE) / volatility * 100) / 100
+      : 0;
+    return { name: MODEL_META[baseLevel]?.name ?? '', expectedReturn, volatility, sharpeRatio };
+  }, [baseLevel]);
 
   useEffect(() => {
     const base = MODEL_ALLOCATIONS[baseLevel] ?? MODEL_ALLOCATIONS[4];
@@ -142,7 +155,7 @@ export default function PortfolioCustomizePage() {
     setResult({ riskLevel, expectedReturn, volatility, sharpeRatio, overLimit: volatility > volLimit });
   }, [alloc, amounts, inputMode, baseLevel]);
 
-  // 初期配分（リスクレベル別モデル配分）に戻す
+  // 最適配分（リスクレベル別モデル配分）に戻す
   const handleReset = useCallback(() => {
     const base = MODEL_ALLOCATIONS[baseLevel] ?? MODEL_ALLOCATIONS[4];
     const newAlloc: Record<string, number> = {};
@@ -169,10 +182,12 @@ export default function PortfolioCustomizePage() {
     // 非同期的に実行（UIブロック回避）
     setTimeout(() => {
       const mc = runMonteCarlo(initial, monthly, years, result.expectedReturn, result.volatility);
+      const mcOpt = runMonteCarlo(initial, monthly, years, optimal.expectedReturn, optimal.volatility);
       setMcResult(mc);
+      setMcOptimalResult(mcOpt);
       setMcRunning(false);
     }, 10);
-  }, [result, mcInitialAsset, mcMonthly, mcYears]);
+  }, [result, mcInitialAsset, mcMonthly, mcYears, optimal]);
 
   const availableToAdd = ASSET_CLASSES.filter(ac => !activeKeys.includes(ac.key));
   const volLimit = VOL_UPPER[baseLevel] ?? 100;
@@ -200,7 +215,7 @@ export default function PortfolioCustomizePage() {
                 onClick={handleReset}
                 className="text-xs px-3 py-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
               >
-                初期配分に戻す
+                最適配分に戻す
               </button>
             </div>
             {/* % / 金額 トグル */}
@@ -338,28 +353,30 @@ export default function PortfolioCustomizePage() {
                 </div>
               )}
 
-              <h3 className="text-sm font-bold text-gray-800 mb-3">シミュレーション結果（計算上の参考値）</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">リスクレベル</span>
-                  <span className="font-medium text-gray-800">
-                    Lv{result.riskLevel} {getRiskLevelDef(result.riskLevel).name}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">期待リターン</span>
-                  <span className="font-medium text-gray-800">{result.expectedReturn}%</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">ボラティリティ</span>
-                  <span className={`font-medium ${result.overLimit ? 'text-red-600' : 'text-gray-800'}`}>
-                    {result.volatility}%
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">シャープレシオ</span>
-                  <span className="font-medium text-gray-800">{result.sharpeRatio}</span>
-                </div>
+              <h3 className="text-sm font-bold text-gray-800 mb-1">シミュレーション結果（計算上の参考値）</h3>
+              <p className="text-xs text-gray-400 mb-3">
+                「最適配分」＝ あなたのリスク許容度（Lv{baseLevel}{optimal.name ? ` ${optimal.name}` : ''}）に対するモデル配分
+              </p>
+              <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-2.5 text-sm items-center">
+                <span></span>
+                <span className="text-xs font-medium text-gray-500 text-right">今の配分</span>
+                <span className="text-xs font-medium text-purple-600 text-right">最適配分</span>
+
+                <span className="text-gray-500">リスクレベル</span>
+                <span className="font-medium text-gray-800 text-right">Lv{result.riskLevel}</span>
+                <span className="font-medium text-purple-700 text-right">Lv{baseLevel}</span>
+
+                <span className="text-gray-500">期待リターン</span>
+                <span className="font-medium text-gray-800 text-right">{result.expectedReturn}%</span>
+                <span className="font-medium text-purple-700 text-right">{optimal.expectedReturn}%</span>
+
+                <span className="text-gray-500">ボラティリティ</span>
+                <span className={`font-medium text-right ${result.overLimit ? 'text-red-600' : 'text-gray-800'}`}>{result.volatility}%</span>
+                <span className="font-medium text-purple-700 text-right">{optimal.volatility}%</span>
+
+                <span className="text-gray-500">シャープレシオ</span>
+                <span className="font-medium text-gray-800 text-right">{result.sharpeRatio}</span>
+                <span className="font-medium text-purple-700 text-right">{optimal.sharpeRatio}</span>
               </div>
             </div>
           )}
@@ -470,6 +487,35 @@ export default function PortfolioCustomizePage() {
                       {scenarioRow('中央値', mcResult.median, 'bg-purple-50', 'text-purple-700', 'text-purple-800')}
                       {scenarioRow('楽観シナリオ（上位75%）', mcResult.percentile75, 'bg-green-50', 'text-green-700', 'text-green-800')}
                     </div>
+
+                    {/* 最適配分で運用した場合との比較 */}
+                    {mcOptimalResult && (
+                      <div className="pt-3 border-t border-gray-100">
+                        <p className="text-xs font-bold text-gray-600 mb-2">
+                          最適配分（Lv{baseLevel}）で同じ条件で運用した場合との比較
+                        </p>
+                        <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-2 text-xs items-center">
+                          <span></span>
+                          <span className="font-medium text-gray-500 text-right">今の配分</span>
+                          <span className="font-medium text-purple-600 text-right">最適配分</span>
+
+                          <span className="text-gray-500">悲観（下位25%）</span>
+                          <span className="text-gray-800 text-right">{mcResult.percentile25.toLocaleString()}万円</span>
+                          <span className="text-purple-700 text-right">{mcOptimalResult.percentile25.toLocaleString()}万円</span>
+
+                          <span className="text-gray-500">中央値</span>
+                          <span className="text-gray-800 text-right">{mcResult.median.toLocaleString()}万円</span>
+                          <span className="text-purple-700 text-right">{mcOptimalResult.median.toLocaleString()}万円</span>
+
+                          <span className="text-gray-500">楽観（上位75%）</span>
+                          <span className="text-gray-800 text-right">{mcResult.percentile75.toLocaleString()}万円</span>
+                          <span className="text-purple-700 text-right">{mcOptimalResult.percentile75.toLocaleString()}万円</span>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-2">
+                          中央値の差：{mcOptimalResult.median - mcResult.median >= 0 ? '+' : ''}{(mcOptimalResult.median - mcResult.median).toLocaleString()}万円（最適配分 − 今の配分）
+                        </p>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
