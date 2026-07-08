@@ -69,6 +69,8 @@ export default function PortfolioCustomizePage() {
   // 入力モード（% or 金額）と金額state（万円）
   const [inputMode, setInputMode] = useState<'percent' | 'amount'>('percent');
   const [amounts, setAmounts] = useState<Record<string, number>>({});
+  // 金額モードで一度でも最適配分を当てたか（ボタン文言「する／戻す」の出し分け用）
+  const [amountOptimalApplied, setAmountOptimalApplied] = useState(false);
 
   // モンテカルロ
   const [mcInitialAsset, setMcInitialAsset] = useState('');
@@ -158,11 +160,38 @@ export default function PortfolioCustomizePage() {
   // 最適配分（リスクレベル別モデル配分）に戻す
   const handleReset = useCallback(() => {
     const base = MODEL_ALLOCATIONS[baseLevel] ?? MODEL_ALLOCATIONS[4];
-    const newAlloc: Record<string, number> = {};
     const newKeys: string[] = [];
     ASSET_CLASSES.forEach(ac => {
-      newAlloc[ac.key] = base[ac.key] ?? 0;
       if ((base[ac.key] ?? 0) > 0) newKeys.push(ac.key);
+    });
+
+    // 金額モードで保有総額が入っている場合は、その合計額を維持したまま
+    // 最適配分（％）で金額を再割り当てする（モードは金額のまま）。
+    const total = ASSET_CLASSES.reduce((s, ac) => s + (amounts[ac.key] ?? 0), 0);
+    if (inputMode === 'amount' && total > 0) {
+      const newAmounts: Record<string, number> = {};
+      ASSET_CLASSES.forEach(ac => {
+        newAmounts[ac.key] = Math.round((total * (base[ac.key] ?? 0)) / 100);
+      });
+      // 丸め誤差を最大配分アセットで吸収し、合計を保有総額に厳密一致させる
+      const rounded = ASSET_CLASSES.reduce((s, ac) => s + (newAmounts[ac.key] ?? 0), 0);
+      const diff = total - rounded;
+      if (diff !== 0 && newKeys.length > 0) {
+        const maxKey = newKeys.reduce((a, b) => ((base[b] ?? 0) > (base[a] ?? 0) ? b : a));
+        newAmounts[maxKey] = (newAmounts[maxKey] ?? 0) + diff;
+      }
+      setAmounts(newAmounts);
+      setActiveKeys(newKeys);
+      setAmountOptimalApplied(true); // 以降はボタン文言を「最適配分に戻す」へ
+      setResult(null);
+      setMcResult(null);
+      return;
+    }
+
+    // ％モード（または金額未入力）は従来どおりモデル配分（％）へ戻す
+    const newAlloc: Record<string, number> = {};
+    ASSET_CLASSES.forEach(ac => {
+      newAlloc[ac.key] = base[ac.key] ?? 0;
     });
     setAlloc(newAlloc);
     setActiveKeys(newKeys);
@@ -170,7 +199,7 @@ export default function PortfolioCustomizePage() {
     setInputMode('percent');
     setResult(null);
     setMcResult(null);
-  }, [baseLevel]);
+  }, [baseLevel, inputMode, amounts]);
 
   const handleRunMonteCarlo = useCallback(() => {
     if (!result) return;
@@ -215,7 +244,7 @@ export default function PortfolioCustomizePage() {
                 onClick={handleReset}
                 className="text-xs px-3 py-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
               >
-                最適配分に戻す
+                {inputMode === 'amount' && !amountOptimalApplied ? '最適配分にする' : '最適配分に戻す'}
               </button>
             </div>
             {/* % / 金額 トグル */}
@@ -227,7 +256,7 @@ export default function PortfolioCustomizePage() {
                 ％で調整（モデル配分から）
               </button>
               <button
-                onClick={() => { setInputMode('amount'); setResult(null); setActiveKeys(prev => (prev.includes('cash') ? prev : ['cash', ...prev])); }}
+                onClick={() => { setInputMode('amount'); setAmountOptimalApplied(false); setResult(null); setActiveKeys(prev => (prev.includes('cash') ? prev : ['cash', ...prev])); }}
                 className={`flex-1 py-1.5 rounded-md font-medium transition-colors ${inputMode === 'amount' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}
               >
                 金額で入力（今の保有額）
