@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import AllocationDisclaimer from '../components/AllocationDisclaimer';
 import { ASSET_CLASSES, MODEL_ALLOCATIONS, MODEL_META } from '../lib/rb/types';
+import type { AssetClassKey } from '../lib/rb/types';
 import { FALLBACK_ASSET_RETURNS, FALLBACK_ASSET_RISKS, FALLBACK_CORRELATION_MATRIX } from '../logic/portfolioDiagnosis';
 import { classifyRiskLevel7 } from '../logic/pfSimple';
 import { loadLatestRisk } from '../lib/riskDb';
@@ -160,7 +161,7 @@ export default function PortfolioCustomizePage() {
   // 最適配分（リスクレベル別モデル配分）に戻す
   const handleReset = useCallback(() => {
     const base = MODEL_ALLOCATIONS[baseLevel] ?? MODEL_ALLOCATIONS[4];
-    const newKeys: string[] = [];
+    const newKeys: AssetClassKey[] = [];
     ASSET_CLASSES.forEach(ac => {
       if ((base[ac.key] ?? 0) > 0) newKeys.push(ac.key);
     });
