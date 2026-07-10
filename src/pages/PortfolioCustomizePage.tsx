@@ -49,6 +49,18 @@ interface AnalysisResult {
   overLimit: boolean;
 }
 
+// weights（合計1）から分析結果を算出する
+function computeResult(weights: Record<string, number>, baseLevel: number): AnalysisResult {
+  const volatility = calcVolatility(weights);
+  const expectedReturn = calcExpectedReturn(weights);
+  const riskLevel = classifyRiskLevel7(volatility);
+  const sharpeRatio = volatility > 0
+    ? Math.round((expectedReturn - RISK_FREE_RATE) / volatility * 100) / 100
+    : 0;
+  const volLimit = VOL_UPPER[baseLevel] ?? 100;
+  return { riskLevel, expectedReturn, volatility, sharpeRatio, overLimit: volatility > volLimit };
+}
+
 export default function PortfolioCustomizePage() {
   const { user } = useAuth();
   const [userLevel, setUserLevel] = useState<number | null>(null);
@@ -72,6 +84,11 @@ export default function PortfolioCustomizePage() {
   const [amounts, setAmounts] = useState<Record<string, number>>({});
   // 金額モードで一度でも最適配分を当てたか（ボタン文言「する／戻す」の出し分け用）
   const [amountOptimalApplied, setAmountOptimalApplied] = useState(false);
+  // 「最適配分にする」で入力欄を最適に置き換えても、比較の左列は保有PFのまま残すためのスナップショット。
+  // ユーザーが金額を調整（編集）すると null に戻り、以降は調整後の入力値で比較する。
+  const [heldWeights, setHeldWeights] = useState<Record<string, number> | null>(null);
+  // 現在の result が保有PFスナップショット由来か（左列ラベル「保有中のPF／調整後」の出し分け用）
+  const [resultFromHeld, setResultFromHeld] = useState(false);
 
   // モンテカルロ
   const [mcInitialAsset, setMcInitialAsset] = useState('');
@@ -104,6 +121,8 @@ export default function PortfolioCustomizePage() {
     });
     setAlloc(init);
     setActiveKeys(keys);
+    setHeldWeights(null);
+    setResultFromHeld(false);
     setResult(null);
   }, [baseLevel]);
 
@@ -114,11 +133,13 @@ export default function PortfolioCustomizePage() {
 
   const handleSlider = useCallback((key: string, newVal: number) => {
     setAlloc(prev => ({ ...prev, [key]: newVal }));
+    setHeldWeights(null); // 調整したので保有PFスナップショットは破棄（以降は調整後で比較）
     setResult(null); // 変更時に結果をクリア
   }, []);
 
   const handleAmount = useCallback((key: string, newVal: number) => {
     setAmounts(prev => ({ ...prev, [key]: newVal }));
+    setHeldWeights(null);
     setResult(null);
   }, []);
 
@@ -126,6 +147,7 @@ export default function PortfolioCustomizePage() {
     setActiveKeys(prev => [...prev, key]);
     setAlloc(prev => ({ ...prev, [key]: 0 }));
     setAmounts(prev => ({ ...prev, [key]: 0 }));
+    setHeldWeights(null);
     setResult(null);
   }, []);
 
@@ -133,13 +155,21 @@ export default function PortfolioCustomizePage() {
     setActiveKeys(prev => prev.filter(k => k !== key));
     setAlloc(prev => ({ ...prev, [key]: 0 }));
     setAmounts(prev => ({ ...prev, [key]: 0 }));
+    setHeldWeights(null);
     setResult(null);
   }, []);
 
   const handleAnalyze = useCallback(() => {
     const total = ASSET_CLASSES.reduce((s, ac) => s + (amounts[ac.key] ?? 0), 0);
     const weights: Record<string, number> = {};
-    if (inputMode === 'amount' && total > 0) {
+    let fromHeld = false;
+    if (inputMode === 'amount' && heldWeights) {
+      // 「最適配分にする」直後で未調整 → 保有PF（スナップショット）で比較する
+      Object.assign(weights, heldWeights);
+      fromHeld = true;
+      setMcInitialAsset(String(total)); // 入力欄の合計額（保有総額を維持）をモンテカルロ初期資産へ
+      setMcResult(null);
+    } else if (inputMode === 'amount' && total > 0) {
       ASSET_CLASSES.forEach(ac => { weights[ac.key] = (amounts[ac.key] ?? 0) / total; });
       setMcInitialAsset(String(total)); // 現PFの合計額をモンテカルロ初期資産へ
       setMcResult(null);
@@ -147,16 +177,9 @@ export default function PortfolioCustomizePage() {
       ASSET_CLASSES.forEach(ac => { weights[ac.key] = (alloc[ac.key] ?? 0) / 100; });
     }
 
-    const volatility = calcVolatility(weights);
-    const expectedReturn = calcExpectedReturn(weights);
-    const riskLevel = classifyRiskLevel7(volatility);
-    const sharpeRatio = volatility > 0
-      ? Math.round((expectedReturn - RISK_FREE_RATE) / volatility * 100) / 100
-      : 0;
-    const volLimit = VOL_UPPER[baseLevel] ?? 100;
-
-    setResult({ riskLevel, expectedReturn, volatility, sharpeRatio, overLimit: volatility > volLimit });
-  }, [alloc, amounts, inputMode, baseLevel]);
+    setResult(computeResult(weights, baseLevel));
+    setResultFromHeld(fromHeld);
+  }, [alloc, amounts, inputMode, baseLevel, heldWeights]);
 
   // 最適配分（リスクレベル別モデル配分）に戻す
   const handleReset = useCallback(() => {
@@ -170,6 +193,10 @@ export default function PortfolioCustomizePage() {
     // 最適配分（％）で金額を再割り当てする（モードは金額のまま）。
     const total = ASSET_CLASSES.reduce((s, ac) => s + (amounts[ac.key] ?? 0), 0);
     if (inputMode === 'amount' && total > 0) {
+      // 置き換え前の保有PFを weights スナップショットとして保持（比較の左列に使う）
+      const held: Record<string, number> = {};
+      ASSET_CLASSES.forEach(ac => { held[ac.key] = (amounts[ac.key] ?? 0) / total; });
+
       const newAmounts: Record<string, number> = {};
       ASSET_CLASSES.forEach(ac => {
         newAmounts[ac.key] = Math.round((total * (base[ac.key] ?? 0)) / 100);
@@ -184,7 +211,11 @@ export default function PortfolioCustomizePage() {
       setAmounts(newAmounts);
       setActiveKeys(newKeys);
       setAmountOptimalApplied(true); // 以降はボタン文言を「最適配分に戻す」へ
-      setResult(null);
+      // 入力欄は最適だが、比較は「保有PF vs 最適」を即表示（調整するまで保持）
+      setHeldWeights(held);
+      setResult(computeResult(held, baseLevel));
+      setResultFromHeld(true);
+      setMcInitialAsset(String(total));
       setMcResult(null);
       return;
     }
@@ -198,6 +229,8 @@ export default function PortfolioCustomizePage() {
     setActiveKeys(newKeys);
     setAmounts({});
     setInputMode('percent');
+    setHeldWeights(null);
+    setResultFromHeld(false);
     setResult(null);
     setMcResult(null);
   }, [baseLevel, inputMode, amounts]);
@@ -222,13 +255,18 @@ export default function PortfolioCustomizePage() {
   const availableToAdd = ASSET_CLASSES.filter(ac => !activeKeys.includes(ac.key));
   const volLimit = VOL_UPPER[baseLevel] ?? 100;
 
-  // 今の配分がちょうど最適配分に一致しているか（＝「最適配分にする」直後で未調整）。
-  // この場合は「今の配分 vs 最適配分」が同値になり比較の意味がないため、表の代わりに注記を出す。
+  // 比較対象（左列）がちょうど最適配分と同値か。この場合は比較の意味がないため表の代わりに注記を出す
+  // （％モードで初期モデル配分のまま分析した場合など。金額モードで保有PFを比較中は通常ここには入らない）。
   const isAtOptimal = !!result
     && result.riskLevel === baseLevel
     && result.expectedReturn === optimal.expectedReturn
     && result.volatility === optimal.volatility
     && result.sharpeRatio === optimal.sharpeRatio;
+
+  // 比較表の左列ラベル。金額モードでは保有PFか調整後かを出し分ける。
+  const currentLabel = inputMode === 'amount'
+    ? ((resultFromHeld || !amountOptimalApplied) ? '保有中のPF' : '調整後')
+    : '今の配分';
 
   return (
     <Layout>
@@ -259,13 +297,13 @@ export default function PortfolioCustomizePage() {
             {/* % / 金額 トグル */}
             <div className="flex gap-1 mb-4 bg-gray-100 rounded-lg p-1 text-xs">
               <button
-                onClick={() => { setInputMode('percent'); setResult(null); }}
+                onClick={() => { setInputMode('percent'); setHeldWeights(null); setResultFromHeld(false); setResult(null); }}
                 className={`flex-1 py-1.5 rounded-md font-medium transition-colors ${inputMode === 'percent' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}
               >
                 ％で調整（モデル配分から）
               </button>
               <button
-                onClick={() => { setInputMode('amount'); setAmountOptimalApplied(false); setResult(null); setActiveKeys(prev => (prev.includes('cash') ? prev : ['cash', ...prev])); }}
+                onClick={() => { setInputMode('amount'); setAmountOptimalApplied(false); setHeldWeights(null); setResultFromHeld(false); setResult(null); setActiveKeys(prev => (prev.includes('cash') ? prev : ['cash', ...prev])); }}
                 className={`flex-1 py-1.5 rounded-md font-medium transition-colors ${inputMode === 'amount' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}
               >
                 金額で入力（今の保有額）
@@ -404,7 +442,7 @@ export default function PortfolioCustomizePage() {
               ) : (
                 <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-2.5 text-sm items-center">
                   <span></span>
-                  <span className="text-xs font-medium text-gray-500 text-right">今の配分</span>
+                  <span className="text-xs font-medium text-gray-500 text-right">{currentLabel}</span>
                   <span className="text-xs font-medium text-purple-600 text-right">最適配分</span>
 
                   <span className="text-gray-500">リスクレベル</span>
@@ -542,7 +580,7 @@ export default function PortfolioCustomizePage() {
                         </p>
                         <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-2 text-xs items-center">
                           <span></span>
-                          <span className="font-medium text-gray-500 text-right">今の配分</span>
+                          <span className="font-medium text-gray-500 text-right">{currentLabel}</span>
                           <span className="font-medium text-purple-600 text-right">最適配分</span>
 
                           <span className="text-gray-500">悲観（下位25%）</span>
@@ -558,7 +596,7 @@ export default function PortfolioCustomizePage() {
                           <span className="text-purple-700 text-right">{mcOptimalResult.percentile75.toLocaleString()}万円</span>
                         </div>
                         <p className="text-xs text-gray-400 mt-2">
-                          中央値の差：{mcOptimalResult.median - mcResult.median >= 0 ? '+' : ''}{(mcOptimalResult.median - mcResult.median).toLocaleString()}万円（最適配分 − 今の配分）
+                          中央値の差：{mcOptimalResult.median - mcResult.median >= 0 ? '+' : ''}{(mcOptimalResult.median - mcResult.median).toLocaleString()}万円（最適配分 − {currentLabel}）
                         </p>
                       </div>
                     )}
