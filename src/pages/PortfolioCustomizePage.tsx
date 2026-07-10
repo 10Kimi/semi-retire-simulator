@@ -222,6 +222,14 @@ export default function PortfolioCustomizePage() {
   const availableToAdd = ASSET_CLASSES.filter(ac => !activeKeys.includes(ac.key));
   const volLimit = VOL_UPPER[baseLevel] ?? 100;
 
+  // 今の配分がちょうど最適配分に一致しているか（＝「最適配分にする」直後で未調整）。
+  // この場合は「今の配分 vs 最適配分」が同値になり比較の意味がないため、表の代わりに注記を出す。
+  const isAtOptimal = !!result
+    && result.riskLevel === baseLevel
+    && result.expectedReturn === optimal.expectedReturn
+    && result.volatility === optimal.volatility
+    && result.sharpeRatio === optimal.sharpeRatio;
+
   return (
     <Layout>
       <main className="max-w-lg mx-auto px-4 py-6 md:py-10">
@@ -387,27 +395,35 @@ export default function PortfolioCustomizePage() {
               <p className="text-xs text-gray-400 mb-3">
                 「最適配分」＝ あなたのリスク許容度（Lv{baseLevel}{optimal.name ? ` ${optimal.name}` : ''}）に対するモデル配分
               </p>
-              <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-2.5 text-sm items-center">
-                <span></span>
-                <span className="text-xs font-medium text-gray-500 text-right">今の配分</span>
-                <span className="text-xs font-medium text-purple-600 text-right">最適配分</span>
+              {isAtOptimal ? (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg px-4 py-3">
+                  <p className="text-sm text-purple-700">
+                    現在ちょうど最適配分になっています。金額を調整して「分析する」を押すと、最適配分との差分が表示されます。
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-2.5 text-sm items-center">
+                  <span></span>
+                  <span className="text-xs font-medium text-gray-500 text-right">今の配分</span>
+                  <span className="text-xs font-medium text-purple-600 text-right">最適配分</span>
 
-                <span className="text-gray-500">リスクレベル</span>
-                <span className="font-medium text-gray-800 text-right">Lv{result.riskLevel}</span>
-                <span className="font-medium text-purple-700 text-right">Lv{baseLevel}</span>
+                  <span className="text-gray-500">リスクレベル</span>
+                  <span className="font-medium text-gray-800 text-right">Lv{result.riskLevel}</span>
+                  <span className="font-medium text-purple-700 text-right">Lv{baseLevel}</span>
 
-                <span className="text-gray-500">期待リターン</span>
-                <span className="font-medium text-gray-800 text-right">{result.expectedReturn}%</span>
-                <span className="font-medium text-purple-700 text-right">{optimal.expectedReturn}%</span>
+                  <span className="text-gray-500">期待リターン</span>
+                  <span className="font-medium text-gray-800 text-right">{result.expectedReturn}%</span>
+                  <span className="font-medium text-purple-700 text-right">{optimal.expectedReturn}%</span>
 
-                <span className="text-gray-500">ボラティリティ</span>
-                <span className={`font-medium text-right ${result.overLimit ? 'text-red-600' : 'text-gray-800'}`}>{result.volatility}%</span>
-                <span className="font-medium text-purple-700 text-right">{optimal.volatility}%</span>
+                  <span className="text-gray-500">ボラティリティ</span>
+                  <span className={`font-medium text-right ${result.overLimit ? 'text-red-600' : 'text-gray-800'}`}>{result.volatility}%</span>
+                  <span className="font-medium text-purple-700 text-right">{optimal.volatility}%</span>
 
-                <span className="text-gray-500">シャープレシオ</span>
-                <span className="font-medium text-gray-800 text-right">{result.sharpeRatio}</span>
-                <span className="font-medium text-purple-700 text-right">{optimal.sharpeRatio}</span>
-              </div>
+                  <span className="text-gray-500">シャープレシオ</span>
+                  <span className="font-medium text-gray-800 text-right">{result.sharpeRatio}</span>
+                  <span className="font-medium text-purple-700 text-right">{optimal.sharpeRatio}</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -518,8 +534,8 @@ export default function PortfolioCustomizePage() {
                       {scenarioRow('楽観シナリオ（上位75%）', mcResult.percentile75, 'bg-green-50', 'text-green-700', 'text-green-800')}
                     </div>
 
-                    {/* 最適配分で運用した場合との比較 */}
-                    {mcOptimalResult && (
+                    {/* 最適配分で運用した場合との比較（今の配分＝最適のときは同値になるため非表示） */}
+                    {mcOptimalResult && !isAtOptimal && (
                       <div className="pt-3 border-t border-gray-100">
                         <p className="text-xs font-bold text-gray-600 mb-2">
                           最適配分（Lv{baseLevel}）で同じ条件で運用した場合との比較
