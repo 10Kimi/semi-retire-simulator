@@ -314,6 +314,9 @@ export default function PortfolioCustomizePage() {
     ? (adjustedOptimal ? '調整後' : '保有中のPF')
     : '今の配分';
 
+  // 保有PFがあり、かつ調整後のPFがあるときは「保有中／調整後／最適配分」の3列で並べて比較する。
+  const showThreeCol = !!heldInfo && adjustedOptimal && inputMode === 'amount';
+
   return (
     <Layout>
       <main className="max-w-lg mx-auto px-4 py-6 md:py-10">
@@ -555,7 +558,34 @@ export default function PortfolioCustomizePage() {
               <p className="text-xs text-gray-400 mb-3">
                 「最適配分」＝ あなたのリスク許容度（Lv{baseLevel}{optimal.name ? ` ${optimal.name}` : ''}）に対するモデル配分
               </p>
-              {isAtOptimal ? (
+              {showThreeCol && heldInfo ? (
+                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 gap-y-2.5 text-sm items-center">
+                  <span></span>
+                  <span className="text-xs font-medium text-gray-500 text-right">保有中</span>
+                  <span className="text-xs font-medium text-blue-600 text-right">調整後</span>
+                  <span className="text-xs font-medium text-purple-600 text-right">最適配分</span>
+
+                  <span className="text-gray-500">リスクレベル</span>
+                  <span className="font-medium text-gray-800 text-right">Lv{heldInfo.result.riskLevel}</span>
+                  <span className="font-medium text-blue-700 text-right">Lv{result.riskLevel}</span>
+                  <span className="font-medium text-purple-700 text-right">Lv{baseLevel}</span>
+
+                  <span className="text-gray-500">期待リターン</span>
+                  <span className="font-medium text-gray-800 text-right">{heldInfo.result.expectedReturn}%</span>
+                  <span className="font-medium text-blue-700 text-right">{result.expectedReturn}%</span>
+                  <span className="font-medium text-purple-700 text-right">{optimal.expectedReturn}%</span>
+
+                  <span className="text-gray-500">ボラティリティ</span>
+                  <span className={`font-medium text-right ${heldInfo.result.overLimit ? 'text-red-600' : 'text-gray-800'}`}>{heldInfo.result.volatility}%</span>
+                  <span className={`font-medium text-right ${result.overLimit ? 'text-red-600' : 'text-blue-700'}`}>{result.volatility}%</span>
+                  <span className="font-medium text-purple-700 text-right">{optimal.volatility}%</span>
+
+                  <span className="text-gray-500">シャープレシオ</span>
+                  <span className="font-medium text-gray-800 text-right">{heldInfo.result.sharpeRatio}</span>
+                  <span className="font-medium text-blue-700 text-right">{result.sharpeRatio}</span>
+                  <span className="font-medium text-purple-700 text-right">{optimal.sharpeRatio}</span>
+                </div>
+              ) : isAtOptimal ? (
                 <div className="bg-purple-50 border border-purple-200 rounded-lg px-4 py-3">
                   <p className="text-sm text-purple-700">
                     現在ちょうど最適配分になっています。金額を調整して「分析する」を押すと、最適配分との差分が表示されます。
