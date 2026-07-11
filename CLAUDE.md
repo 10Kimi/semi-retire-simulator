@@ -6,7 +6,7 @@
 「セミリタイア資産運用パッケージ」の中核プロダクト。
 
 - 本番URL: https://fire.largogk.jp
-- パッケージ全体設計書: ../../Docs/設計書_v7_17_main.md（最新版。過去版は ../../Docs/archive/）
+- パッケージ全体設計書: ../../Docs/設計書_v7_18_main.md（最新版。過去版は ../../Docs/archive/）
 - パッケージ全体の判断文脈: ../../CLAUDE.md
 
 ## ターゲット像
@@ -119,7 +119,12 @@
 - **/portfolio 金額モードの最適配分 + 比較左列の出し分け**（2026-07-10〜11、設計書 v7.17、`PortfolioCustomizePage.tsx`、4 commit）:
   - **金額モードで「最適配分にする／戻す」を機能**（`f8fc558`）: 従来は金額入力時にボタンを押すと `amounts` が消え %モードへ飛ぶだけだった。金額モードでは**保有総額を維持したまま最適配分（`MODEL_ALLOCATIONS[baseLevel]`）の比率で各アセット金額に再割り当て**（丸め誤差は最大配分アセットで吸収し合計を厳密一致）。ボタン文言は `amountOptimalApplied` で未適用「最適配分にする」／適用後「最適配分に戻す」を出し分け
   - **tsc -b 型エラー修正**（`0a0edd1`）: `reduce` の string キーで `Record<AssetClassKey,number>` を添字アクセスし TS7053 で Vercel ビルド失敗。`newKeys` を `AssetClassKey[]` 型に。**教訓＝このリポは `tsc -b`（project references、`tsc --noEmit` より厳格）を使うので確認は `npm run build` で行う**
-  - **比較左列を保有PF/調整後で出し分け**（`f9dd2f8`→`0b8ec1d`）: `heldWeights` スナップショットを保持し、「最適配分にする」で入力欄を最適に置換しても比較の左列は保有PFのまま（`保有中のPF vs 最適配分`）。金額を編集するとスナップショット破棄→以降は `調整後 vs 最適配分`。左列ラベルを `保有中のPF／調整後／今の配分` で動的表示（`currentLabel`、MC比較・差分注記も同期）。分析ロジックを `computeResult()` に共通化。**構造上の注意＝「最適配分にする」後は入力欄=最適・比較左列/警告バナー=保有PF というズレが出る**（要件を満たすと不可避、ラベルで緩和）
+  - **比較左列を保有PF/調整後で出し分け**（`f9dd2f8`→`0b8ec1d`）: `heldWeights` スナップショットを保持し、「最適配分にする」で入力欄を最適に置換しても比較の左列は保有PFのまま。金額を編集するとスナップショット破棄→以降は `調整後 vs 最適配分`（※この weights スナップショット方式は下記 v7.18 で `heldAmounts`＋カードに作り直し）
+- **/portfolio 保有PFデータ化＋明示カード＋3列比較＋DB化**（2026-07-11〜12、設計書 v7.18、`PortfolioCustomizePage.tsx`、5 commit）:
+  - **保有PFを編集可能データ化＋明示カード＋すり替わりバグ修正**（`7d5d048`）: 状態モデルを `heldAmounts`（保有PF金額スナップショット）＋`editingHeld`＋`adjustedOptimal` に作り直し。折りたたみ式📌保有中のPFカード（内訳・合計・4指標・「✏️修正」で入力欄へ復元）を新設。**バグ根治**＝「最適配分に戻す」2度押しで保有PFが最適にすり替わる不具合を、入力欄が保有PFを表す `editingHeld` のときだけ撮り直す方式で解消。以降は入力欄で書き換え→分析で保有PF更新（＝将来のデータ修正）。カード指標追加`9ebefc0`／開閉式`1802273`
+  - **比較表を3列に**（`42900c8`）: 調整後があるとき（保有PFあり＋調整済み）は「保有中／調整後／最適配分」の3列で並列表示。未調整時は2列
+  - **ボラ計算のDB化**（`b11adbc`）: 従来 /portfolio だけ古いフォールバック定数（米国株ボラ20%等）を直接使い 2026-06 補正済みDB値（米国株16.58%等）とズレて vol・Lv が過大だった（同PFで 9.2%/Lv4→DB値なら約8.1%/Lv3）。`/pf` と同じ `loadAssetClassParams()` でDB取得し `calcVolatility`/`calcExpectedReturn`/`computeResult`/`optimal`/`heldInfo` に `MarketParams` を渡す方式に。取得失敗時のみフォールバック。保有中・調整後・最適の全列がDB基準になり `/pf` と一致
+  - **残TODO**: `MODEL_META`（types.ts）は /risk・/rb で静的表示され毎月cronのDB更新と乖離しうる（別途 optimize_portfolios.py 再実行で再同期）。`AllocationSlider.tsx` はフォールバック直だが未使用デッドコード
 - 次の優先: Phase 3.5（ステップメール + リスク乖離の損失体感UI改善）
 
 ### SEO基盤 Phase 1 の設計方針（サマリ）
