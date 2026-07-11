@@ -489,11 +489,23 @@ export default function PortfolioCustomizePage() {
                   </div>
                 ))}
               </div>
-              <div className="flex justify-between text-sm mt-2 pt-2 border-t border-gray-100">
-                <span className="text-gray-600">合計</span>
-                <span className="font-bold text-gray-800">
-                  {heldInfo.total.toLocaleString()}万円 ・ Lv{heldInfo.result.riskLevel}（ボラ{heldInfo.result.volatility}%）
-                </span>
+              <div className="mt-2 pt-2 border-t border-gray-100 space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">合計</span>
+                  <span className="font-bold text-gray-800">{heldInfo.total.toLocaleString()}万円 ・ Lv{heldInfo.result.riskLevel}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-500">期待リターン</span>
+                  <span className="text-gray-800">{heldInfo.result.expectedReturn}%</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-500">ボラティリティ</span>
+                  <span className="text-gray-800">{heldInfo.result.volatility}%</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-500">シャープレシオ</span>
+                  <span className="text-gray-800">{heldInfo.result.sharpeRatio}</span>
+                </div>
               </div>
               <p className="text-xs text-gray-400 mt-2">
                 「最適配分にする」で上の入力欄は最適配分に置き換わりますが、これがあなたの保有PFです。書き換えるには「✏️ 修正」を押してください。
