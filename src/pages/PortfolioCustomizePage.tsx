@@ -82,13 +82,13 @@ export default function PortfolioCustomizePage() {
   // 入力モード（% or 金額）と金額state（万円）
   const [inputMode, setInputMode] = useState<'percent' | 'amount'>('percent');
   const [amounts, setAmounts] = useState<Record<string, number>>({});
-  // 金額モードで一度でも最適配分を当てたか（ボタン文言「する／戻す」の出し分け用）
-  const [amountOptimalApplied, setAmountOptimalApplied] = useState(false);
-  // 「最適配分にする」で入力欄を最適に置き換えても、比較の左列は保有PFのまま残すためのスナップショット。
-  // ユーザーが金額を調整（編集）すると null に戻り、以降は調整後の入力値で比較する。
-  const [heldWeights, setHeldWeights] = useState<Record<string, number> | null>(null);
-  // 現在の result が保有PFスナップショット由来か（左列ラベル「保有中のPF／調整後」の出し分け用）
-  const [resultFromHeld, setResultFromHeld] = useState(false);
+  // 保有中のPF（＝ユーザーの実際の持ち分）の金額スナップショット。編集可能なデータとして保持し、
+  // 「最適配分にする」で入力欄が最適に置き換わっても保持され、カードに常時表示・「修正」で入力欄に復元できる。
+  const [heldAmounts, setHeldAmounts] = useState<Record<string, number> | null>(null);
+  // 入力欄が「保有PFの入力/修正」を表しているか（true）／「最適配分の試行」を表しているか（false）。
+  const [editingHeld, setEditingHeld] = useState(true);
+  // 最適配分を入力欄に読み込んだ後にユーザーが金額をいじったか（左列ラベル「調整後」判定用）。
+  const [adjustedOptimal, setAdjustedOptimal] = useState(false);
 
   // モンテカルロ
   const [mcInitialAsset, setMcInitialAsset] = useState('');
@@ -111,6 +111,16 @@ export default function PortfolioCustomizePage() {
     return { name: MODEL_META[baseLevel]?.name ?? '', expectedReturn, volatility, sharpeRatio };
   }, [baseLevel]);
 
+  // 保有中のPF の集計（金額→合計・weights・分析結果）。カード表示と比較の基準に使う。
+  const heldInfo = useMemo(() => {
+    if (!heldAmounts) return null;
+    const total = ASSET_CLASSES.reduce((s, ac) => s + (heldAmounts[ac.key] ?? 0), 0);
+    if (total <= 0) return null;
+    const weights: Record<string, number> = {};
+    ASSET_CLASSES.forEach(ac => { weights[ac.key] = (heldAmounts[ac.key] ?? 0) / total; });
+    return { total, weights, result: computeResult(weights, baseLevel) };
+  }, [heldAmounts, baseLevel]);
+
   useEffect(() => {
     const base = MODEL_ALLOCATIONS[baseLevel] ?? MODEL_ALLOCATIONS[4];
     const init: Record<string, number> = {};
@@ -121,8 +131,9 @@ export default function PortfolioCustomizePage() {
     });
     setAlloc(init);
     setActiveKeys(keys);
-    setHeldWeights(null);
-    setResultFromHeld(false);
+    setHeldAmounts(null);
+    setEditingHeld(true);
+    setAdjustedOptimal(false);
     setResult(null);
   }, [baseLevel]);
 
@@ -133,53 +144,61 @@ export default function PortfolioCustomizePage() {
 
   const handleSlider = useCallback((key: string, newVal: number) => {
     setAlloc(prev => ({ ...prev, [key]: newVal }));
-    setHeldWeights(null); // 調整したので保有PFスナップショットは破棄（以降は調整後で比較）
     setResult(null); // 変更時に結果をクリア
   }, []);
 
   const handleAmount = useCallback((key: string, newVal: number) => {
     setAmounts(prev => ({ ...prev, [key]: newVal }));
-    setHeldWeights(null);
+    // 最適配分の試行中（!editingHeld）に編集したら「調整後」へ。保有PF編集中は保有PFの修正。
+    if (!editingHeld) setAdjustedOptimal(true);
     setResult(null);
-  }, []);
+  }, [editingHeld]);
 
   const addAsset = useCallback((key: string) => {
     setActiveKeys(prev => [...prev, key]);
     setAlloc(prev => ({ ...prev, [key]: 0 }));
     setAmounts(prev => ({ ...prev, [key]: 0 }));
-    setHeldWeights(null);
+    if (!editingHeld) setAdjustedOptimal(true);
     setResult(null);
-  }, []);
+  }, [editingHeld]);
 
   const removeAsset = useCallback((key: string) => {
     setActiveKeys(prev => prev.filter(k => k !== key));
     setAlloc(prev => ({ ...prev, [key]: 0 }));
     setAmounts(prev => ({ ...prev, [key]: 0 }));
-    setHeldWeights(null);
+    if (!editingHeld) setAdjustedOptimal(true);
     setResult(null);
-  }, []);
+  }, [editingHeld]);
 
   const handleAnalyze = useCallback(() => {
     const total = ASSET_CLASSES.reduce((s, ac) => s + (amounts[ac.key] ?? 0), 0);
     const weights: Record<string, number> = {};
-    let fromHeld = false;
-    if (inputMode === 'amount' && heldWeights) {
-      // 「最適配分にする」直後で未調整 → 保有PF（スナップショット）で比較する
-      Object.assign(weights, heldWeights);
-      fromHeld = true;
-      setMcInitialAsset(String(total)); // 入力欄の合計額（保有総額を維持）をモンテカルロ初期資産へ
-      setMcResult(null);
-    } else if (inputMode === 'amount' && total > 0) {
-      ASSET_CLASSES.forEach(ac => { weights[ac.key] = (amounts[ac.key] ?? 0) / total; });
-      setMcInitialAsset(String(total)); // 現PFの合計額をモンテカルロ初期資産へ
-      setMcResult(null);
+    if (inputMode === 'amount') {
+      if (editingHeld && total > 0) {
+        // 入力欄＝保有PF → 保有PFとして確定/更新し、保有PF vs 最適 を比較（＝日常のデータ修正）
+        setHeldAmounts({ ...amounts });
+        ASSET_CLASSES.forEach(ac => { weights[ac.key] = (amounts[ac.key] ?? 0) / total; });
+        setMcInitialAsset(String(total));
+        setMcResult(null);
+      } else if (!editingHeld && !adjustedOptimal && heldInfo) {
+        // 最適配分にした直後（未調整）→ 保有PF（スナップショット）で比較
+        Object.assign(weights, heldInfo.weights);
+        setMcInitialAsset(String(heldInfo.total));
+        setMcResult(null);
+      } else if (total > 0) {
+        // 調整後の入力値で比較
+        ASSET_CLASSES.forEach(ac => { weights[ac.key] = (amounts[ac.key] ?? 0) / total; });
+        setMcInitialAsset(String(total));
+        setMcResult(null);
+      } else {
+        return;
+      }
     } else {
       ASSET_CLASSES.forEach(ac => { weights[ac.key] = (alloc[ac.key] ?? 0) / 100; });
     }
 
     setResult(computeResult(weights, baseLevel));
-    setResultFromHeld(fromHeld);
-  }, [alloc, amounts, inputMode, baseLevel, heldWeights]);
+  }, [alloc, amounts, inputMode, baseLevel, editingHeld, adjustedOptimal, heldInfo]);
 
   // 最適配分（リスクレベル別モデル配分）に戻す
   const handleReset = useCallback(() => {
@@ -189,33 +208,43 @@ export default function PortfolioCustomizePage() {
       if ((base[ac.key] ?? 0) > 0) newKeys.push(ac.key);
     });
 
-    // 金額モードで保有総額が入っている場合は、その合計額を維持したまま
-    // 最適配分（％）で金額を再割り当てする（モードは金額のまま）。
+    // 金額モードで保有総額が入っている場合は、その合計額を維持したまま最適配分（％）で金額を
+    // 再割り当てする（モードは金額のまま、入力欄は試行用の最適に置換）。
     const total = ASSET_CLASSES.reduce((s, ac) => s + (amounts[ac.key] ?? 0), 0);
     if (inputMode === 'amount' && total > 0) {
-      // 置き換え前の保有PFを weights スナップショットとして保持（比較の左列に使う）
-      const held: Record<string, number> = {};
-      ASSET_CLASSES.forEach(ac => { held[ac.key] = (amounts[ac.key] ?? 0) / total; });
+      // 入力欄が保有PFを表しているとき（editingHeld）だけ保有PFを確定/更新する。
+      // 「最適配分に戻す」の2度押し（!editingHeld）では撮り直さない＝保有PFすり替わりバグの根治。
+      const capturedHeld = editingHeld ? { ...amounts } : heldAmounts;
+      const ref = editingHeld
+        ? (() => {
+            const w: Record<string, number> = {};
+            ASSET_CLASSES.forEach(ac => { w[ac.key] = (amounts[ac.key] ?? 0) / total; });
+            return { total, weights: w };
+          })()
+        : heldInfo;
+      const heldTotal = ref ? ref.total : total;
 
       const newAmounts: Record<string, number> = {};
       ASSET_CLASSES.forEach(ac => {
-        newAmounts[ac.key] = Math.round((total * (base[ac.key] ?? 0)) / 100);
+        newAmounts[ac.key] = Math.round((heldTotal * (base[ac.key] ?? 0)) / 100);
       });
       // 丸め誤差を最大配分アセットで吸収し、合計を保有総額に厳密一致させる
       const rounded = ASSET_CLASSES.reduce((s, ac) => s + (newAmounts[ac.key] ?? 0), 0);
-      const diff = total - rounded;
+      const diff = heldTotal - rounded;
       if (diff !== 0 && newKeys.length > 0) {
         const maxKey = newKeys.reduce((a, b) => ((base[b] ?? 0) > (base[a] ?? 0) ? b : a));
         newAmounts[maxKey] = (newAmounts[maxKey] ?? 0) + diff;
       }
+      setHeldAmounts(capturedHeld);
       setAmounts(newAmounts);
       setActiveKeys(newKeys);
-      setAmountOptimalApplied(true); // 以降はボタン文言を「最適配分に戻す」へ
-      // 入力欄は最適だが、比較は「保有PF vs 最適」を即表示（調整するまで保持）
-      setHeldWeights(held);
-      setResult(computeResult(held, baseLevel));
-      setResultFromHeld(true);
-      setMcInitialAsset(String(total));
+      setEditingHeld(false);       // 入力欄は最適の試行に切替（ボタンは「最適配分に戻す」）
+      setAdjustedOptimal(false);
+      // 比較は「保有PF vs 最適」を即表示
+      if (ref) {
+        setResult(computeResult(ref.weights, baseLevel));
+        setMcInitialAsset(String(ref.total));
+      }
       setMcResult(null);
       return;
     }
@@ -229,11 +258,26 @@ export default function PortfolioCustomizePage() {
     setActiveKeys(newKeys);
     setAmounts({});
     setInputMode('percent');
-    setHeldWeights(null);
-    setResultFromHeld(false);
+    setHeldAmounts(null);
+    setEditingHeld(true);
+    setAdjustedOptimal(false);
     setResult(null);
     setMcResult(null);
-  }, [baseLevel, inputMode, amounts]);
+  }, [baseLevel, inputMode, amounts, editingHeld, heldAmounts, heldInfo]);
+
+  // カードの「修正」：保有PFを入力欄に復元して編集可能に戻す（＝将来のデータ修正）
+  const handleEditHeld = useCallback(() => {
+    if (!heldAmounts) return;
+    const keys = ASSET_CLASSES.filter(ac => (heldAmounts[ac.key] ?? 0) > 0).map(ac => ac.key);
+    if (!keys.includes('cash')) keys.unshift('cash');
+    setAmounts({ ...heldAmounts });
+    setActiveKeys(keys);
+    setInputMode('amount');
+    setEditingHeld(true);
+    setAdjustedOptimal(false);
+    setResult(null);
+    setMcResult(null);
+  }, [heldAmounts]);
 
   const handleRunMonteCarlo = useCallback(() => {
     if (!result) return;
@@ -265,7 +309,7 @@ export default function PortfolioCustomizePage() {
 
   // 比較表の左列ラベル。金額モードでは保有PFか調整後かを出し分ける。
   const currentLabel = inputMode === 'amount'
-    ? ((resultFromHeld || !amountOptimalApplied) ? '保有中のPF' : '調整後')
+    ? (adjustedOptimal ? '調整後' : '保有中のPF')
     : '今の配分';
 
   return (
@@ -291,19 +335,33 @@ export default function PortfolioCustomizePage() {
                 onClick={handleReset}
                 className="text-xs px-3 py-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
               >
-                {inputMode === 'amount' && !amountOptimalApplied ? '最適配分にする' : '最適配分に戻す'}
+                {inputMode === 'amount' && editingHeld ? '最適配分にする' : '最適配分に戻す'}
               </button>
             </div>
             {/* % / 金額 トグル */}
             <div className="flex gap-1 mb-4 bg-gray-100 rounded-lg p-1 text-xs">
               <button
-                onClick={() => { setInputMode('percent'); setHeldWeights(null); setResultFromHeld(false); setResult(null); }}
+                onClick={() => { setInputMode('percent'); setResult(null); }}
                 className={`flex-1 py-1.5 rounded-md font-medium transition-colors ${inputMode === 'percent' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}
               >
                 ％で調整（モデル配分から）
               </button>
               <button
-                onClick={() => { setInputMode('amount'); setAmountOptimalApplied(false); setHeldWeights(null); setResultFromHeld(false); setResult(null); setActiveKeys(prev => (prev.includes('cash') ? prev : ['cash', ...prev])); }}
+                onClick={() => {
+                  setInputMode('amount');
+                  setEditingHeld(true);
+                  setAdjustedOptimal(false);
+                  setResult(null);
+                  if (heldAmounts) {
+                    // 金額モード＝自分の保有PF。既存の保有PFがあれば入力欄に復元する
+                    const keys = ASSET_CLASSES.filter(ac => (heldAmounts[ac.key] ?? 0) > 0).map(ac => ac.key);
+                    if (!keys.includes('cash')) keys.unshift('cash');
+                    setAmounts({ ...heldAmounts });
+                    setActiveKeys(keys);
+                  } else {
+                    setActiveKeys(prev => (prev.includes('cash') ? prev : ['cash', ...prev]));
+                  }
+                }}
                 className={`flex-1 py-1.5 rounded-md font-medium transition-colors ${inputMode === 'amount' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}
               >
                 金額で入力（今の保有額）
@@ -410,6 +468,38 @@ export default function PortfolioCustomizePage() {
               </button>
             </div>
           </div>
+
+          {/* 保有中のPF カード（最適配分にして入力欄が最適に化けている間、保有PFを常時明示） */}
+          {heldInfo && !editingHeld && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-bold text-gray-800">📌 保有中のPF（比較の基準）</h3>
+                <button
+                  onClick={handleEditHeld}
+                  className="text-xs px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  ✏️ 修正
+                </button>
+              </div>
+              <div className="space-y-1">
+                {ASSET_CLASSES.filter(ac => (heldAmounts?.[ac.key] ?? 0) > 0).map(ac => (
+                  <div key={ac.key} className="flex justify-between text-xs">
+                    <span className="text-gray-500">{ac.label}</span>
+                    <span className="text-gray-800">{(heldAmounts?.[ac.key] ?? 0).toLocaleString()}万円</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between text-sm mt-2 pt-2 border-t border-gray-100">
+                <span className="text-gray-600">合計</span>
+                <span className="font-bold text-gray-800">
+                  {heldInfo.total.toLocaleString()}万円 ・ Lv{heldInfo.result.riskLevel}（ボラ{heldInfo.result.volatility}%）
+                </span>
+              </div>
+              <p className="text-xs text-gray-400 mt-2">
+                「最適配分にする」で上の入力欄は最適配分に置き換わりますが、これがあなたの保有PFです。書き換えるには「✏️ 修正」を押してください。
+              </p>
+            </div>
+          )}
 
           {/* 分析結果（ボタン押下後のみ表示） */}
           {result && (
