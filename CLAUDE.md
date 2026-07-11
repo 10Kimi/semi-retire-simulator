@@ -6,7 +6,7 @@
 「セミリタイア資産運用パッケージ」の中核プロダクト。
 
 - 本番URL: https://fire.largogk.jp
-- パッケージ全体設計書: ../../Docs/設計書_v7_16_main.md（最新版。過去版は ../../Docs/archive/）
+- パッケージ全体設計書: ../../Docs/設計書_v7_17_main.md（最新版。過去版は ../../Docs/archive/）
 - パッケージ全体の判断文脈: ../../CLAUDE.md
 
 ## ターゲット像
@@ -116,6 +116,10 @@
   - **金額入力**（`1d77a06`）: アセット配分を %／金額で切替可能に（金額→自動%換算、合計額をモンテカルロ初期資産へ反映）。金額モードは 'cash' を activeKeys に含め、余剰現金の入力を促す
   - **/tools 招待コード導線**（`11701fa`, `ToolsHubPage.tsx`）: 有料ロックカードのモーダルから招待コード入力（ログイン済→`InviteCodeModal`、未ログイン→トップ誘導）、成功で is_premium refresh し全ツール解放
   - **現PF vs 最適配分の比較 + MC比較**（`3a2dbd0`, `PortfolioCustomizePage.tsx`）: ボタン「初期配分に戻す」→「**最適配分に戻す**」に改称。分析結果に「今の配分／最適配分（`MODEL_ALLOCATIONS[baseLevel]`）」の指標比較（期待リターン・ボラ・シャープ）を並記。最適の指標は `MODEL_META` の生値ではなく現PFと同じ `calcExpectedReturn`/`calcVolatility` で算出し同一基準に。モンテカルロも最適配分で同条件実行し 3シナリオ＋中央値差を並記（`mcOptimalResult` state 追加、表示は `mcResult && mcOptimalResult` でゲート）。未使用化した `getRiskLevelDef` import 削除。tsc 0エラー・vite build 成功
+- **/portfolio 金額モードの最適配分 + 比較左列の出し分け**（2026-07-10〜11、設計書 v7.17、`PortfolioCustomizePage.tsx`、4 commit）:
+  - **金額モードで「最適配分にする／戻す」を機能**（`f8fc558`）: 従来は金額入力時にボタンを押すと `amounts` が消え %モードへ飛ぶだけだった。金額モードでは**保有総額を維持したまま最適配分（`MODEL_ALLOCATIONS[baseLevel]`）の比率で各アセット金額に再割り当て**（丸め誤差は最大配分アセットで吸収し合計を厳密一致）。ボタン文言は `amountOptimalApplied` で未適用「最適配分にする」／適用後「最適配分に戻す」を出し分け
+  - **tsc -b 型エラー修正**（`0a0edd1`）: `reduce` の string キーで `Record<AssetClassKey,number>` を添字アクセスし TS7053 で Vercel ビルド失敗。`newKeys` を `AssetClassKey[]` 型に。**教訓＝このリポは `tsc -b`（project references、`tsc --noEmit` より厳格）を使うので確認は `npm run build` で行う**
+  - **比較左列を保有PF/調整後で出し分け**（`f9dd2f8`→`0b8ec1d`）: `heldWeights` スナップショットを保持し、「最適配分にする」で入力欄を最適に置換しても比較の左列は保有PFのまま（`保有中のPF vs 最適配分`）。金額を編集するとスナップショット破棄→以降は `調整後 vs 最適配分`。左列ラベルを `保有中のPF／調整後／今の配分` で動的表示（`currentLabel`、MC比較・差分注記も同期）。分析ロジックを `computeResult()` に共通化。**構造上の注意＝「最適配分にする」後は入力欄=最適・比較左列/警告バナー=保有PF というズレが出る**（要件を満たすと不可避、ラベルで緩和）
 - 次の優先: Phase 3.5（ステップメール + リスク乖離の損失体感UI改善）
 
 ### SEO基盤 Phase 1 の設計方針（サマリ）
