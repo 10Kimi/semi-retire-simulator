@@ -8,6 +8,7 @@ import type { AssetClassKey } from '../lib/rb/types';
 import { FALLBACK_ASSET_RETURNS, FALLBACK_ASSET_RISKS, FALLBACK_CORRELATION_MATRIX } from '../logic/portfolioDiagnosis';
 import { classifyRiskLevel7 } from '../logic/pfSimple';
 import { loadLatestRisk } from '../lib/riskDb';
+import { loadAssetClassParams, buildMarketDataFromParams } from '../lib/assetClassParamsDb';
 import { runMonteCarlo } from '../logic/monteCarlo';
 import type { MonteCarloResult } from '../logic/monteCarlo';
 
@@ -17,26 +18,40 @@ const VOL_UPPER: Record<number, number> = {
   1: 3, 2: 6, 3: 9, 4: 12, 5: 15, 6: 20, 7: 100,
 };
 
-function calcVolatility(weights: Record<string, number>): number {
+// 資産パラメータ（ボラ・期待リターン・相関）。/pf と同じく asset_class_params（DB）を優先し、
+// 取得失敗時のみフォールバック定数に落ちる。%表記の値をそのまま保持する。
+interface MarketParams {
+  risks: Record<string, number>;
+  returns: Record<string, number>;
+  corr: Record<string, Record<string, number>>;
+}
+
+const FALLBACK_MARKET: MarketParams = {
+  risks: FALLBACK_ASSET_RISKS,
+  returns: FALLBACK_ASSET_RETURNS,
+  corr: FALLBACK_CORRELATION_MATRIX,
+};
+
+function calcVolatility(weights: Record<string, number>, market: MarketParams): number {
   const keys = ASSET_CLASSES.map(ac => ac.key);
   let variance = 0;
   for (const ki of keys) {
     for (const kj of keys) {
       const wi = weights[ki] ?? 0;
       const wj = weights[kj] ?? 0;
-      const si = (FALLBACK_ASSET_RISKS[ki] ?? 0) / 100;
-      const sj = (FALLBACK_ASSET_RISKS[kj] ?? 0) / 100;
-      const rho = FALLBACK_CORRELATION_MATRIX[ki]?.[kj] ?? (ki === kj ? 1 : 0);
+      const si = (market.risks[ki] ?? 0) / 100;
+      const sj = (market.risks[kj] ?? 0) / 100;
+      const rho = market.corr[ki]?.[kj] ?? (ki === kj ? 1 : 0);
       variance += wi * wj * si * sj * rho;
     }
   }
   return Math.round(Math.sqrt(Math.max(variance, 0)) * 100 * 10) / 10;
 }
 
-function calcExpectedReturn(weights: Record<string, number>): number {
+function calcExpectedReturn(weights: Record<string, number>, market: MarketParams): number {
   let ret = 0;
   for (const ac of ASSET_CLASSES) {
-    ret += (weights[ac.key] ?? 0) * (FALLBACK_ASSET_RETURNS[ac.key] ?? 0);
+    ret += (weights[ac.key] ?? 0) * (market.returns[ac.key] ?? 0);
   }
   return Math.round(ret * 10) / 10;
 }
@@ -50,9 +65,9 @@ interface AnalysisResult {
 }
 
 // weights（合計1）から分析結果を算出する
-function computeResult(weights: Record<string, number>, baseLevel: number): AnalysisResult {
-  const volatility = calcVolatility(weights);
-  const expectedReturn = calcExpectedReturn(weights);
+function computeResult(weights: Record<string, number>, baseLevel: number, market: MarketParams): AnalysisResult {
+  const volatility = calcVolatility(weights, market);
+  const expectedReturn = calcExpectedReturn(weights, market);
   const riskLevel = classifyRiskLevel7(volatility);
   const sharpeRatio = volatility > 0
     ? Math.round((expectedReturn - RISK_FREE_RATE) / volatility * 100) / 100
@@ -64,6 +79,8 @@ function computeResult(weights: Record<string, number>, baseLevel: number): Anal
 export default function PortfolioCustomizePage() {
   const { user } = useAuth();
   const [userLevel, setUserLevel] = useState<number | null>(null);
+  // 資産パラメータ（DB: asset_class_params）。/pf と同じ値でボラ等を算出するため取得する。
+  const [marketData, setMarketData] = useState<MarketParams | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -72,6 +89,17 @@ export default function PortfolioCustomizePage() {
     });
   }, [user]);
 
+  // マウント時に asset_class_params を読み込む（取得失敗時はフォールバック定数のまま）
+  useEffect(() => {
+    loadAssetClassParams().then(params => {
+      if (params && params.length > 0) {
+        const md = buildMarketDataFromParams(params);
+        setMarketData({ risks: md.assetRisks, returns: md.assetReturns, corr: md.correlationMatrix });
+      }
+    });
+  }, []);
+
+  const market = marketData ?? FALLBACK_MARKET;
   const baseLevel = userLevel ?? 4;
 
   // 配分state（各スライダーは独立）
@@ -105,13 +133,13 @@ export default function PortfolioCustomizePage() {
     const base = MODEL_ALLOCATIONS[baseLevel] ?? MODEL_ALLOCATIONS[4];
     const w: Record<string, number> = {};
     ASSET_CLASSES.forEach(ac => { w[ac.key] = (base[ac.key] ?? 0) / 100; });
-    const expectedReturn = calcExpectedReturn(w);
-    const volatility = calcVolatility(w);
+    const expectedReturn = calcExpectedReturn(w, market);
+    const volatility = calcVolatility(w, market);
     const sharpeRatio = volatility > 0
       ? Math.round((expectedReturn - RISK_FREE_RATE) / volatility * 100) / 100
       : 0;
     return { name: MODEL_META[baseLevel]?.name ?? '', expectedReturn, volatility, sharpeRatio };
-  }, [baseLevel]);
+  }, [baseLevel, market]);
 
   // 保有中のPF の集計（金額→合計・weights・分析結果）。カード表示と比較の基準に使う。
   const heldInfo = useMemo(() => {
@@ -120,8 +148,8 @@ export default function PortfolioCustomizePage() {
     if (total <= 0) return null;
     const weights: Record<string, number> = {};
     ASSET_CLASSES.forEach(ac => { weights[ac.key] = (heldAmounts[ac.key] ?? 0) / total; });
-    return { total, weights, result: computeResult(weights, baseLevel) };
-  }, [heldAmounts, baseLevel]);
+    return { total, weights, result: computeResult(weights, baseLevel, market) };
+  }, [heldAmounts, baseLevel, market]);
 
   useEffect(() => {
     const base = MODEL_ALLOCATIONS[baseLevel] ?? MODEL_ALLOCATIONS[4];
@@ -199,8 +227,8 @@ export default function PortfolioCustomizePage() {
       ASSET_CLASSES.forEach(ac => { weights[ac.key] = (alloc[ac.key] ?? 0) / 100; });
     }
 
-    setResult(computeResult(weights, baseLevel));
-  }, [alloc, amounts, inputMode, baseLevel, editingHeld, adjustedOptimal, heldInfo]);
+    setResult(computeResult(weights, baseLevel, market));
+  }, [alloc, amounts, inputMode, baseLevel, editingHeld, adjustedOptimal, heldInfo, market]);
 
   // 最適配分（リスクレベル別モデル配分）に戻す
   const handleReset = useCallback(() => {
@@ -244,7 +272,7 @@ export default function PortfolioCustomizePage() {
       setAdjustedOptimal(false);
       // 比較は「保有PF vs 最適」を即表示
       if (ref) {
-        setResult(computeResult(ref.weights, baseLevel));
+        setResult(computeResult(ref.weights, baseLevel, market));
         setMcInitialAsset(String(ref.total));
       }
       setMcResult(null);
@@ -265,7 +293,7 @@ export default function PortfolioCustomizePage() {
     setAdjustedOptimal(false);
     setResult(null);
     setMcResult(null);
-  }, [baseLevel, inputMode, amounts, editingHeld, heldAmounts, heldInfo]);
+  }, [baseLevel, inputMode, amounts, editingHeld, heldAmounts, heldInfo, market]);
 
   // カードの「修正」：保有PFを入力欄に復元して編集可能に戻す（＝将来のデータ修正）
   const handleEditHeld = useCallback(() => {
