@@ -1,7 +1,11 @@
+import { useState } from 'react';
 import type { RiskResult } from '../../types/risk';
 import { RISK_LEVEL_DEFS, getRiskLevelDef } from '../../logic/riskScoring';
 import { MODEL_ALLOCATIONS, MODEL_META, ASSET_CLASSES } from '../../lib/rb/types';
+import type { TargetAllocation } from '../../lib/rb/types';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import { saveTargetAllocation } from '../../lib/rb/db';
 import AllocationDisclaimer from '../AllocationDisclaimer';
 
 interface Props {
@@ -26,6 +30,19 @@ function LevelBar({ level, label }: { level: number; label: string }) {
 
 export default function RiskResultDisplay({ result, onRetry }: Props) {
   const { capacityScore, toleranceScore, finalLevel, gapMessage, levelDef } = result;
+  const { user } = useAuth();
+  const [adopt, setAdopt] = useState<'idle' | 'saving' | 'done'>('idle');
+
+  const handleAdopt = async () => {
+    if (!user || adopt === 'saving') return;
+    setAdopt('saving');
+    const target: TargetAllocation = {};
+    ASSET_CLASSES.forEach(ac => {
+      target[ac.key] = MODEL_ALLOCATIONS[finalLevel]?.[ac.key] ?? 0;
+    });
+    await saveTargetAllocation(user.id, target);
+    setAdopt('done');
+  };
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -116,14 +133,43 @@ export default function RiskResultDisplay({ result, onRetry }: Props) {
         )}
       </div>
 
-      {/* 配分カスタマイズへの導線 */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-        <Link
-          to="/portfolio"
-          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-        >
-          配分をカスタマイズする →
-        </Link>
+      {/* このPFを採用する（目標配分に設定） */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 text-center space-y-3">
+        {adopt === 'done' ? (
+          <>
+            <p className="text-sm font-medium text-emerald-700">
+              ✓ 採用しました。あなたの目標配分に設定されました
+            </p>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              次は、今の保有をこの配分に寄せる「リバランス」です。口座（NISA・iDeCo・特定など）ごとに、どの資産を売買するかを整理していきます。
+            </p>
+            <Link
+              to="/portfolio"
+              className="inline-block text-sm text-blue-600 hover:text-blue-800 font-medium"
+            >
+              配分をカスタマイズする →
+            </Link>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={handleAdopt}
+              disabled={adopt === 'saving' || !user}
+              className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {adopt === 'saving' ? '保存中...' : 'このPFを採用する'}
+            </button>
+            <p className="text-xs text-gray-500">
+              このLv{finalLevel}のモデル配分を、あなたの目標配分として保存します
+            </p>
+            <Link
+              to="/portfolio"
+              className="inline-block text-sm text-blue-600 hover:text-blue-800 font-medium"
+            >
+              その前に配分をカスタマイズする →
+            </Link>
+          </>
+        )}
       </div>
 
       <AllocationDisclaimer variant="light" />
