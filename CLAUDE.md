@@ -6,7 +6,7 @@
 「セミリタイア資産運用パッケージ」の中核プロダクト。
 
 - 本番URL: https://fire.largogk.jp
-- パッケージ全体設計書: ../../Docs/設計書_v7_18_main.md（最新版。過去版は ../../Docs/archive/）
+- パッケージ全体設計書: ../../Docs/設計書_v7_19_main.md（最新版。過去版は ../../Docs/archive/）
 - パッケージ全体の判断文脈: ../../CLAUDE.md
 
 ## ターゲット像
@@ -125,6 +125,10 @@
   - **比較表を3列に**（`42900c8`）: 調整後があるとき（保有PFあり＋調整済み）は「保有中／調整後／最適配分」の3列で並列表示。未調整時は2列
   - **ボラ計算のDB化**（`b11adbc`）: 従来 /portfolio だけ古いフォールバック定数（米国株ボラ20%等）を直接使い 2026-06 補正済みDB値（米国株16.58%等）とズレて vol・Lv が過大だった（同PFで 9.2%/Lv4→DB値なら約8.1%/Lv3）。`/pf` と同じ `loadAssetClassParams()` でDB取得し `calcVolatility`/`calcExpectedReturn`/`computeResult`/`optimal`/`heldInfo` に `MarketParams` を渡す方式に。取得失敗時のみフォールバック。保有中・調整後・最適の全列がDB基準になり `/pf` と一致
   - **残TODO**: `MODEL_META`（types.ts）は /risk・/rb で静的表示され毎月cronのDB更新と乖離しうる（別途 optimize_portfolios.py 再実行で再同期）。`AllocationSlider.tsx` はフォールバック直だが未使用デッドコード
+- **/risk「このPFを採用する」ボタン ＋ 採用PF＝全ツールのアンカー確定**（2026-07-14、設計書 v7.19、semi-retire-app 1 commit `98534b5`・push 済み）:
+  - **採用ボタン**（`RiskResultDisplay.tsx` のみ、+54/-8）: /risk 診断結果のモデル配分カード直下に「このPFを採用する」を新設。タップで `MODEL_ALLOCATIONS[finalLevel]` を `saveTargetAllocation` で `user_rb_settings`（＝/rb が `fetchTargetAllocation` で自動読み込みする目標配分）に保存。採用後は「✓ 採用しました。あなたの目標配分に設定されました」＋次の一歩（口座別リバランス）のテキスト案内のみ（**A案・最小**、/rb への hard CTA は「順番が飛ぶ」ため撤去）。`useAuth()` の user で保存し未ログイン時はボタン無効。`npm run build`（tsc -b + vite + prerender）通過。これで「診断→最適PF→ワンタップ採用（＝目標配分アンカー生成）」が一本化
+  - **ツールのライフサイクル確定**: 初回移行リバランス＝口座別ワークシート（講座配布物・Google Sheet）／普段の積立（毎月）＝/ma／定期リバランス（6ヶ月〜1年に一度）＝/rb
+  - **「採用PF＝全ツールのアンカー」構想＝採用（Yes）**。大半は実現済み（採用＝保存、/rb が参照）。唯一の新規候補「**/ma の積立リバランス**（採用PFを読んで積立を不足アセットに寄せる／ノーセル・リバランス）」の go/no-go は**実践4-2（維持リバランス）の脚本着手時にレビュー確定**（脚本と機能の一致が必須＝棚上げ防止トリガー）。/ma は現状 holdings も target も読まず指標＋積立設定のみのため、実装するなら現在保有の配管が要る
 - 次の優先: Phase 3.5（ステップメール + リスク乖離の損失体感UI改善）
 
 ### SEO基盤 Phase 1 の設計方針（サマリ）
