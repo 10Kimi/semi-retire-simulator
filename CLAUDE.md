@@ -61,7 +61,7 @@
   - **2026-07-27 修正**: `gold_silver_ratio` に `-0.5`（過去の壊れた値）が残り `/ma` が異常値を自動補完していた問題を再取得で解消（→68.4, 適正）。同時に openpyxl 未導入で PBR がずっと取得失敗していたのを requirements に追加して解消（→1.8）。`/ma` の「自動取得済み」ブロックに CAPE/PBR/金銀比率の数値＋20日超で⚠️警告を表示するUIも追加（`MonthlyAdvisorPage.tsx`）
   - **gotcha**: プロジェクトを `~/semi-retire-app` → 現パスへ移動した影響で `.venv/bin/pip` の shebang が旧パス参照で壊れている。pip 操作は `.venv/bin/python -m pip ...` で回避（python 本体は動作する）
 - `public/robots.txt`, `public/sitemap.xml` — SEO 基盤
-- `supabase/migrations/` — DBマイグレーション（22件。番号衝突あり、TODO参照）
+- `supabase/migrations/` — DBマイグレーション（〜035。番号衝突あり、TODO参照。適用は SQL Editor 直接。032〜035 は /ma 拡張）
 
 ## 制約
 - Excel V4.2の計算ロジックを正確に再現すること
@@ -131,6 +131,14 @@
   - **採用ボタン**（`RiskResultDisplay.tsx` のみ、+54/-8）: /risk 診断結果のモデル配分カード直下に「このPFを採用する」を新設。タップで `MODEL_ALLOCATIONS[finalLevel]` を `saveTargetAllocation` で `user_rb_settings`（＝/rb が `fetchTargetAllocation` で自動読み込みする目標配分）に保存。採用後は「✓ 採用しました。あなたの目標配分に設定されました」＋次の一歩（口座別リバランス）のテキスト案内のみ（**A案・最小**、/rb への hard CTA は「順番が飛ぶ」ため撤去）。`useAuth()` の user で保存し未ログイン時はボタン無効。`npm run build`（tsc -b + vite + prerender）通過。これで「診断→最適PF→ワンタップ採用（＝目標配分アンカー生成）」が一本化
   - **ツールのライフサイクル確定**: 初回移行リバランス＝口座別ワークシート（講座配布物・Google Sheet）／普段の積立（毎月）＝/ma／定期リバランス（6ヶ月〜1年に一度）＝/rb
   - **「採用PF＝全ツールのアンカー」構想＝採用（Yes）**。大半は実現済み（採用＝保存、/rb が参照）。唯一の新規候補「**/ma の積立リバランス**（採用PFを読んで積立を不足アセットに寄せる／ノーセル・リバランス）」の go/no-go は**実践4-2（維持リバランス）の脚本着手時にレビュー確定**（脚本と機能の一致が必須＝棚上げ防止トリガー）。/ma は現状 holdings も target も読まず指標＋積立設定のみのため、実装するなら現在保有の配管が要る
+- **/ma 月次投資アドバイザーの大改修**（2026-07-27、semi-retire-app 6 commit＋migration 032〜035・全 push 済み）: `src/lib/ma/*` と `MonthlyAdvisorPage.tsx` が中心。
+  - **指標取得の信頼性修正**（`2cf1424`）: `indicators.gold_silver_ratio` に過去の壊れた値 `-0.5` が残り /ma が異常補完していたのを再取得で解消（→68.4）。`openpyxl` 未導入で TOPIX PBR がずっと取得失敗していたのを `scripts/market/requirements.txt` に openpyxl/lxml 追加で解消（→1.8）。`fetch_indicators.py` は `--fetch-only` 必須（無いと `serve_and_open` の HTTP サーバーで永久ハング）を明記＋crontab 修正。「自動取得済み」ブロックに CAPE/PBR/金銀比率の数値＋20日超で⚠️表示を追加
+  - **積立スロット 5→7（特定口座 3→5）**（`a8ede6a`、migration 032）: slot6/7 追加。`SLOT_KEYS`/`slots` 配列/`_row`/`UpdatePatch` を7スロット対応
+  - **バリュエーション調整を特定口座オンリー・NISA枠は満額固定**（`e0f1aab`）: `logic.ts` の `NISA_SLOT_COUNT=2` で slot1/2(NISA)は係数・mode・待機投入の対象外＝満額。税制優遇枠は満額が確実に有利という原則（iDeCo/401k も同様）。UIに「満額」バッジ＋注記
+  - **日本株の指標を TOPIX / 日経225 で選択**（`11aacef`、migration 033）: `UserMaSettings.jp_index`。`PBR_THRESHOLDS[jpIndex]`（TOPIX 割高≥1.8 / 日経225 割高≥2.0）。TOPIX は自動取得、日経225 は日経公式が自動取得不可のため手入力
+  - **日経225 PBR の近似オートフィル**（`ce3c1e7`、migration 034）: 実測PBRを一度「基準」入力→以降は既取得の日経225株価で `estimateNikkeiPbr = 基準PBR × 現在株価/基準時株価`。`nikkei_pbr_anchor`/`nikkei_price_anchor` に保存、数ヶ月ごと再基準
+  - **待機資金は同月内は最後の実行で上書き**（`03fe4e6`、migration 035）: `reserve_month`/`reserve_month_base`（月初base）を記録し `resolveReserveBase()` で同月再実行時は base から計算＝二重加算しない。カレンダー月境界。翌月は現残高が新base
+  - **設計の芯**: 「税制優遇枠は満額／タイミング調整は課税口座で／自分が買ってる指数で割高感を測る」。講座コンテンツの骨子にもなる。テストは `logic.test.ts` 37件パス
 - 次の優先: Phase 3.5（ステップメール + リスク乖離の損失体感UI改善）
 
 ### SEO基盤 Phase 1 の設計方針（サマリ）
