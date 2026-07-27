@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import type { Indicators, UserMaSettings, MaSlot, MaAssetClass } from './types';
+import type { Indicators, UserMaSettings, MaSlot, MaAssetClass, JpIndex } from './types';
 import { DEFAULT_SETTINGS } from './types';
 
 export async function fetchLatestIndicators(): Promise<Indicators | null> {
@@ -21,6 +21,7 @@ interface UserMaSettingsRow {
   user_id: string;
   monthly_budget: number;
   reserve_balance: number;
+  jp_index: JpIndex;
   slot1_amount: number;
   slot1_fund_name: string;
   slot1_asset_class: MaAssetClass;
@@ -49,6 +50,7 @@ function rowToSettings(row: UserMaSettingsRow): UserMaSettings {
     user_id: row.user_id,
     monthly_budget: row.monthly_budget,
     reserve_balance: row.reserve_balance,
+    jp_index: row.jp_index ?? 'topix',
     slot1: { amount: row.slot1_amount, fund_name: row.slot1_fund_name, asset_class: row.slot1_asset_class },
     slot2: { amount: row.slot2_amount, fund_name: row.slot2_fund_name, asset_class: row.slot2_asset_class },
     slot3: { amount: row.slot3_amount, fund_name: row.slot3_fund_name, asset_class: row.slot3_asset_class },
@@ -64,6 +66,7 @@ function settingsToRow(userId: string, s: Omit<UserMaSettings, 'user_id'>): User
     user_id: userId,
     monthly_budget: s.monthly_budget,
     reserve_balance: s.reserve_balance,
+    jp_index: s.jp_index,
     slot1_amount: s.slot1.amount, slot1_fund_name: s.slot1.fund_name, slot1_asset_class: s.slot1.asset_class,
     slot2_amount: s.slot2.amount, slot2_fund_name: s.slot2.fund_name, slot2_asset_class: s.slot2.asset_class,
     slot3_amount: s.slot3.amount, slot3_fund_name: s.slot3.fund_name, slot3_asset_class: s.slot3.asset_class,
@@ -120,6 +123,7 @@ export async function updateReserveBalance(userId: string, balance: number): Pro
 type UpdatePatch =
   | { monthly_budget: number }
   | { reserve_balance: number }
+  | { jp_index: JpIndex }
   | { slot: 'slot1' | 'slot2' | 'slot3' | 'slot4' | 'slot5' | 'slot6' | 'slot7'; field: keyof MaSlot; value: number | string | MaAssetClass };
 
 export async function updateSettings(userId: string, patch: UpdatePatch): Promise<void> {
@@ -128,6 +132,8 @@ export async function updateSettings(userId: string, patch: UpdatePatch): Promis
     dbPatch = { monthly_budget: patch.monthly_budget };
   } else if ('reserve_balance' in patch) {
     dbPatch = { reserve_balance: patch.reserve_balance };
+  } else if ('jp_index' in patch) {
+    dbPatch = { jp_index: patch.jp_index };
   } else {
     const col = `${patch.slot}_${patch.field === 'amount' ? 'amount' : patch.field === 'fund_name' ? 'fund_name' : 'asset_class'}`;
     dbPatch = { [col]: patch.value };

@@ -56,6 +56,7 @@ export interface UserMaSettings {
   user_id: string;
   monthly_budget: number;
   reserve_balance: number;
+  jp_index: JpIndex;
   slot1: MaSlot;
   slot2: MaSlot;
   slot3: MaSlot;
@@ -66,6 +67,9 @@ export interface UserMaSettings {
 }
 
 export type MarketMode = 'bullish' | 'neutral' | 'cautious';
+
+/** 日本株の判定に使う指数（TOPIX or 日経225）。PBRの水準が異なるため閾値も切り替える */
+export type JpIndex = 'topix' | 'nikkei';
 
 export interface ValuationResult {
   multiplier: number;
@@ -102,6 +106,7 @@ export interface AllocationResult {
 export const DEFAULT_SETTINGS: Omit<UserMaSettings, 'user_id'> = {
   monthly_budget: 1000000,
   reserve_balance: 0,
+  jp_index: 'topix',
   slot1: { amount: 100000, fund_name: '', asset_class: 'none' },
   slot2: { amount: 200000, fund_name: '', asset_class: 'none' },
   slot3: { amount: 500000, fund_name: '', asset_class: 'us' },

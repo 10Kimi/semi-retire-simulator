@@ -5,6 +5,7 @@ import type {
   MarketMode,
   MaAssetClass,
   MaSlot,
+  JpIndex,
 } from './types';
 
 // --- バリュエーション判定（index.htmlから移植） ---
@@ -35,10 +36,18 @@ export function getCapeMultiplier(cape: number, ma5y: number | null): ValuationR
   return { multiplier: 1.5, label: 'かなり割安', color: '#a78bfa', deviation, level: 'very-low' };
 }
 
-export function getPbrMultiplier(pbr: number): ValuationResult {
-  if (pbr >= 1.8) return { multiplier: 0.75, label: '割高', color: '#fbbf24' };
-  if (pbr >= 1.2) return { multiplier: 1.0, label: '適正', color: '#4ade80' };
-  if (pbr >= 1.0) return { multiplier: 1.25, label: '割安', color: '#4a9eff' };
+// PBRの割高/割安しきい値。日経225はTOPIXより構造的に高PBRのため水準を上げる。
+// 数値はここ1箇所で調整可能（本人の投資スタンス）。
+const PBR_THRESHOLDS: Record<JpIndex, { high: number; fair: number; cheap: number }> = {
+  topix: { high: 1.8, fair: 1.2, cheap: 1.0 },
+  nikkei: { high: 2.0, fair: 1.5, cheap: 1.2 },
+};
+
+export function getPbrMultiplier(pbr: number, jpIndex: JpIndex = 'topix'): ValuationResult {
+  const t = PBR_THRESHOLDS[jpIndex];
+  if (pbr >= t.high) return { multiplier: 0.75, label: '割高', color: '#fbbf24' };
+  if (pbr >= t.fair) return { multiplier: 1.0, label: '適正', color: '#4ade80' };
+  if (pbr >= t.cheap) return { multiplier: 1.25, label: '割安', color: '#4a9eff' };
   return { multiplier: 1.5, label: '大バーゲン', color: '#a78bfa' };
 }
 
@@ -110,7 +119,7 @@ export function calculateAllocation(
   mode: MarketMode,
 ): AllocationResult {
   const capeResult = getCapeMultiplier(cape, cape5yMA);
-  const pbrResult = getPbrMultiplier(pbr);
+  const pbrResult = getPbrMultiplier(pbr, settings.jp_index);
   const gsrResult = getGsrMultiplier(gsr);
 
   // ベース乗数（mode 補正前）

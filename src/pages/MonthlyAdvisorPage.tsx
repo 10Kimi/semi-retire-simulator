@@ -8,6 +8,7 @@ import type {
   AllocationResult,
   MaSlot,
   MaAssetClass,
+  JpIndex,
 } from '../lib/ma/types';
 import { MA_ASSET_CLASS_OPTIONS, SLOT_LABELS } from '../lib/ma/types';
 import { fetchLatestIndicators, fetchUserSettings, updateReserveBalance, updateSettings } from '../lib/ma/db';
@@ -36,26 +37,28 @@ export default function MonthlyAdvisorPage() {
 
   useEffect(() => {
     const load = async () => {
+      // 先にユーザー設定を取得（jp_index で PBR 自動補完の可否が変わるため）
+      let sett: UserMaSettings;
+      if (user) {
+        sett = await fetchUserSettings(user.id);
+      } else {
+        const { DEFAULT_SETTINGS } = await import('../lib/ma/types');
+        sett = { user_id: 'anonymous', ...DEFAULT_SETTINGS };
+      }
+      setSettings(sett);
+
       // indicatorsは認証不要で取得
       const ind = await fetchLatestIndicators();
       setIndicators(ind);
       if (ind) {
         if (ind.cape) setCape(String(ind.cape));
-        if (ind.topix_pbr) setPbr(String(ind.topix_pbr));
+        // PBR は TOPIX 選択時のみ自動補完（日経225 は自動取得できないため手入力）
+        if (ind.topix_pbr && sett.jp_index === 'topix') setPbr(String(ind.topix_pbr));
         if (ind.gold_silver_ratio) setGsr(String(ind.gold_silver_ratio));
         if (ind.momentum?.us) setMomentumUS(ind.momentum.us.above_ma);
         if (ind.momentum?.jp) setMomentumJP(ind.momentum.jp.above_ma);
         if (ind.momentum?.em) setMomentumEM(ind.momentum.em.above_ma);
         if (ind.momentum?.gold) setMomentumGold(ind.momentum.gold.above_ma);
-      }
-
-      // ユーザー設定はログイン時のみ取得、未ログインはデフォルト値
-      if (user) {
-        const sett = await fetchUserSettings(user.id);
-        setSettings(sett);
-      } else {
-        const { DEFAULT_SETTINGS } = await import('../lib/ma/types');
-        setSettings({ user_id: 'anonymous', ...DEFAULT_SETTINGS });
       }
       setLoading(false);
     };
@@ -122,6 +125,14 @@ export default function MonthlyAdvisorPage() {
     if (user) {
       await updateSettings(user.id, { slot: slotKey, field, value: value as number | string | MaAssetClass });
     }
+  };
+
+  const handleJpIndexChange = async (idx: JpIndex) => {
+    if (settings.jp_index === idx) return;
+    setSettings({ ...settings, jp_index: idx });
+    // TOPIX は自動取得値を補完、日経225 は自動取得できないため手入力（クリア）
+    setPbr(idx === 'topix' && indicators?.topix_pbr ? String(indicators.topix_pbr) : '');
+    if (user) await updateSettings(user.id, { jp_index: idx });
   };
 
   const modeOptions: { value: MarketMode; label: string; desc: string }[] = [
@@ -310,13 +321,33 @@ export default function MonthlyAdvisorPage() {
             )}
           </div>
 
-          {/* PBR */}
+          {/* 日本株 PBR（TOPIX / 日経225 を選択） */}
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm">TOPIX PBR</label>
-              <a href="https://www.jpx.co.jp/markets/statistics-equities/misc/04.html" target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline">
+              <label className="text-sm">{settings.jp_index === 'nikkei' ? '日経225 PBR' : 'TOPIX PBR'}</label>
+              <a
+                href={settings.jp_index === 'nikkei'
+                  ? 'https://indexes.nikkei.co.jp/nkave/index/profile?cid=4'
+                  : 'https://www.jpx.co.jp/markets/statistics-equities/misc/04.html'}
+                target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline">
                 ✓ 確認
               </a>
+            </div>
+            {/* 指数トグル */}
+            <div className="flex gap-2 mb-2">
+              {(['topix', 'nikkei'] as JpIndex[]).map((val) => (
+                <button
+                  key={val}
+                  onClick={() => handleJpIndexChange(val)}
+                  className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    settings.jp_index === val
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-800 text-slate-400 ring-1 ring-slate-700'
+                  }`}
+                >
+                  {val === 'topix' ? 'TOPIX' : '日経225'}
+                </button>
+              ))}
             </div>
             <input
               type="number"
@@ -324,8 +355,13 @@ export default function MonthlyAdvisorPage() {
               value={pbr}
               onChange={(e) => setPbr(e.target.value)}
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-lg focus:border-blue-500 focus:outline-none"
-              placeholder="1.69"
+              placeholder={settings.jp_index === 'nikkei' ? '例: 1.90' : '1.69'}
             />
+            {settings.jp_index === 'nikkei' && (
+              <p className="mt-1 text-xs text-slate-500">
+                日経225 PBR は自動取得できないため手入力（「✓ 確認」から確認）。判定は日経225用のしきい値（割高 ≥ 2.0）で行われます。
+              </p>
+            )}
           </div>
 
           {/* 金銀比率 */}

@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { getCapeMultiplier, getPbrMultiplier, getGsrMultiplier, calculateAllocation } from './logic';
-import type { UserMaSettings, MaAssetClass } from './types';
+import type { UserMaSettings, MaAssetClass, JpIndex } from './types';
 
 /** テスト用ヘルパー: スロットを 1 行で構築（5〜7 個。未指定分は none/0） */
 function buildSettings(
   monthly_budget: number,
   reserve_balance: number,
   slots: { amount: number; ac: MaAssetClass }[],
+  jp_index: JpIndex = 'topix',
 ): UserMaSettings {
   const empty = { amount: 0, fund_name: '', asset_class: 'none' as MaAssetClass };
   const toSlot = (s?: { amount: number; ac: MaAssetClass }) =>
@@ -16,6 +17,7 @@ function buildSettings(
     user_id: 'test',
     monthly_budget,
     reserve_balance,
+    jp_index,
     slot1: toSlot(s1),
     slot2: toSlot(s2),
     slot3: toSlot(s3),
@@ -115,6 +117,16 @@ describe('getPbrMultiplier', () => {
   it('PBR < 1.0 → 1.5x 大バーゲン', () => {
     expect(getPbrMultiplier(0.9).multiplier).toBe(1.5);
     expect(getPbrMultiplier(0.5).multiplier).toBe(1.5);
+  });
+
+  it('日経225 は TOPIX より高い閾値（同じ PBR=1.8 でも判定が変わる）', () => {
+    // TOPIX: 1.8 → 割高(0.75x) / 日経225: 1.8 は 適正(1.0x)、2.0 で 割高
+    expect(getPbrMultiplier(1.8, 'topix').multiplier).toBe(0.75);
+    expect(getPbrMultiplier(1.8, 'nikkei').multiplier).toBe(1.0);
+    expect(getPbrMultiplier(2.0, 'nikkei').multiplier).toBe(0.75);
+    expect(getPbrMultiplier(1.5, 'nikkei').multiplier).toBe(1.0);
+    expect(getPbrMultiplier(1.2, 'nikkei').multiplier).toBe(1.25);
+    expect(getPbrMultiplier(1.1, 'nikkei').multiplier).toBe(1.5);
   });
 });
 
