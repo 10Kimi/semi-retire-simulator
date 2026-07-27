@@ -56,6 +56,8 @@ export interface UserMaSettings {
   user_id: string;
   monthly_budget: number;
   reserve_balance: number;
+  reserve_month: string | null;       // 待機資金を最後に更新した月 'YYYY-MM'（同月は上書き）
+  reserve_month_base: number | null;  // その月に入る前の待機残高（同月再実行時の計算基点）
   jp_index: JpIndex;
   nikkei_pbr_anchor: number | null;   // 日経225 PBR 近似推定の基準PBR
   nikkei_price_anchor: number | null; // 基準を取った時の日経225株価
@@ -108,6 +110,8 @@ export interface AllocationResult {
 export const DEFAULT_SETTINGS: Omit<UserMaSettings, 'user_id'> = {
   monthly_budget: 1000000,
   reserve_balance: 0,
+  reserve_month: null,
+  reserve_month_base: null,
   jp_index: 'topix',
   nikkei_pbr_anchor: null,
   nikkei_price_anchor: null,

@@ -21,6 +21,8 @@ interface UserMaSettingsRow {
   user_id: string;
   monthly_budget: number;
   reserve_balance: number;
+  reserve_month: string | null;
+  reserve_month_base: number | null;
   jp_index: JpIndex;
   nikkei_pbr_anchor: number | null;
   nikkei_price_anchor: number | null;
@@ -52,6 +54,8 @@ function rowToSettings(row: UserMaSettingsRow): UserMaSettings {
     user_id: row.user_id,
     monthly_budget: row.monthly_budget,
     reserve_balance: row.reserve_balance,
+    reserve_month: row.reserve_month ?? null,
+    reserve_month_base: row.reserve_month_base ?? null,
     jp_index: row.jp_index ?? 'topix',
     nikkei_pbr_anchor: row.nikkei_pbr_anchor ?? null,
     nikkei_price_anchor: row.nikkei_price_anchor ?? null,
@@ -70,6 +74,8 @@ function settingsToRow(userId: string, s: Omit<UserMaSettings, 'user_id'>): User
     user_id: userId,
     monthly_budget: s.monthly_budget,
     reserve_balance: s.reserve_balance,
+    reserve_month: s.reserve_month,
+    reserve_month_base: s.reserve_month_base,
     jp_index: s.jp_index,
     nikkei_pbr_anchor: s.nikkei_pbr_anchor,
     nikkei_price_anchor: s.nikkei_price_anchor,
@@ -112,10 +118,12 @@ export async function fetchUserSettings(userId: string): Promise<UserMaSettings>
   return { user_id: userId, ...DEFAULT_SETTINGS };
 }
 
-export async function updateReserveBalance(userId: string, balance: number): Promise<void> {
+export async function updateReserveBalance(
+  userId: string, balance: number, month: string, monthBase: number,
+): Promise<void> {
   const { error } = await supabase
     .from('user_ma_settings')
-    .update({ reserve_balance: balance })
+    .update({ reserve_balance: balance, reserve_month: month, reserve_month_base: monthBase })
     .eq('user_id', userId);
 
   if (error) console.error('reserve update error:', error);

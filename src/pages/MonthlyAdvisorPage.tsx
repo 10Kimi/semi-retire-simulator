@@ -12,7 +12,7 @@ import type {
 } from '../lib/ma/types';
 import { MA_ASSET_CLASS_OPTIONS, SLOT_LABELS } from '../lib/ma/types';
 import { fetchLatestIndicators, fetchUserSettings, updateReserveBalance, updateSettings } from '../lib/ma/db';
-import { calculateAllocation, formatCurrency, getCapeMultiplier, estimateNikkeiPbr } from '../lib/ma/logic';
+import { calculateAllocation, formatCurrency, getCapeMultiplier, estimateNikkeiPbr, resolveReserveBase } from '../lib/ma/logic';
 
 type SlotKey = 'slot1' | 'slot2' | 'slot3' | 'slot4' | 'slot5' | 'slot6' | 'slot7';
 const SLOT_KEYS: SlotKey[] = ['slot1', 'slot2', 'slot3', 'slot4', 'slot5', 'slot6', 'slot7'];
@@ -106,7 +106,7 @@ export default function MonthlyAdvisorPage() {
         momentumEM,
         momentumGold,
         cape5yMA,
-        settings,
+        { ...settings, reserve_balance: reserveMonthBase }, // 同月は月初baseを基点に（再実行で上書き）
         mode,
       ),
     );
@@ -114,8 +114,14 @@ export default function MonthlyAdvisorPage() {
 
   const confirmAndUpdateReserve = async () => {
     if (!result || !user) return;
-    await updateReserveBalance(user.id, result.newReserveBalance);
-    setSettings({ ...settings, reserve_balance: result.newReserveBalance });
+    // 同月内は月初base + 今月分で上書き（複数回実行しても最後の1回だけが反映される）
+    await updateReserveBalance(user.id, result.newReserveBalance, currentMonth, reserveMonthBase);
+    setSettings({
+      ...settings,
+      reserve_balance: result.newReserveBalance,
+      reserve_month: currentMonth,
+      reserve_month_base: reserveMonthBase,
+    });
     alert('待機資金を更新しました');
   };
 
@@ -134,6 +140,12 @@ export default function MonthlyAdvisorPage() {
       await updateSettings(user.id, { slot: slotKey, field, value: value as number | string | MaAssetClass });
     }
   };
+
+  // 待機資金: 同月内は最後の実行で上書き（月初baseから再計算）
+  const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+  const reserveMonthBase = resolveReserveBase(
+    settings.reserve_balance, settings.reserve_month, settings.reserve_month_base, currentMonth,
+  );
 
   const n225Now = indicators?.momentum?.jp?.last_price ?? null;
   const nikkeiEstimate =

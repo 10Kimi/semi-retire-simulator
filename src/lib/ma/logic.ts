@@ -47,6 +47,21 @@ const PBR_THRESHOLDS: Record<JpIndex, { high: number; fair: number; cheap: numbe
  * 日経225 PBR の近似推定。基準PBR × (現在株価 / 基準時株価)。
  * BPS は短期でほぼ一定なので、株価変動でPBRを追う（数ヶ月ごとに基準を入れ直す前提）。
  */
+/**
+ * 待機資金計算の基点残高を決める。
+ * 同じ月に既に更新済みならその月の「月初base」を返す（＝再実行しても加算されず最後の実行で上書き）。
+ * 別の月なら現在残高が今月のbaseになる。
+ */
+export function resolveReserveBase(
+  reserveBalance: number,
+  reserveMonth: string | null,
+  reserveMonthBase: number | null,
+  currentMonth: string,
+): number {
+  if (reserveMonth === currentMonth) return reserveMonthBase ?? reserveBalance;
+  return reserveBalance;
+}
+
 export function estimateNikkeiPbr(anchorPbr: number, anchorPrice: number, nowPrice: number): number {
   if (!anchorPrice || !nowPrice) return anchorPbr;
   return Math.round(anchorPbr * (nowPrice / anchorPrice) * 100) / 100;

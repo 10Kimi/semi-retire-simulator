@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getCapeMultiplier, getPbrMultiplier, getGsrMultiplier, calculateAllocation, estimateNikkeiPbr } from './logic';
+import { getCapeMultiplier, getPbrMultiplier, getGsrMultiplier, calculateAllocation, estimateNikkeiPbr, resolveReserveBase } from './logic';
 import type { UserMaSettings, MaAssetClass, JpIndex } from './types';
 
 /** テスト用ヘルパー: スロットを 1 行で構築（5〜7 個。未指定分は none/0） */
@@ -18,6 +18,8 @@ function buildSettings(
     monthly_budget,
     reserve_balance,
     jp_index,
+    reserve_month: null,
+    reserve_month_base: null,
     nikkei_pbr_anchor: null,
     nikkei_price_anchor: null,
     slot1: toSlot(s1),
@@ -129,6 +131,19 @@ describe('getPbrMultiplier', () => {
     expect(getPbrMultiplier(1.5, 'nikkei').multiplier).toBe(1.0);
     expect(getPbrMultiplier(1.2, 'nikkei').multiplier).toBe(1.25);
     expect(getPbrMultiplier(1.1, 'nikkei').multiplier).toBe(1.5);
+  });
+});
+
+describe('resolveReserveBase（同月は上書き）', () => {
+  it('同じ月に更新済みなら月初baseを基点にする（再実行で加算されない）', () => {
+    // 残高420k, 今月(2026-07)の月初baseは320k → 再計算の基点は320k
+    expect(resolveReserveBase(420_000, '2026-07', 320_000, '2026-07')).toBe(320_000);
+  });
+  it('別の月なら現在残高が今月のbaseになる', () => {
+    expect(resolveReserveBase(420_000, '2026-07', 320_000, '2026-08')).toBe(420_000);
+  });
+  it('未更新（month=null）なら現在残高', () => {
+    expect(resolveReserveBase(420_000, null, null, '2026-07')).toBe(420_000);
   });
 });
 
