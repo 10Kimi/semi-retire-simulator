@@ -57,6 +57,8 @@ export interface UserMaSettings {
   monthly_budget: number;
   reserve_balance: number;
   jp_index: JpIndex;
+  nikkei_pbr_anchor: number | null;   // 日経225 PBR 近似推定の基準PBR
+  nikkei_price_anchor: number | null; // 基準を取った時の日経225株価
   slot1: MaSlot;
   slot2: MaSlot;
   slot3: MaSlot;
@@ -107,6 +109,8 @@ export const DEFAULT_SETTINGS: Omit<UserMaSettings, 'user_id'> = {
   monthly_budget: 1000000,
   reserve_balance: 0,
   jp_index: 'topix',
+  nikkei_pbr_anchor: null,
+  nikkei_price_anchor: null,
   slot1: { amount: 100000, fund_name: '', asset_class: 'none' },
   slot2: { amount: 200000, fund_name: '', asset_class: 'none' },
   slot3: { amount: 500000, fund_name: '', asset_class: 'us' },

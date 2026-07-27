@@ -12,7 +12,7 @@ import type {
 } from '../lib/ma/types';
 import { MA_ASSET_CLASS_OPTIONS, SLOT_LABELS } from '../lib/ma/types';
 import { fetchLatestIndicators, fetchUserSettings, updateReserveBalance, updateSettings } from '../lib/ma/db';
-import { calculateAllocation, formatCurrency, getCapeMultiplier } from '../lib/ma/logic';
+import { calculateAllocation, formatCurrency, getCapeMultiplier, estimateNikkeiPbr } from '../lib/ma/logic';
 
 type SlotKey = 'slot1' | 'slot2' | 'slot3' | 'slot4' | 'slot5' | 'slot6' | 'slot7';
 const SLOT_KEYS: SlotKey[] = ['slot1', 'slot2', 'slot3', 'slot4', 'slot5', 'slot6', 'slot7'];
@@ -26,6 +26,7 @@ export default function MonthlyAdvisorPage() {
   // 入力値
   const [cape, setCape] = useState('');
   const [pbr, setPbr] = useState('');
+  const [anchorInput, setAnchorInput] = useState('');
   const [gsr, setGsr] = useState('');
   const [momentumUS, setMomentumUS] = useState(true);
   const [momentumJP, setMomentumJP] = useState(true);
@@ -52,8 +53,15 @@ export default function MonthlyAdvisorPage() {
       setIndicators(ind);
       if (ind) {
         if (ind.cape) setCape(String(ind.cape));
-        // PBR は TOPIX 選択時のみ自動補完（日経225 は自動取得できないため手入力）
-        if (ind.topix_pbr && sett.jp_index === 'topix') setPbr(String(ind.topix_pbr));
+        // PBR の自動補完: TOPIX=取得値、日経225=基準×株価比の近似推定
+        if (sett.jp_index === 'topix') {
+          if (ind.topix_pbr) setPbr(String(ind.topix_pbr));
+        } else {
+          const now = ind.momentum?.jp?.last_price;
+          if (sett.nikkei_pbr_anchor != null && sett.nikkei_price_anchor && now) {
+            setPbr(String(estimateNikkeiPbr(sett.nikkei_pbr_anchor, sett.nikkei_price_anchor, now)));
+          }
+        }
         if (ind.gold_silver_ratio) setGsr(String(ind.gold_silver_ratio));
         if (ind.momentum?.us) setMomentumUS(ind.momentum.us.above_ma);
         if (ind.momentum?.jp) setMomentumJP(ind.momentum.jp.above_ma);
@@ -127,12 +135,36 @@ export default function MonthlyAdvisorPage() {
     }
   };
 
+  const n225Now = indicators?.momentum?.jp?.last_price ?? null;
+  const nikkeiEstimate =
+    settings.nikkei_pbr_anchor != null && settings.nikkei_price_anchor && n225Now
+      ? estimateNikkeiPbr(settings.nikkei_pbr_anchor, settings.nikkei_price_anchor, n225Now)
+      : null;
+
   const handleJpIndexChange = async (idx: JpIndex) => {
     if (settings.jp_index === idx) return;
     setSettings({ ...settings, jp_index: idx });
-    // TOPIX は自動取得値を補完、日経225 は自動取得できないため手入力（クリア）
-    setPbr(idx === 'topix' && indicators?.topix_pbr ? String(indicators.topix_pbr) : '');
+    // TOPIX=取得値を補完、日経225=基準があれば推定値、無ければ手入力
+    if (idx === 'topix') {
+      setPbr(indicators?.topix_pbr ? String(indicators.topix_pbr) : '');
+    } else {
+      setPbr(nikkeiEstimate != null ? String(nikkeiEstimate) : '');
+    }
     if (user) await updateSettings(user.id, { jp_index: idx });
+  };
+
+  // 日経225 PBR の「基準」を実測値で更新（以降は株価変動で自動追従）
+  const saveAnchor = async () => {
+    const v = parseFloat(anchorInput);
+    if (isNaN(v) || !n225Now) {
+      alert('実測PBRを入力してください（株価データ取得後に設定できます）');
+      return;
+    }
+    const updated = { ...settings, nikkei_pbr_anchor: v, nikkei_price_anchor: n225Now };
+    setSettings(updated);
+    setPbr(String(v));
+    setAnchorInput('');
+    if (user) await updateSettings(user.id, { nikkei_pbr_anchor: v, nikkei_price_anchor: n225Now });
   };
 
   const modeOptions: { value: MarketMode; label: string; desc: string }[] = [
@@ -358,9 +390,38 @@ export default function MonthlyAdvisorPage() {
               placeholder={settings.jp_index === 'nikkei' ? '例: 1.90' : '1.69'}
             />
             {settings.jp_index === 'nikkei' && (
-              <p className="mt-1 text-xs text-slate-500">
-                日経225 PBR は自動取得できないため手入力（「✓ 確認」から確認）。判定は日経225用のしきい値（割高 ≥ 2.0）で行われます。
-              </p>
+              <div className="mt-2 p-2.5 rounded-lg bg-slate-800/50 text-xs space-y-2">
+                {settings.nikkei_pbr_anchor != null && nikkeiEstimate != null ? (
+                  <p className="text-slate-400">
+                    推定PBR <b className="text-slate-100">{nikkeiEstimate}</b>
+                    <span className="text-slate-500">
+                      （基準 PBR{settings.nikkei_pbr_anchor}・日経{Math.round(settings.nikkei_price_anchor!).toLocaleString()}
+                      {n225Now && ` → 現在 ${Math.round(n225Now).toLocaleString()}（${((n225Now / settings.nikkei_price_anchor! - 1) * 100).toFixed(1)}%）`}）
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-amber-300">
+                    日経225 PBRの基準を一度設定してください（「✓ 確認」で実測値を見て入力）。以降は株価変動で自動推定します。
+                  </p>
+                )}
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={anchorInput}
+                    onChange={(e) => setAnchorInput(e.target.value)}
+                    placeholder="実測PBR 例: 1.90"
+                    className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 focus:border-blue-500 focus:outline-none"
+                  />
+                  <button
+                    onClick={saveAnchor}
+                    className="px-3 py-1.5 rounded-lg bg-blue-600 text-white font-medium active:bg-blue-700 whitespace-nowrap"
+                  >
+                    基準にする
+                  </button>
+                </div>
+                <p className="text-slate-500">判定は日経225用しきい値（割高 ≥ 2.0）。上の欄は今月だけ手で上書きもできます。</p>
+              </div>
             )}
           </div>
 

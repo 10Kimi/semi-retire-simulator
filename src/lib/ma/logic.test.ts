@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getCapeMultiplier, getPbrMultiplier, getGsrMultiplier, calculateAllocation } from './logic';
+import { getCapeMultiplier, getPbrMultiplier, getGsrMultiplier, calculateAllocation, estimateNikkeiPbr } from './logic';
 import type { UserMaSettings, MaAssetClass, JpIndex } from './types';
 
 /** テスト用ヘルパー: スロットを 1 行で構築（5〜7 個。未指定分は none/0） */
@@ -18,6 +18,8 @@ function buildSettings(
     monthly_budget,
     reserve_balance,
     jp_index,
+    nikkei_pbr_anchor: null,
+    nikkei_price_anchor: null,
     slot1: toSlot(s1),
     slot2: toSlot(s2),
     slot3: toSlot(s3),
@@ -127,6 +129,17 @@ describe('getPbrMultiplier', () => {
     expect(getPbrMultiplier(1.5, 'nikkei').multiplier).toBe(1.0);
     expect(getPbrMultiplier(1.2, 'nikkei').multiplier).toBe(1.25);
     expect(getPbrMultiplier(1.1, 'nikkei').multiplier).toBe(1.5);
+  });
+});
+
+describe('estimateNikkeiPbr', () => {
+  it('株価比でPBRを推定（基準1.90 / 株価+5% → 2.00 に丸め）', () => {
+    expect(estimateNikkeiPbr(1.9, 40000, 42000)).toBe(2.0);   // 1.9 × 1.05 = 1.995 → 2.00
+    expect(estimateNikkeiPbr(1.9, 40000, 40000)).toBe(1.9);   // 変化なし
+    expect(estimateNikkeiPbr(1.9, 40000, 38000)).toBe(1.81);  // 1.9 × 0.95 = 1.805 → 1.81
+  });
+  it('基準株価が無ければ基準PBRをそのまま返す', () => {
+    expect(estimateNikkeiPbr(1.9, 0, 42000)).toBe(1.9);
   });
 });
 

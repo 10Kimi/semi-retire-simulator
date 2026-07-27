@@ -22,6 +22,8 @@ interface UserMaSettingsRow {
   monthly_budget: number;
   reserve_balance: number;
   jp_index: JpIndex;
+  nikkei_pbr_anchor: number | null;
+  nikkei_price_anchor: number | null;
   slot1_amount: number;
   slot1_fund_name: string;
   slot1_asset_class: MaAssetClass;
@@ -51,6 +53,8 @@ function rowToSettings(row: UserMaSettingsRow): UserMaSettings {
     monthly_budget: row.monthly_budget,
     reserve_balance: row.reserve_balance,
     jp_index: row.jp_index ?? 'topix',
+    nikkei_pbr_anchor: row.nikkei_pbr_anchor ?? null,
+    nikkei_price_anchor: row.nikkei_price_anchor ?? null,
     slot1: { amount: row.slot1_amount, fund_name: row.slot1_fund_name, asset_class: row.slot1_asset_class },
     slot2: { amount: row.slot2_amount, fund_name: row.slot2_fund_name, asset_class: row.slot2_asset_class },
     slot3: { amount: row.slot3_amount, fund_name: row.slot3_fund_name, asset_class: row.slot3_asset_class },
@@ -67,6 +71,8 @@ function settingsToRow(userId: string, s: Omit<UserMaSettings, 'user_id'>): User
     monthly_budget: s.monthly_budget,
     reserve_balance: s.reserve_balance,
     jp_index: s.jp_index,
+    nikkei_pbr_anchor: s.nikkei_pbr_anchor,
+    nikkei_price_anchor: s.nikkei_price_anchor,
     slot1_amount: s.slot1.amount, slot1_fund_name: s.slot1.fund_name, slot1_asset_class: s.slot1.asset_class,
     slot2_amount: s.slot2.amount, slot2_fund_name: s.slot2.fund_name, slot2_asset_class: s.slot2.asset_class,
     slot3_amount: s.slot3.amount, slot3_fund_name: s.slot3.fund_name, slot3_asset_class: s.slot3.asset_class,
@@ -124,6 +130,7 @@ type UpdatePatch =
   | { monthly_budget: number }
   | { reserve_balance: number }
   | { jp_index: JpIndex }
+  | { nikkei_pbr_anchor: number; nikkei_price_anchor: number }
   | { slot: 'slot1' | 'slot2' | 'slot3' | 'slot4' | 'slot5' | 'slot6' | 'slot7'; field: keyof MaSlot; value: number | string | MaAssetClass };
 
 export async function updateSettings(userId: string, patch: UpdatePatch): Promise<void> {
@@ -134,6 +141,8 @@ export async function updateSettings(userId: string, patch: UpdatePatch): Promis
     dbPatch = { reserve_balance: patch.reserve_balance };
   } else if ('jp_index' in patch) {
     dbPatch = { jp_index: patch.jp_index };
+  } else if ('nikkei_pbr_anchor' in patch) {
+    dbPatch = { nikkei_pbr_anchor: patch.nikkei_pbr_anchor, nikkei_price_anchor: patch.nikkei_price_anchor };
   } else {
     const col = `${patch.slot}_${patch.field === 'amount' ? 'amount' : patch.field === 'fund_name' ? 'fund_name' : 'asset_class'}`;
     dbPatch = { [col]: patch.value };

@@ -43,6 +43,15 @@ const PBR_THRESHOLDS: Record<JpIndex, { high: number; fair: number; cheap: numbe
   nikkei: { high: 2.0, fair: 1.5, cheap: 1.2 },
 };
 
+/**
+ * 日経225 PBR の近似推定。基準PBR × (現在株価 / 基準時株価)。
+ * BPS は短期でほぼ一定なので、株価変動でPBRを追う（数ヶ月ごとに基準を入れ直す前提）。
+ */
+export function estimateNikkeiPbr(anchorPbr: number, anchorPrice: number, nowPrice: number): number {
+  if (!anchorPrice || !nowPrice) return anchorPbr;
+  return Math.round(anchorPbr * (nowPrice / anchorPrice) * 100) / 100;
+}
+
 export function getPbrMultiplier(pbr: number, jpIndex: JpIndex = 'topix'): ValuationResult {
   const t = PBR_THRESHOLDS[jpIndex];
   if (pbr >= t.high) return { multiplier: 0.75, label: '割高', color: '#fbbf24' };
