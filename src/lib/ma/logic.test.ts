@@ -2,22 +2,27 @@ import { describe, it, expect } from 'vitest';
 import { getCapeMultiplier, getPbrMultiplier, getGsrMultiplier, calculateAllocation } from './logic';
 import type { UserMaSettings, MaAssetClass } from './types';
 
-/** テスト用ヘルパー: 全 5 スロットを 1 行で構築 */
+/** テスト用ヘルパー: スロットを 1 行で構築（5〜7 個。未指定分は none/0） */
 function buildSettings(
   monthly_budget: number,
   reserve_balance: number,
   slots: { amount: number; ac: MaAssetClass }[],
 ): UserMaSettings {
-  const [s1, s2, s3, s4, s5] = slots;
+  const empty = { amount: 0, fund_name: '', asset_class: 'none' as MaAssetClass };
+  const toSlot = (s?: { amount: number; ac: MaAssetClass }) =>
+    s ? { amount: s.amount, fund_name: '', asset_class: s.ac } : empty;
+  const [s1, s2, s3, s4, s5, s6, s7] = slots;
   return {
     user_id: 'test',
     monthly_budget,
     reserve_balance,
-    slot1: { amount: s1.amount, fund_name: '', asset_class: s1.ac },
-    slot2: { amount: s2.amount, fund_name: '', asset_class: s2.ac },
-    slot3: { amount: s3.amount, fund_name: '', asset_class: s3.ac },
-    slot4: { amount: s4.amount, fund_name: '', asset_class: s4.ac },
-    slot5: { amount: s5.amount, fund_name: '', asset_class: s5.ac },
+    slot1: toSlot(s1),
+    slot2: toSlot(s2),
+    slot3: toSlot(s3),
+    slot4: toSlot(s4),
+    slot5: toSlot(s5),
+    slot6: toSlot(s6),
+    slot7: toSlot(s7),
   };
 }
 
@@ -157,7 +162,7 @@ describe('calculateAllocation (per-slot multiplier、migration 031 後の新構�
       { amount: 200_000, ac: 'none' },
     ]);
     const r = calculateAllocation(FAIR_CAPE, FAIR_PBR, FAIR_GSR, true, true, true, true, CAPE5Y, settings, 'neutral');
-    expect(r.perSlotAmount).toEqual([200_000, 200_000, 200_000, 200_000, 200_000]);
+    expect(r.perSlotAmount).toEqual([200_000, 200_000, 200_000, 200_000, 200_000, 0, 0]);
     expect(r.totalInvest).toBe(1_000_000);
     expect(r.monthlyReserve).toBe(0);
   });
@@ -172,7 +177,7 @@ describe('calculateAllocation (per-slot multiplier、migration 031 後の新構�
     ]);
     const r = calculateAllocation(FAIR_CAPE, FAIR_PBR, FAIR_GSR, true, true, true, true, CAPE5Y, settings, 'neutral');
     // 全 multiplier=1.0 なので各 100K のまま
-    expect(r.perSlotAmount).toEqual([100_000, 100_000, 100_000, 100_000, 100_000]);
+    expect(r.perSlotAmount).toEqual([100_000, 100_000, 100_000, 100_000, 100_000, 0, 0]);
   });
 
   it('us 割高 (CAPE=37, 乖離 +23%) で us スロットだけ 0.5x', () => {

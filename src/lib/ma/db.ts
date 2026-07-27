@@ -36,6 +36,12 @@ interface UserMaSettingsRow {
   slot5_amount: number;
   slot5_fund_name: string;
   slot5_asset_class: MaAssetClass;
+  slot6_amount: number;
+  slot6_fund_name: string;
+  slot6_asset_class: MaAssetClass;
+  slot7_amount: number;
+  slot7_fund_name: string;
+  slot7_asset_class: MaAssetClass;
 }
 
 function rowToSettings(row: UserMaSettingsRow): UserMaSettings {
@@ -48,6 +54,8 @@ function rowToSettings(row: UserMaSettingsRow): UserMaSettings {
     slot3: { amount: row.slot3_amount, fund_name: row.slot3_fund_name, asset_class: row.slot3_asset_class },
     slot4: { amount: row.slot4_amount, fund_name: row.slot4_fund_name, asset_class: row.slot4_asset_class },
     slot5: { amount: row.slot5_amount, fund_name: row.slot5_fund_name, asset_class: row.slot5_asset_class },
+    slot6: { amount: row.slot6_amount, fund_name: row.slot6_fund_name, asset_class: row.slot6_asset_class },
+    slot7: { amount: row.slot7_amount, fund_name: row.slot7_fund_name, asset_class: row.slot7_asset_class },
   };
 }
 
@@ -61,6 +69,8 @@ function settingsToRow(userId: string, s: Omit<UserMaSettings, 'user_id'>): User
     slot3_amount: s.slot3.amount, slot3_fund_name: s.slot3.fund_name, slot3_asset_class: s.slot3.asset_class,
     slot4_amount: s.slot4.amount, slot4_fund_name: s.slot4.fund_name, slot4_asset_class: s.slot4.asset_class,
     slot5_amount: s.slot5.amount, slot5_fund_name: s.slot5.fund_name, slot5_asset_class: s.slot5.asset_class,
+    slot6_amount: s.slot6.amount, slot6_fund_name: s.slot6.fund_name, slot6_asset_class: s.slot6.asset_class,
+    slot7_amount: s.slot7.amount, slot7_fund_name: s.slot7.fund_name, slot7_asset_class: s.slot7.asset_class,
   };
 }
 
@@ -110,7 +120,7 @@ export async function updateReserveBalance(userId: string, balance: number): Pro
 type UpdatePatch =
   | { monthly_budget: number }
   | { reserve_balance: number }
-  | { slot: 'slot1' | 'slot2' | 'slot3' | 'slot4' | 'slot5'; field: keyof MaSlot; value: number | string | MaAssetClass };
+  | { slot: 'slot1' | 'slot2' | 'slot3' | 'slot4' | 'slot5' | 'slot6' | 'slot7'; field: keyof MaSlot; value: number | string | MaAssetClass };
 
 export async function updateSettings(userId: string, patch: UpdatePatch): Promise<void> {
   let dbPatch: Record<string, number | string> = {};

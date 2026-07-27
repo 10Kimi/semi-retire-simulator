@@ -125,6 +125,8 @@ export function calculateAllocation(
     settings.slot3,
     settings.slot4,
     settings.slot5,
+    settings.slot6,
+    settings.slot7,
   ];
 
   // 各スロットの最終投資額を 1 万円単位に丸めて算出

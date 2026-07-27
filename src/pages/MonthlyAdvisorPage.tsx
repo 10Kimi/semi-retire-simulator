@@ -13,8 +13,8 @@ import { MA_ASSET_CLASS_OPTIONS, SLOT_LABELS } from '../lib/ma/types';
 import { fetchLatestIndicators, fetchUserSettings, updateReserveBalance, updateSettings } from '../lib/ma/db';
 import { calculateAllocation, formatCurrency, getCapeMultiplier } from '../lib/ma/logic';
 
-type SlotKey = 'slot1' | 'slot2' | 'slot3' | 'slot4' | 'slot5';
-const SLOT_KEYS: SlotKey[] = ['slot1', 'slot2', 'slot3', 'slot4', 'slot5'];
+type SlotKey = 'slot1' | 'slot2' | 'slot3' | 'slot4' | 'slot5' | 'slot6' | 'slot7';
+const SLOT_KEYS: SlotKey[] = ['slot1', 'slot2', 'slot3', 'slot4', 'slot5', 'slot6', 'slot7'];
 
 export default function MonthlyAdvisorPage() {
   const { user } = useAuth();

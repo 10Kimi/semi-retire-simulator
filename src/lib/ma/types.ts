@@ -61,6 +61,8 @@ export interface UserMaSettings {
   slot3: MaSlot;
   slot4: MaSlot;
   slot5: MaSlot;
+  slot6: MaSlot;
+  slot7: MaSlot;
 }
 
 export type MarketMode = 'bullish' | 'neutral' | 'cautious';
@@ -105,13 +107,19 @@ export const DEFAULT_SETTINGS: Omit<UserMaSettings, 'user_id'> = {
   slot3: { amount: 500000, fund_name: '', asset_class: 'us' },
   slot4: { amount: 180000, fund_name: '', asset_class: 'gold' },
   slot5: { amount: 20000, fund_name: '', asset_class: 'bond' },
+  slot6: { amount: 0, fund_name: '', asset_class: 'none' },
+  slot7: { amount: 0, fund_name: '', asset_class: 'none' },
 };
 
 /** スロット表示用のラベル定義（UI で参照） */
-export const SLOT_LABELS: Record<'slot1' | 'slot2' | 'slot3' | 'slot4' | 'slot5', string> = {
+export const SLOT_LABELS: Record<
+  'slot1' | 'slot2' | 'slot3' | 'slot4' | 'slot5' | 'slot6' | 'slot7', string
+> = {
   slot1: 'NISA 積立枠',
   slot2: 'NISA 成長枠',
   slot3: '特定口座 1',
   slot4: '特定口座 2',
   slot5: '特定口座 3',
+  slot6: '特定口座 4',
+  slot7: '特定口座 5',
 };
