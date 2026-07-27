@@ -55,8 +55,10 @@
 - `scripts/` — 招待コード生成、法的チェック、prerender
 - `scripts/prerender.ts` — Puppeteer ベース post-build prerender（SEO用、各公開ルートのHTML静的化）
 - `scripts/market/` — 市場データ取得スクリプト（fetch_and_optimize.py, fetch_indicators.py）
-  - `fetch_indicators.py` — `/ma`（月次投資アドバイザー）用の指標を取得し Supabase `indicators` テーブルへ upsert（画面の「自動取得済み」ブロックの元データ）。取得: 米国CAPE（multpl.com スクレイプ, lxml 必須）/ TOPIX PBR・金銀比率・モメンタムは yfinance。専用 `.venv` + `.env`（SUPABASE_URL / SUPABASE_SERVICE_KEY）。**スクリプト自身は dotenv を読まない**ため手動実行時は `set -a; source .env; set +a` で env を渡す
-  - **cron（2026-06-23 追加）**: 毎月 1・15 日 9:00 に自動実行（≒隔週）。crontab 行は `cd <dir> && set -a && . ./.env && set +a && .venv/bin/python fetch_indicators.py >> cron.log 2>&1`。ローカル cron なので Mac 起動時のみ走る。ログは `scripts/market/cron.log`
+  - `fetch_indicators.py` — `/ma`（月次投資アドバイザー）用の指標を取得し Supabase `indicators` テーブルへ upsert（画面の「自動取得済み」ブロックの元データ）。取得: 米国CAPE（multpl.com スクレイプ, lxml 必須）/ TOPIX PBR（JPX Excel, **openpyxl 必須**）/ 金銀比率（yfinance GC=F÷SI=F）/ モメンタムは yfinance。専用 `.venv` + `.env`（SUPABASE_URL / SUPABASE_SERVICE_KEY）。**スクリプト自身は dotenv を読まない**ため手動実行時は `set -a; source .env; set +a` で env を渡す。依存は `scripts/market/requirements.txt`（openpyxl / lxml 含む）
+  - **必ず `--fetch-only` を付ける**: 付けないと取得後に **HTTPサーバー(`serve_and_open`, :8765)を永久起動**してプロセスが終わらない（cron が溜まる / 手動実行がハングする）。取得のみなら常に `--fetch-only`
+  - **cron（2026-06-23 追加、2026-07-27 `--fetch-only` 追加）**: 毎月 1・15 日 9:00 に自動実行（≒隔週）。crontab 行は `cd <dir> && set -a && . ./.env && set +a && .venv/bin/python fetch_indicators.py --fetch-only >> cron.log 2>&1`。ローカル cron なので Mac 起動時のみ走る。ログは `scripts/market/cron.log`
+  - **2026-07-27 修正**: `gold_silver_ratio` に `-0.5`（過去の壊れた値）が残り `/ma` が異常値を自動補完していた問題を再取得で解消（→68.4, 適正）。同時に openpyxl 未導入で PBR がずっと取得失敗していたのを requirements に追加して解消（→1.8）。`/ma` の「自動取得済み」ブロックに CAPE/PBR/金銀比率の数値＋20日超で⚠️警告を表示するUIも追加（`MonthlyAdvisorPage.tsx`）
   - **gotcha**: プロジェクトを `~/semi-retire-app` → 現パスへ移動した影響で `.venv/bin/pip` の shebang が旧パス参照で壊れている。pip 操作は `.venv/bin/python -m pip ...` で回避（python 本体は動作する）
 - `public/robots.txt`, `public/sitemap.xml` — SEO 基盤
 - `supabase/migrations/` — DBマイグレーション（22件。番号衝突あり、TODO参照）

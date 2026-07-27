@@ -223,31 +223,50 @@ export default function MonthlyAdvisorPage() {
         </div>
 
         {/* 自動取得ステータス */}
-        {indicators && (
-          <div className="bg-emerald-900/30 border border-emerald-500/50 rounded-2xl p-3 mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🤖</span>
-              <div>
-                <div className="text-xs text-emerald-300/70">自動取得済み</div>
-                <div className="text-emerald-200 text-xs">{new Date(indicators.fetched_at).toLocaleString('ja-JP')}</div>
+        {indicators && (() => {
+          const days = Math.floor((Date.now() - new Date(indicators.fetched_at).getTime()) / 86400000)
+          const stale = days > 20   // cron は毎月1・15日（≒隔週）。それより古ければ要再取得
+          return (
+            <div className={`rounded-2xl p-3 mb-4 border ${stale ? 'bg-amber-900/30 border-amber-500/50' : 'bg-emerald-900/30 border-emerald-500/50'}`}>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{stale ? '⚠️' : '🤖'}</span>
+                <div>
+                  <div className={`text-xs ${stale ? 'text-amber-300/80' : 'text-emerald-300/70'}`}>
+                    自動取得済み{stale && `（${days}日前・古い可能性）`}
+                  </div>
+                  <div className={`text-xs ${stale ? 'text-amber-200' : 'text-emerald-200'}`}>
+                    {new Date(indicators.fetched_at).toLocaleString('ja-JP')}
+                  </div>
+                </div>
               </div>
-            </div>
-            {indicators.momentum && (
-              <div className="mt-2 flex gap-3 text-xs">
-                {indicators.momentum.us && (
-                  <span className="text-slate-400">
-                    S&P: {indicators.momentum.us.last_price?.toLocaleString()}
-                    <span className={indicators.momentum.us.above_ma ? 'text-green-400' : 'text-red-400'}>
-                      {' '}
-                      ({indicators.momentum.us.above_ma ? '↑MA上' : '↓MA下'})
+              {/* 入力欄に自動反映される指標の数値（-0.5 等の異常値に気づけるように） */}
+              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-300">
+                <span>米国CAPE <b className="text-slate-100">{indicators.cape ?? '—'}</b></span>
+                <span>TOPIX PBR <b className="text-slate-100">{indicators.topix_pbr ?? '—'}</b></span>
+                <span>金銀比率 <b className="text-slate-100">{indicators.gold_silver_ratio ?? '—'}</b></span>
+              </div>
+              {indicators.momentum && (
+                <div className="mt-1 flex gap-3 text-xs">
+                  {indicators.momentum.us && (
+                    <span className="text-slate-400">
+                      S&P: {indicators.momentum.us.last_price?.toLocaleString()}
+                      <span className={indicators.momentum.us.above_ma ? 'text-green-400' : 'text-red-400'}>
+                        {' '}
+                        ({indicators.momentum.us.above_ma ? '↑MA上' : '↓MA下'})
+                      </span>
                     </span>
-                  </span>
-                )}
-                {indicators.gold_price && <span className="text-slate-400">Gold: ${indicators.gold_price.toLocaleString()}</span>}
-              </div>
-            )}
-          </div>
-        )}
+                  )}
+                  {indicators.gold_price && <span className="text-slate-400">Gold: ${indicators.gold_price.toLocaleString()}</span>}
+                </div>
+              )}
+              {stale && (
+                <div className="mt-2 text-xs text-amber-200/90">
+                  指標が古い可能性があります。`fetch_indicators.py` を再実行して更新してください。
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* バリュエーション指標 */}
         <div className="bg-slate-900 rounded-2xl p-4 mb-4">
