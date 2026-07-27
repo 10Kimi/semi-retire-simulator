@@ -180,13 +180,23 @@ export default function MonthlyAdvisorPage() {
                 />
               </div>
 
+              <p className="text-xs text-slate-500 leading-relaxed">
+                NISA枠は満額で積み立てます（税制優遇枠は満額埋めるのが有利）。割高／割安によるバリュエーション調整は<span className="text-slate-400">特定口座のみ</span>に効きます。
+              </p>
+
               {/* 各スロット: 金額 + 銘柄名 + 資産クラス */}
               {SLOT_KEYS.map((slotKey) => {
                 const slot = settings[slotKey];
+                const isNisa = slotKey === 'slot1' || slotKey === 'slot2';
                 return (
                   <div key={slotKey} className="bg-slate-800/50 rounded-lg p-3 space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-sm text-slate-400">{SLOT_LABELS[slotKey]}</label>
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm text-slate-400">{SLOT_LABELS[slotKey]}</label>
+                        {isNisa && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300">満額</span>
+                        )}
+                      </div>
                       <input
                         type="text"
                         inputMode="numeric"

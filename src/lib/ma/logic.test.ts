@@ -180,71 +180,88 @@ describe('calculateAllocation (per-slot multiplier、migration 031 後の新構�
     expect(r.perSlotAmount).toEqual([100_000, 100_000, 100_000, 100_000, 100_000, 0, 0]);
   });
 
-  it('us 割高 (CAPE=37, 乖離 +23%) で us スロットだけ 0.5x', () => {
+  it('us 割高 (CAPE=37, 乖離 +23%) で 特定口座の us スロットだけ 0.5x', () => {
+    // slot1/2 = NISA(満額), slot3〜 = 特定口座（調整対象）
     const settings = buildSettings(500_000, 0, [
-      { amount: 100_000, ac: 'us' },
-      { amount: 100_000, ac: 'jp' },
-      { amount: 100_000, ac: 'em' },
-      { amount: 100_000, ac: 'gold' },
-      { amount: 100_000, ac: 'bond' },
+      { amount: 0, ac: 'none' },       // NISA積立
+      { amount: 0, ac: 'none' },       // NISA成長
+      { amount: 100_000, ac: 'us' },   // 特定1
+      { amount: 100_000, ac: 'jp' },   // 特定2
+      { amount: 100_000, ac: 'em' },   // 特定3
+      { amount: 100_000, ac: 'gold' }, // 特定4
+      { amount: 100_000, ac: 'bond' }, // 特定5
     ]);
     const r = calculateAllocation(37, FAIR_PBR, FAIR_GSR, true, true, true, true, 30, settings, 'neutral');
-    expect(r.perSlotAmount[0]).toBe(50_000); // us 0.5x
-    expect(r.perSlotAmount[1]).toBe(100_000); // jp 影響なし
-    expect(r.perSlotAmount[2]).toBe(100_000); // em 影響なし
-    expect(r.perSlotAmount[3]).toBe(100_000); // gold 影響なし
-    expect(r.perSlotAmount[4]).toBe(100_000); // bond 影響なし
+    expect(r.perSlotAmount[2]).toBe(50_000); // us 0.5x
+    expect(r.perSlotAmount[3]).toBe(100_000); // jp 影響なし
+    expect(r.perSlotAmount[4]).toBe(100_000); // em 影響なし
+    expect(r.perSlotAmount[5]).toBe(100_000); // gold 影響なし
+    expect(r.perSlotAmount[6]).toBe(100_000); // bond 影響なし
   });
 
-  it('em は momentumEM=false で 0.5x、true で 1.0x（バリュエーション無し）', () => {
+  it('NISA枠(slot1/2)は割高でも満額（調整対象外）／同じ資産を特定口座に置くと調整される', () => {
+    const settings = buildSettings(500_000, 0, [
+      { amount: 100_000, ac: 'us' },   // NISA積立（us 割高でも満額）
+      { amount: 100_000, ac: 'jp' },   // NISA成長（jp でも満額）
+      { amount: 100_000, ac: 'us' },   // 特定1（us 割高 → 0.5x）
+    ]);
+    const r = calculateAllocation(37, FAIR_PBR, FAIR_GSR, true, true, true, true, 30, settings, 'neutral');
+    expect(r.perSlotAmount[0]).toBe(100_000); // NISA us: 満額
+    expect(r.perSlotAmount[1]).toBe(100_000); // NISA jp: 満額
+    expect(r.perSlotAmount[2]).toBe(50_000);  // 特定 us: 0.5x
+  });
+
+  it('em は momentumEM=false で 0.5x、true で 1.0x（特定口座・バリュエーション無し）', () => {
     const settings = buildSettings(200_000, 0, [
-      { amount: 100_000, ac: 'em' },
-      { amount: 100_000, ac: 'none' },
-      { amount: 0, ac: 'none' },
-      { amount: 0, ac: 'none' },
-      { amount: 0, ac: 'none' },
+      { amount: 0, ac: 'none' },       // NISA積立
+      { amount: 0, ac: 'none' },       // NISA成長
+      { amount: 100_000, ac: 'em' },   // 特定1
     ]);
     const r1 = calculateAllocation(FAIR_CAPE, FAIR_PBR, FAIR_GSR, true, true, false, true, CAPE5Y, settings, 'neutral');
-    expect(r1.perSlotAmount[0]).toBe(50_000);
+    expect(r1.perSlotAmount[2]).toBe(50_000);
     const r2 = calculateAllocation(FAIR_CAPE, FAIR_PBR, FAIR_GSR, true, true, true, true, CAPE5Y, settings, 'neutral');
-    expect(r2.perSlotAmount[0]).toBe(100_000);
+    expect(r2.perSlotAmount[2]).toBe(100_000);
   });
 
-  it('Q3 案B: mode=bullish で us/jp/em/gold は +0.25、bond/none は補正なし', () => {
+  it('Q3 案B: mode=bullish で 特定口座の us/jp/em は +0.25、bond/none は補正なし', () => {
     const settings = buildSettings(500_000, 0, [
-      { amount: 100_000, ac: 'us' },
-      { amount: 100_000, ac: 'jp' },
-      { amount: 100_000, ac: 'em' },
-      { amount: 100_000, ac: 'bond' },
-      { amount: 100_000, ac: 'none' },
+      { amount: 0, ac: 'none' },       // NISA積立
+      { amount: 0, ac: 'none' },       // NISA成長
+      { amount: 100_000, ac: 'us' },   // 特定1
+      { amount: 100_000, ac: 'jp' },   // 特定2
+      { amount: 100_000, ac: 'em' },   // 特定3
+      { amount: 100_000, ac: 'bond' }, // 特定4
+      { amount: 100_000, ac: 'none' }, // 特定5
     ]);
     const r = calculateAllocation(FAIR_CAPE, FAIR_PBR, FAIR_GSR, true, true, true, true, CAPE5Y, settings, 'bullish');
     // us: 1.0 + 0.25 = 1.25 → 100K × 1.25 = 125K、1万円単位で half-up 丸めで 130K
-    expect(r.perSlotAmount[0]).toBe(130_000);
-    // jp: PBR=1.5(1.0x) + 0.25 = 1.25 → 130K（同上）
-    expect(r.perSlotAmount[1]).toBe(130_000);
-    // em: 1.0 + 0.25 = 1.25 → 130K（同上）
     expect(r.perSlotAmount[2]).toBe(130_000);
+    // jp: PBR=1.5(1.0x) + 0.25 = 1.25 → 130K（同上）
+    expect(r.perSlotAmount[3]).toBe(130_000);
+    // em: 1.0 + 0.25 = 1.25 → 130K（同上）
+    expect(r.perSlotAmount[4]).toBe(130_000);
     // bond: 補正なし → 100K
-    expect(r.perSlotAmount[3]).toBe(100_000);
+    expect(r.perSlotAmount[5]).toBe(100_000);
     // none: 補正なし → 100K
-    expect(r.perSlotAmount[4]).toBe(100_000);
+    expect(r.perSlotAmount[6]).toBe(100_000);
   });
 
-  it('待機資金投入: CAPE 割安 (level=low) 時、最初に asset_class=us のスロットに reserve × 25% を加算', () => {
+  it('待機資金投入: CAPE 割安 (level=low) 時、特定口座で最初の us スロットに reserve × 25% を加算', () => {
     const settings = buildSettings(500_000, 1_000_000 /* reserve */, [
-      { amount: 100_000, ac: 'jp' }, // us じゃない
-      { amount: 100_000, ac: 'us' }, // ★ 最初の us slot
-      { amount: 100_000, ac: 'us' }, // 2 つ目の us（投入対象ではない）
+      { amount: 0, ac: 'none' },     // NISA積立
+      { amount: 0, ac: 'none' },     // NISA成長
+      { amount: 100_000, ac: 'jp' }, // 特定1（us じゃない）
+      { amount: 100_000, ac: 'us' }, // 特定2 ★最初の us slot
+      { amount: 100_000, ac: 'us' }, // 特定3（2 つ目の us、投入対象ではない）
       { amount: 100_000, ac: 'gold' },
       { amount: 100_000, ac: 'bond' },
     ]);
     // CAPE 5y MA から -16.7% 乖離 → level='low' → 1.25x、reserve × 0.25 = 250K 投入
     const r = calculateAllocation(25, FAIR_PBR, FAIR_GSR, true, true, true, true, 30, settings, 'neutral');
-    expect(r.perSlotAmount[0]).toBe(100_000); // jp 影響なし
+    expect(r.perSlotAmount[2]).toBe(100_000); // jp 影響なし
     // 100K × 1.25 = 125K → 1万円 half-up 丸めで 130K + reserve 250K = 380K
-    expect(r.perSlotAmount[1]).toBe(380_000);
-    expect(r.perSlotAmount[2]).toBe(130_000); // 2 つ目の us は乗数だけ
+    expect(r.perSlotAmount[3]).toBe(380_000);
+    expect(r.perSlotAmount[4]).toBe(130_000); // 2 つ目の us は乗数だけ
     expect(r.reserveDeployment).toBe(250_000);
     expect(r.newReserveBalance).toBe(1_000_000 - 250_000); // monthlyReserve=0 を仮定
   });

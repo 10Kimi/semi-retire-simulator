@@ -129,8 +129,16 @@ export function calculateAllocation(
     settings.slot7,
   ];
 
+  // slot1/2 = NISA枠。税制優遇枠は「満額で埋める」のが確実に有利なため、
+  // バリュエーション/モメンタム/mode の調整対象外（満額固定）。調整は特定口座(slot3〜)のみ。
+  // ※iDeCo/401k も同じ税制優遇の考え方（枠は満額、タイミング調整は課税口座で）。
+  const NISA_SLOT_COUNT = 2;
+
   // 各スロットの最終投資額を 1 万円単位に丸めて算出
-  const perSlotAmount = slots.map((slot) => {
+  const perSlotAmount = slots.map((slot, idx) => {
+    if (idx < NISA_SLOT_COUNT) {
+      return Math.round(slot.amount / 10000) * 10000; // NISA枠は満額（調整しない）
+    }
     const multiplier = getSlotMultiplier(slot.asset_class, { us: usBase, jp: jpBase, em: emBase, gold: goldBase }, mode);
     return Math.round((slot.amount * multiplier) / 10000) * 10000;
   });
@@ -138,8 +146,9 @@ export function calculateAllocation(
   const baseInvest = perSlotAmount.reduce((sum, v) => sum + v, 0);
   const monthlyReserve = Math.max(0, settings.monthly_budget - baseInvest);
 
-  // 待機資金投入: 最初に asset_class='us' のスロットに加算（'us' スロットがなければ 0）
-  const firstUsIdx = slots.findIndex((s) => s.asset_class === 'us');
+  // 待機資金投入も特定口座のみが対象（NISA枠は満額固定＝上振れさせない）。
+  // 特定口座(slot3〜)で最初に asset_class='us' のスロットに加算（無ければ 0）
+  const firstUsIdx = slots.findIndex((s, idx) => idx >= NISA_SLOT_COUNT && s.asset_class === 'us');
   const reserveDeployment =
     firstUsIdx >= 0 ? getReserveDeployment(capeResult.level, settings.reserve_balance) : 0;
   if (reserveDeployment > 0) {
