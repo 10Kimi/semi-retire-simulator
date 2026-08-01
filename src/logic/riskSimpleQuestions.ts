@@ -107,6 +107,7 @@ export const RISK_SIMPLE_QUESTIONS: RiskQuestion[] = [
     id: 'T3',
     section: 'tolerance',
     title: '以下の4つの投資があります。どれが一番魅力的ですか？',
+    subtitle: '最良・最悪はそれぞれ50%の確率で起こるものとします',
     options: [
       { label: '最良 +20万円 ／ 最悪 0円（損失なし）',   value: 1 },
       { label: '最良 +80万円 ／ 最悪 −20万円',          value: 3 },
@@ -134,6 +135,21 @@ export const RISK_SIMPLE_QUESTIONS: RiskQuestion[] = [
       { label: '辛いけどひたすら耐える',     value: 3 },
       { label: '何もせず保有し続ける',       value: 5 },
       { label: '買い増す',                  value: 7 },
+    ],
+  },
+  {
+    // T5が「これからどうするか（仮定）」なのに対し、T6は「実際にどうしたか（実績）」。
+    // 質問紙のリスク許容度は実際の暴落時の行動より高く出るため、実績で答え合わせする。
+    id: 'T6',
+    section: 'tolerance',
+    title: '2020年3月のコロナショック、または2022年の下落局面で、あなたは実際にどうしましたか？',
+    subtitle: '当時の実際の行動をお答えください',
+    options: [
+      { label: '売却した',                        value: 1 },
+      { label: '積立を止めた・減らした',            value: 3 },
+      { label: 'まだ投資していなかった',            value: 4 },
+      { label: '何もしなかった（保有し続けた）',     value: 5 },
+      { label: '買い増した',                      value: 7 },
     ],
   },
 ];

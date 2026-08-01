@@ -41,7 +41,7 @@ export function calculateCapacityScore(answers: RiskAnswer[]): number {
 // ── Tolerance 計算 ──
 
 export function calculateToleranceScore(answers: RiskAnswer[]): number {
-  const toleranceIds = ['T1', 'T2', 'T3', 'T4', 'T5'];
+  const toleranceIds = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6'];
   const scores = toleranceIds.map(id => answers.find(a => a.questionId === id)?.value ?? 0);
   const avg = scores.reduce((s, v) => s + v, 0) / scores.length;
   return clamp(Math.round(avg), 1, 7);

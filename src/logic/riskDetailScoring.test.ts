@@ -49,20 +49,20 @@ describe('calculateDetailCapacityScore', () => {
 
 describe('calculateDetailToleranceScore', () => {
   it('全問最大(7)で7を返す', () => {
-    const answers = ['T1','T3','T4','T6','T8','T9','T10','T11','T12','T13','T14','T15']
+    const answers = ['T1','T3','T4','T6','T8','T9','T10','T11','T12','T13','T14','T15','T16']
       .map(id => ans(id, 7));
     expect(calculateDetailToleranceScore(answers)).toBe(7);
   });
 
   it('全問最小(1)で1を返す', () => {
-    const answers = ['T1','T3','T4','T6','T8','T9','T10','T11','T12','T13','T14','T15']
+    const answers = ['T1','T3','T4','T6','T8','T9','T10','T11','T12','T13','T14','T15','T16']
       .map(id => ans(id, 1));
     expect(calculateDetailToleranceScore(answers)).toBe(1);
   });
 
   it('中間値で中間スコアを返す', () => {
     // 全問3点 → 36点 → (36-12)/(84-12)*6+1 = 24/72*6+1 = 3.0
-    const answers = ['T1','T3','T4','T6','T8','T9','T10','T11','T12','T13','T14','T15']
+    const answers = ['T1','T3','T4','T6','T8','T9','T10','T11','T12','T13','T14','T15','T16']
       .map(id => ans(id, 3));
     const score = calculateDetailToleranceScore(answers);
     expect(score).toBeGreaterThanOrEqual(2);
@@ -70,7 +70,7 @@ describe('calculateDetailToleranceScore', () => {
   });
 
   it('結果は1〜7の範囲にclampされる', () => {
-    const answers = ['T1','T3','T4','T6','T8','T9','T10','T11','T12','T13','T14','T15']
+    const answers = ['T1','T3','T4','T6','T8','T9','T10','T11','T12','T13','T14','T15','T16']
       .map(id => ans(id, 5));
     const score = calculateDetailToleranceScore(answers);
     expect(score).toBeGreaterThanOrEqual(1);
@@ -85,7 +85,7 @@ describe('calculateDetailResult', () => {
       ans('C1', 7), ans('C2', 7), ans('C3', 0), ans('C4', 0),
       ans('C5', 7), ans('C6', 1.5), ans('C7', 1.0), ans('C8', 0.5),
       // Low tolerance
-      ...['T1','T3','T4','T6','T8','T9','T10','T11','T12','T13','T14','T15']
+      ...['T1','T3','T4','T6','T8','T9','T10','T11','T12','T13','T14','T15','T16']
         .map(id => ans(id, 1)),
     ];
     const result = calculateDetailResult(answers);
@@ -98,7 +98,7 @@ describe('calculateDetailResult', () => {
     const answers = [
       ans('C1', 4), ans('C2', 4), ans('C3', 0), ans('C4', 0),
       ans('C5', 5), ans('C6', 0), ans('C7', 1.0), ans('C8', 0),
-      ...['T1','T3','T4','T6','T8','T9','T10','T11','T12','T13','T14','T15']
+      ...['T1','T3','T4','T6','T8','T9','T10','T11','T12','T13','T14','T15','T16']
         .map(id => ans(id, 5)),
     ];
     const result = calculateDetailResult(answers);

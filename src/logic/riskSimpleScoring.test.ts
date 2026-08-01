@@ -54,21 +54,37 @@ describe('calculateCapacityScore', () => {
 });
 
 describe('calculateToleranceScore', () => {
-  it('3-4: 基本計算 — T1=5,T2=3,T3=5,T4=5,T5=7 → avg=5', () => {
-    const answers = makeAnswers({ T1: 5, T2: 3, T3: 5, T4: 5, T5: 7 });
+  it('3-4: 基本計算 — T1=5,T2=3,T3=5,T4=5,T5=7,T6=5 → avg=5', () => {
+    const answers = makeAnswers({ T1: 5, T2: 3, T3: 5, T4: 5, T5: 7, T6: 5 });
     const score = calculateToleranceScore(answers);
-    // avg = (5+3+5+5+7)/5 = 25/5 = 5
+    // avg = (5+3+5+5+7+5)/6 = 30/6 = 5
     expect(score).toBe(5);
   });
 
   it('3-5a: 全1 → 下限1', () => {
-    const answers = makeAnswers({ T1: 1, T2: 1, T3: 1, T4: 1, T5: 1 });
+    const answers = makeAnswers({ T1: 1, T2: 1, T3: 1, T4: 1, T5: 1, T6: 1 });
     expect(calculateToleranceScore(answers)).toBe(1);
   });
 
   it('3-5b: 全7 → 上限7', () => {
-    const answers = makeAnswers({ T1: 7, T2: 7, T3: 7, T4: 7, T5: 7 });
+    const answers = makeAnswers({ T1: 7, T2: 7, T3: 7, T4: 7, T5: 7, T6: 7 });
     expect(calculateToleranceScore(answers)).toBe(7);
+  });
+
+  it('3-5c: T6(実際の暴落時の行動)がスコアに反映される', () => {
+    const base = { T1: 5, T2: 5, T3: 5, T4: 5, T5: 5 };
+    // 仮定では強気(T5=5)でも、実際に売却していた(T6=1)なら平均が下がる
+    const sold = calculateToleranceScore(makeAnswers({ ...base, T6: 1 }));
+    const held = calculateToleranceScore(makeAnswers({ ...base, T6: 5 }));
+    const bought = calculateToleranceScore(makeAnswers({ ...base, T6: 7 }));
+    expect(sold).toBeLessThan(held);
+    expect(held).toBeLessThanOrEqual(bought);
+  });
+
+  it('3-5d: 「まだ投資していなかった」は中立(4)としてスコアを大きく動かさない', () => {
+    const base = { T1: 5, T2: 5, T3: 5, T4: 5, T5: 5 };
+    // avg = (25+4)/6 = 4.83 → 5（未経験を理由に不当に下げない）
+    expect(calculateToleranceScore(makeAnswers({ ...base, T6: 4 }))).toBe(5);
   });
 });
 
@@ -77,7 +93,7 @@ describe('calculateRiskSimpleResult', () => {
     // capacity=4, tolerance=4 → balanced
     const answers = makeAnswers({
       C1: 4, C2: 4, C3: 0, C4: 0, C5: 4, C6: 0, // rawCap=(4+4)/2+(4-1)*0.3=4+0.9=4.9 → 5
-      T1: 5, T2: 5, T3: 5, T4: 5, T5: 5,          // avg=5
+      T1: 5, T2: 5, T3: 5, T4: 5, T5: 5, T6: 5,   // avg=5
     });
     const result = calculateRiskSimpleResult(answers);
     expect(result.capacityScore).toBe(5);
@@ -89,7 +105,7 @@ describe('calculateRiskSimpleResult', () => {
   it('3-7: capacity_higher — capacity > tolerance → finalLevel = tolerance', () => {
     const answers = makeAnswers({
       C1: 6, C2: 6, C3: 0, C4: 0, C5: 5, C6: 0,  // high capacity
-      T1: 1, T2: 1, T3: 3, T4: 1, T5: 1,           // low tolerance → avg=1.4 → 1
+      T1: 1, T2: 1, T3: 3, T4: 1, T5: 1, T6: 1,    // low tolerance → avg=1.33 → 1
     });
     const result = calculateRiskSimpleResult(answers);
     expect(result.capacityScore).toBeGreaterThan(result.toleranceScore);

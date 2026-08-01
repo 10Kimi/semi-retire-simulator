@@ -27,16 +27,16 @@ export function calculateDetailCapacityScore(answers: RiskAnswer[]): number {
   return clamp(Math.round(capacityAdj), 1, 7);
 }
 
-/** 詳細版 Tolerance 計算（12問の総点を1〜7に正規化） */
+/** 詳細版 Tolerance 計算（13問の総点を1〜7に正規化） */
 export function calculateDetailToleranceScore(answers: RiskAnswer[]): number {
-  const toleranceIds = ['T1', 'T3', 'T4', 'T6', 'T8', 'T9', 'T10', 'T11', 'T12', 'T13', 'T14', 'T15'];
+  const toleranceIds = ['T1', 'T3', 'T4', 'T6', 'T8', 'T9', 'T10', 'T11', 'T12', 'T13', 'T14', 'T15', 'T16'];
   const scores = toleranceIds.map(id => answers.find(a => a.questionId === id)?.value ?? 0);
   const rawTotal = scores.reduce((s, v) => s + v, 0);
 
-  // 最小: 全問1点 = 12点, 最大: 全問7点 = 84点
-  // ただしT9,T10は2択(1or7), T12は3択(1,3,7)なので理論最小は12
-  const minScore = 12;
-  const maxScore = 84;
+  // 最小: 全問1点 = 13点, 最大: 全問7点 = 91点
+  // ただしT9,T10は2択(1or7), T12は3択(1,3,7)なので理論最小は13
+  const minScore = 13;
+  const maxScore = 91;
   const normalized = Math.round((rawTotal - minScore) / (maxScore - minScore) * 6) + 1;
 
   return clamp(normalized, 1, 7);
