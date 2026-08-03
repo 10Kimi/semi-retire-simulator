@@ -44,3 +44,7 @@ scripts/market/.venv/
 
 # Supabase CLI 一時ファイル
 supabase/.temp/
+
+# Python キャッシュ
+__pycache__/
+*.pyc
