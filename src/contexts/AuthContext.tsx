@@ -62,8 +62,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const resetPassword = async (email: string) => {
+    // 再設定フォームのあるページへ戻す。origin だけだとログイン画面に戻り、
+    // 新しいパスワードを設定できずループする（2026-08-03 修正）
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
+      redirectTo: `${window.location.origin}/reset-password`,
     });
     return { error: error as Error | null };
   };

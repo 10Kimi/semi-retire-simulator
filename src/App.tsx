@@ -15,6 +15,7 @@ import Age50sLPPage from './pages/tools/Age50sLPPage';
 import RetirementLPPage from './pages/tools/RetirementLPPage';
 import ToolsHubPage from './pages/tools/ToolsHubPage';
 import PremiumGate from './components/PremiumGate';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 // 有料版で復活予定
 // import AssessmentPage from './pages/AssessmentPage';
 // import PortfolioDiagnosisPage from './pages/PortfolioDiagnosisPage';
@@ -48,6 +49,7 @@ function App() {
           <Route path="/tools/age50s" element={<Age50sLPPage />} />
           <Route path="/tools/retirement" element={<RetirementLPPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="*" element={<AuthGatePage />} />
         </Routes>
         <Analytics />
@@ -67,6 +69,7 @@ function App() {
           <Route path="/tools/age50s" element={<Age50sLPPage />} />
           <Route path="/tools/retirement" element={<RetirementLPPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="*" element={<EmailConfirmationPending email={user.email ?? ''} />} />
         </Routes>
         <Analytics />
@@ -90,6 +93,7 @@ function App() {
         <Route path="/tools/age50s" element={<Age50sLPPage />} />
         <Route path="/tools/retirement" element={<RetirementLPPage />} />
         <Route path="/about" element={<AboutPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         {/* 有料版で復活予定 */}
         {/* <Route path="/assessment" element={<AssessmentPage />} /> */}
         {/* <Route path="/portfolio-diagnosis" element={<PortfolioDiagnosisPage />} /> */}
