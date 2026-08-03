@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "legal-check": "tsx scripts/legal-check.ts"
+    "legal-check": "tsx scripts/legal-check.ts",
+    "invite": "tsx scripts/generate-invite-code.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.97.0",
