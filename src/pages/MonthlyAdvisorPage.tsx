@@ -205,7 +205,7 @@ export default function MonthlyAdvisorPage() {
             <div className="flex items-center gap-2">
               <span className="text-2xl">💰</span>
               <div>
-                <div className="text-xs text-amber-300/70 uppercase tracking-wide">待機資金残高（iBond）</div>
+                <div className="text-xs text-amber-300/70 uppercase tracking-wide">待機資金残高</div>
                 <div className="text-amber-200 text-sm mt-0.5">割安時に投入 -10%→1/4, -20%→1/2</div>
               </div>
             </div>
@@ -532,7 +532,7 @@ export default function MonthlyAdvisorPage() {
 
             {result.monthlyReserve > 0 && (
               <div className="bg-slate-800 rounded-xl p-4 mb-3 border-l-4 border-amber-500">
-                <h3 className="text-xs text-slate-400 uppercase tracking-wide mb-2">今月の待機分 → iBond</h3>
+                <h3 className="text-xs text-slate-400 uppercase tracking-wide mb-2">今月の待機分</h3>
                 <div className="flex justify-between">
                   <span>待機に追加</span>
                   <span className="text-amber-400">+{formatCurrency(result.monthlyReserve)}</span>
