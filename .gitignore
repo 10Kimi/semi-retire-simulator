@@ -48,3 +48,6 @@ supabase/.temp/
 # Python キャッシュ
 __pycache__/
 *.pyc
+
+# 市場指標の取得結果（fetch_indicators.py の生成物）
+scripts/market/indicators.json
