@@ -17,6 +17,7 @@ function buildSettings(
     user_id: 'test',
     monthly_budget,
     ideco_amount: 0,
+    ideco_fund_name: '',
     reserve_balance,
     jp_index,
     reserve_month: null,

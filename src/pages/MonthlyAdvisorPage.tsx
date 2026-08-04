@@ -137,6 +137,12 @@ export default function MonthlyAdvisorPage() {
     if (user) await updateSettings(user.id, { ideco_amount: value });
   };
 
+  const handleIdecoFundNameChange = async (value: string) => {
+    const updated = { ...settings, ideco_fund_name: value };
+    setSettings(updated);
+    if (user) await updateSettings(user.id, { ideco_fund_name: value });
+  };
+
   const handleSlotFieldChange = async <K extends keyof MaSlot>(slotKey: SlotKey, field: K, value: MaSlot[K]) => {
     const currentSlot = settings[slotKey];
     const updatedSlot: MaSlot = { ...currentSlot, [field]: value };
@@ -231,26 +237,43 @@ export default function MonthlyAdvisorPage() {
               {/* 月次予算 */}
               <div className="flex items-center justify-between">
                 <label className="text-sm text-slate-400">月次予算</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  defaultValue={settings.monthly_budget.toLocaleString()}
-                  key={`budget-${settings.monthly_budget}`}
-                  onBlur={(e) => handleMonthlyBudgetChange(parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)}
-                  className="w-40 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-right text-sm focus:border-blue-500 focus:outline-none"
-                />
+                <div className="relative w-40">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 pointer-events-none">¥</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    defaultValue={settings.monthly_budget.toLocaleString()}
+                    key={`budget-${settings.monthly_budget}`}
+                    onBlur={(e) => handleMonthlyBudgetChange(parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-7 pr-3 py-2 text-right text-sm focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
               </div>
 
-              {/* iDeCo/401k は既に拠出済みで手元に無いため、予算から差し引いてから配分する */}
-              <div className="flex items-center justify-between">
-                <label className="text-sm text-slate-400">うち iDeCo / 401k</label>
+              {/* iDeCo/401k は既に拠出済みで手元に無いため、予算から差し引いてから配分する。
+                  銘柄名は計算に使わないが、後から何に拠出しているか分かるように記録できる */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-slate-400">うち iDeCo / 401k</label>
+                  <div className="relative w-40">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 pointer-events-none">¥</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      defaultValue={settings.ideco_amount.toLocaleString()}
+                      key={`ideco-${settings.ideco_amount}`}
+                      onBlur={(e) => handleIdecoAmountChange(parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-7 pr-3 py-2 text-right text-sm focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
                 <input
                   type="text"
-                  inputMode="numeric"
-                  defaultValue={settings.ideco_amount.toLocaleString()}
-                  key={`ideco-${settings.ideco_amount}`}
-                  onBlur={(e) => handleIdecoAmountChange(parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)}
-                  className="w-40 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-right text-sm focus:border-blue-500 focus:outline-none"
+                  defaultValue={settings.ideco_fund_name}
+                  key={`ideco-name-${settings.ideco_fund_name}`}
+                  onBlur={(e) => handleIdecoFundNameChange(e.target.value)}
+                  placeholder="銘柄名（メモ・任意）"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
                 />
               </div>
 
@@ -282,14 +305,17 @@ export default function MonthlyAdvisorPage() {
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300">満額</span>
                         )}
                       </div>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        defaultValue={slot.amount.toLocaleString()}
-                        key={`${slotKey}-amount-${slot.amount}`}
-                        onBlur={(e) => handleSlotFieldChange(slotKey, 'amount', parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)}
-                        className="w-36 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-right text-sm focus:border-blue-500 focus:outline-none"
-                      />
+                      <div className="relative w-36">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 pointer-events-none">¥</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          defaultValue={slot.amount.toLocaleString()}
+                          key={`${slotKey}-amount-${slot.amount}`}
+                          onBlur={(e) => handleSlotFieldChange(slotKey, 'amount', parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)}
+                          className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-7 pr-3 py-1.5 text-right text-sm focus:border-blue-500 focus:outline-none"
+                        />
+                      </div>
                     </div>
                     <input
                       type="text"

@@ -56,6 +56,7 @@ export interface UserMaSettings {
   user_id: string;
   monthly_budget: number;
   ideco_amount: number;               // 月次予算に含めた iDeCo/401k の掛金。配分対象外（表示と控除のみ）
+  ideco_fund_name: string;            // iDeCo/401k の銘柄メモ（任意・計算には使わない）
   reserve_balance: number;
   reserve_month: string | null;       // 待機資金を最後に更新した月 'YYYY-MM'（同月は上書き）
   reserve_month_base: number | null;  // その月に入る前の待機残高（同月再実行時の計算基点）
@@ -108,20 +109,23 @@ export interface AllocationResult {
  * 旧 schema からの移行直後と同じ意味合いを概ね保つよう、
  * slot3='us' / slot4='gold' / slot5='bond' を default に。
  */
+// 初期値は全額 0。運営者個人の設定が既定値として他ユーザーに出ないようにする
+// （資産クラスのプリセットのみ、特定口座の使い方の例として残す）。
 export const DEFAULT_SETTINGS: Omit<UserMaSettings, 'user_id'> = {
-  monthly_budget: 1000000,
+  monthly_budget: 0,
   ideco_amount: 0,
+  ideco_fund_name: '',
   reserve_balance: 0,
   reserve_month: null,
   reserve_month_base: null,
   jp_index: 'topix',
   nikkei_pbr_anchor: null,
   nikkei_price_anchor: null,
-  slot1: { amount: 100000, fund_name: '', asset_class: 'none' },
-  slot2: { amount: 200000, fund_name: '', asset_class: 'none' },
-  slot3: { amount: 500000, fund_name: '', asset_class: 'us' },
-  slot4: { amount: 180000, fund_name: '', asset_class: 'gold' },
-  slot5: { amount: 20000, fund_name: '', asset_class: 'bond' },
+  slot1: { amount: 0, fund_name: '', asset_class: 'none' },
+  slot2: { amount: 0, fund_name: '', asset_class: 'none' },
+  slot3: { amount: 0, fund_name: '', asset_class: 'us' },
+  slot4: { amount: 0, fund_name: '', asset_class: 'gold' },
+  slot5: { amount: 0, fund_name: '', asset_class: 'bond' },
   slot6: { amount: 0, fund_name: '', asset_class: 'none' },
   slot7: { amount: 0, fund_name: '', asset_class: 'none' },
 };
