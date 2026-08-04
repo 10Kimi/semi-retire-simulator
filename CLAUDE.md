@@ -139,6 +139,12 @@
   - **日経225 PBR の近似オートフィル**（`ce3c1e7`、migration 034）: 実測PBRを一度「基準」入力→以降は既取得の日経225株価で `estimateNikkeiPbr = 基準PBR × 現在株価/基準時株価`。`nikkei_pbr_anchor`/`nikkei_price_anchor` に保存、数ヶ月ごと再基準
   - **待機資金は同月内は最後の実行で上書き**（`03fe4e6`、migration 035）: `reserve_month`/`reserve_month_base`（月初base）を記録し `resolveReserveBase()` で同月再実行時は base から計算＝二重加算しない。カレンダー月境界。翌月は現残高が新base
   - **設計の芯**: 「税制優遇枠は満額／タイミング調整は課税口座で／自分が買ってる指数で割高感を測る」。講座コンテンツの骨子にもなる。テストは `logic.test.ts` 37件パス
+- **認証まわりの不具合修正 ＋ リポジトリ整理**（2026-08-03、semi-retire-app 6 commit・全 push 済み）:
+  - **パスワードリセットが完了できずループする問題を修正**（`accdc9e`）: `resetPasswordForEmail` の `redirectTo` が `window.location.origin`（＝トップ）で、しかも新パスワードを設定する画面自体が存在しなかった。未ログインのトップはログイン画面のため「忘れた方→メール→リンク→ログイン画面」を無限に繰り返す状態だった。`ResetPasswordPage.tsx` を新設（`/reset-password`）し、implicit フローで戻るリカバリセッション（`PASSWORD_RECOVERY`）を待って `updateUser({password})` で再設定。リンク期限切れ／使用済みは専用メッセージで案内。ルートは**未ログイン・メール未確認・ログイン済みの3分岐すべて**に登録（リカバリ時にセッションが張られるかで到達分岐が変わるため）。Supabase の Redirect URLs は既存の `fire.largogk.jp/**` でカバー済み（追加設定は不要だった）
+  - **ログイン中のパスワード変更画面を追加**（`61cf592`）: 変更手段がリセットメールしかなく、リカバリリンクでログインした人は「ログインできたがパスワードは分からない」まま、もう一度メールを発行する往復が必要だった。`PasswordChangeModal.tsx` を新設し `UserStatusBar` のログアウト横に導線（`Layout` 経由で全ページ）。**現在のパスワードは要求しない**——リカバリ直後は本人が現在のパスワードを知らないため、要求すると変更できず同じ往復に戻る。厳格化する場合は Supabase 側の Secure password change を有効にすればこの画面はエラー表示で対応する。パスワードは `auth.users`、有料状態は `profiles.is_premium` と別テーブルのため、**変更しても招待コードで付与した有料状態は維持される**
+  - **招待コード生成スクリプトを追跡対象に**（`724e714`）: `scripts/generate-invite-code.ts` は有料ツールの招待コード発行の唯一の手段だが git 未追跡でローカルにしか存在しなかった。追跡し `npm run invite -- --count N` で実行できるよう `package.json` に追加。キーは `scripts/market/.env`（gitignore 済み）から読むためスクリプト本体に秘密は含まない
+  - **/ma の待機資金ラベルから iBond 表記を削除**（`12bee19`）: 「待機資金残高（iBond）」「今月の待機分 → iBond」は運営者個人の運用先で一般ユーザーには当てはまらないため汎用表現に変更
+  - **未追跡ファイルの整理**（`e359e5c` / `d451720`）: `__pycache__` と `scripts/market/indicators.json`（`fetch_indicators.py` の生成物）を gitignore、`Docs/lp_draft_age50s_v1.md` を追跡（CHANGELOG:295・CLAUDE.md:90 に「ドラフト保管」と書かれているのに未追跡だった）、`src/content/legal/privacy.md` を物理削除（CHANGELOG:661 で削除済みのローカル残骸。`/privacy` は `vercel.json` で largogk.jp へリダイレクトしており正本ではない。`tokushoho.md` と同じ処理）。これで `git status` はクリーン
 - 次の優先: Phase 3.5（ステップメール + リスク乖離の損失体感UI改善）
 
 ### SEO基盤 Phase 1 の設計方針（サマリ）
