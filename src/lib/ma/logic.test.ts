@@ -16,6 +16,7 @@ function buildSettings(
   return {
     user_id: 'test',
     monthly_budget,
+    ideco_amount: 0,
     reserve_balance,
     jp_index,
     reserve_month: null,
@@ -346,5 +347,35 @@ describe('calculateAllocation (per-slot multiplier、migration 031 後の新構�
     const r = calculateAllocation(FAIR_CAPE, FAIR_PBR, FAIR_GSR, true, true, true, true, CAPE5Y, settings, 'neutral');
     expect(r.totalInvest).toBe(200_000);
     expect(r.monthlyReserve).toBe(800_000);
+  });
+
+  it('iDeCo分は配分対象から除外され、待機資金に積まれない', () => {
+    // 月次予算15万に iDeCo 2.3万を含めたケース。スロット合計は12.7万。
+    // ideco_amount を引かないと 2.3万が毎月「実在しない待機資金」として積み上がる。
+    const settings = {
+      ...buildSettings(150_000, 0, [
+        { amount: 100_000, ac: 'none' as MaAssetClass },
+        { amount: 20_000, ac: 'none' as MaAssetClass },
+        { amount: 0, ac: 'none' as MaAssetClass },
+        { amount: 0, ac: 'none' as MaAssetClass },
+        { amount: 0, ac: 'none' as MaAssetClass },
+      ]),
+      ideco_amount: 23_000,
+    };
+    const r = calculateAllocation(FAIR_CAPE, FAIR_PBR, FAIR_GSR, true, true, true, true, CAPE5Y, settings, 'neutral');
+    expect(r.totalInvest).toBe(120_000);
+    expect(r.monthlyReserve).toBe(7_000); // 150,000 - 23,000(iDeCo) - 120,000 = 7,000
+  });
+
+  it('iDeCo=0 なら従来どおりの計算', () => {
+    const settings = { ...buildSettings(150_000, 0, [
+      { amount: 100_000, ac: 'none' as MaAssetClass },
+      { amount: 20_000, ac: 'none' as MaAssetClass },
+      { amount: 0, ac: 'none' as MaAssetClass },
+      { amount: 0, ac: 'none' as MaAssetClass },
+      { amount: 0, ac: 'none' as MaAssetClass },
+    ]), ideco_amount: 0 };
+    const r = calculateAllocation(FAIR_CAPE, FAIR_PBR, FAIR_GSR, true, true, true, true, CAPE5Y, settings, 'neutral');
+    expect(r.monthlyReserve).toBe(30_000); // iDeCoを引かないと差額30,000が全て待機資金に
   });
 });

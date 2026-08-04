@@ -55,6 +55,7 @@ export interface MaSlot {
 export interface UserMaSettings {
   user_id: string;
   monthly_budget: number;
+  ideco_amount: number;               // 月次予算に含めた iDeCo/401k の掛金。配分対象外（表示と控除のみ）
   reserve_balance: number;
   reserve_month: string | null;       // 待機資金を最後に更新した月 'YYYY-MM'（同月は上書き）
   reserve_month_base: number | null;  // その月に入る前の待機残高（同月再実行時の計算基点）
@@ -109,6 +110,7 @@ export interface AllocationResult {
  */
 export const DEFAULT_SETTINGS: Omit<UserMaSettings, 'user_id'> = {
   monthly_budget: 1000000,
+  ideco_amount: 0,
   reserve_balance: 0,
   reserve_month: null,
   reserve_month_base: null,

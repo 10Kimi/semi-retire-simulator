@@ -20,6 +20,7 @@ export async function fetchLatestIndicators(): Promise<Indicators | null> {
 interface UserMaSettingsRow {
   user_id: string;
   monthly_budget: number;
+  ideco_amount: number;
   reserve_balance: number;
   reserve_month: string | null;
   reserve_month_base: number | null;
@@ -53,6 +54,7 @@ function rowToSettings(row: UserMaSettingsRow): UserMaSettings {
   return {
     user_id: row.user_id,
     monthly_budget: row.monthly_budget,
+    ideco_amount: row.ideco_amount ?? 0,
     reserve_balance: row.reserve_balance,
     reserve_month: row.reserve_month ?? null,
     reserve_month_base: row.reserve_month_base ?? null,
@@ -73,6 +75,7 @@ function settingsToRow(userId: string, s: Omit<UserMaSettings, 'user_id'>): User
   return {
     user_id: userId,
     monthly_budget: s.monthly_budget,
+    ideco_amount: s.ideco_amount,
     reserve_balance: s.reserve_balance,
     reserve_month: s.reserve_month,
     reserve_month_base: s.reserve_month_base,
@@ -136,6 +139,7 @@ export async function updateReserveBalance(
  */
 type UpdatePatch =
   | { monthly_budget: number }
+  | { ideco_amount: number }
   | { reserve_balance: number }
   | { jp_index: JpIndex }
   | { nikkei_pbr_anchor: number; nikkei_price_anchor: number }
@@ -145,6 +149,8 @@ export async function updateSettings(userId: string, patch: UpdatePatch): Promis
   let dbPatch: Record<string, number | string> = {};
   if ('monthly_budget' in patch) {
     dbPatch = { monthly_budget: patch.monthly_budget };
+  } else if ('ideco_amount' in patch) {
+    dbPatch = { ideco_amount: patch.ideco_amount };
   } else if ('reserve_balance' in patch) {
     dbPatch = { reserve_balance: patch.reserve_balance };
   } else if ('jp_index' in patch) {

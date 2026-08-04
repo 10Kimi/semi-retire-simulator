@@ -177,7 +177,11 @@ export function calculateAllocation(
   });
 
   const baseInvest = perSlotAmount.reduce((sum, v) => sum + v, 0);
-  const monthlyReserve = Math.max(0, settings.monthly_budget - baseInvest);
+  // 月次予算には iDeCo/401k の掛金が含まれうる。iDeCo は既に拠出済みで手元に無いため、
+  // 差し引いてから待機資金を計算する。含めたままだと実在しない資金が毎月積み上がり、
+  // 割安時に「無い資金を投入せよ」という指示になる。
+  const allocatable = Math.max(0, settings.monthly_budget - (settings.ideco_amount ?? 0));
+  const monthlyReserve = Math.max(0, allocatable - baseInvest);
 
   // 待機資金投入も特定口座のみが対象（NISA枠は満額固定＝上振れさせない）。
   // 特定口座(slot3〜)で最初に asset_class='us' のスロットに加算（無ければ 0）

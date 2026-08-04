@@ -131,6 +131,12 @@ export default function MonthlyAdvisorPage() {
     if (user) await updateSettings(user.id, { monthly_budget: value });
   };
 
+  const handleIdecoAmountChange = async (value: number) => {
+    const updated = { ...settings, ideco_amount: value };
+    setSettings(updated);
+    if (user) await updateSettings(user.id, { ideco_amount: value });
+  };
+
   const handleSlotFieldChange = async <K extends keyof MaSlot>(slotKey: SlotKey, field: K, value: MaSlot[K]) => {
     const currentSlot = settings[slotKey];
     const updatedSlot: MaSlot = { ...currentSlot, [field]: value };
@@ -235,6 +241,30 @@ export default function MonthlyAdvisorPage() {
                 />
               </div>
 
+              {/* iDeCo/401k は既に拠出済みで手元に無いため、予算から差し引いてから配分する */}
+              <div className="flex items-center justify-between">
+                <label className="text-sm text-slate-400">うち iDeCo / 401k</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  defaultValue={settings.ideco_amount.toLocaleString()}
+                  key={`ideco-${settings.ideco_amount}`}
+                  onBlur={(e) => handleIdecoAmountChange(parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)}
+                  className="w-40 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-right text-sm focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-between border-t border-slate-700/60 pt-3">
+                <span className="text-sm text-slate-400">配分対象</span>
+                <span className="text-sm text-slate-200">
+                  {formatCurrency(Math.max(0, settings.monthly_budget - settings.ideco_amount))}
+                </span>
+              </div>
+
+              <p className="text-xs text-slate-500 leading-relaxed">
+                月次予算に iDeCo / 401k の掛金を含めている場合は「うち iDeCo / 401k」に入力してください。掛金は変更が年1回に限られ、商品もプランごとに異なるため、<span className="text-slate-400">このツールでは配分の対象外</span>として予算から差し引きます。
+              </p>
+
               <p className="text-xs text-slate-500 leading-relaxed">
                 NISA枠は満額で積み立てます（税制優遇枠は満額埋めるのが有利）。割高／割安によるバリュエーション調整は<span className="text-slate-400">特定口座のみ</span>に効きます。
               </p>
@@ -269,17 +299,25 @@ export default function MonthlyAdvisorPage() {
                       placeholder="銘柄名（メモ）"
                       className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
                     />
-                    <select
-                      value={slot.asset_class}
-                      onChange={(e) => handleSlotFieldChange(slotKey, 'asset_class', e.target.value as MaAssetClass)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:border-blue-500 focus:outline-none"
-                    >
-                      {MA_ASSET_CLASS_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
+                    {/* NISA枠は logic.ts で満額固定（バリュエーション調整の対象外）。
+                        選んでも結果が変わらないセレクタを出すと誤解を生むため、固定表示にする */}
+                    {isNisa ? (
+                      <div className="w-full bg-slate-800/60 border border-slate-700/60 rounded-lg px-3 py-1.5 text-xs text-slate-500">
+                        満額固定（バリュエーション調整なし）
+                      </div>
+                    ) : (
+                      <select
+                        value={slot.asset_class}
+                        onChange={(e) => handleSlotFieldChange(slotKey, 'asset_class', e.target.value as MaAssetClass)}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:border-blue-500 focus:outline-none"
+                      >
+                        {MA_ASSET_CLASS_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 );
               })}
