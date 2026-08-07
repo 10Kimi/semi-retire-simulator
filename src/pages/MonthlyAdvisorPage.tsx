@@ -237,43 +237,6 @@ export default function MonthlyAdvisorPage() {
                 </div>
               </div>
 
-              {/* 口座ごとの小計。枠の上限があるものは超過を警告する */}
-              {(() => {
-                const byAccount = MA_ACCOUNT_OPTIONS.map((opt) => ({
-                  ...opt,
-                  total: SLOT_KEYS.reduce(
-                    (sum, k) => sum + (settings[k].account === opt.value ? settings[k].amount : 0), 0),
-                  cap: ACCOUNT_MONTHLY_CAP[opt.value],
-                })).filter((a) => a.total > 0);
-                const slotTotal = SLOT_KEYS.reduce((sum, k) => sum + settings[k].amount, 0);
-                if (byAccount.length === 0) return null;
-                return (
-                  <div className="border-t border-slate-700/60 pt-3 space-y-1">
-                    {byAccount.map((a) => (
-                      <div key={a.value} className="flex items-center justify-between text-xs">
-                        <span className="text-slate-400">
-                          {a.label}
-                          {a.cap && a.total > a.cap && (
-                            <span className="ml-2 text-amber-400">⚠️ 月{formatCurrency(a.cap)}を超過</span>
-                          )}
-                        </span>
-                        <span className={a.cap && a.total > a.cap ? 'text-amber-400' : 'text-slate-300'}>
-                          {formatCurrency(a.total)}
-                          {a.cap && <span className="text-slate-600"> / {formatCurrency(a.cap)}</span>}
-                        </span>
-                      </div>
-                    ))}
-                    <div className="flex items-center justify-between text-sm pt-1">
-                      <span className="text-slate-400">積立合計</span>
-                      <span className={slotTotal > settings.monthly_budget ? 'text-amber-400' : 'text-slate-200'}>
-                        {formatCurrency(slotTotal)}
-                        {slotTotal > settings.monthly_budget && <span className="ml-2 text-xs">⚠️ 月次予算を超過</span>}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })()}
-
               <p className="text-xs text-slate-500 leading-relaxed">
                 各積立に口座を選んでください。同じ枠に複数の商品を入れられます。非課税枠（NISA・iDeCo/401k）は満額で積み立て、割高／割安によるバリュエーション調整は<span className="text-slate-400">特定口座のみ</span>に効きます。
               </p>
@@ -344,6 +307,43 @@ export default function MonthlyAdvisorPage() {
                   </div>
                 );
               })}
+
+              {/* 口座ごとの小計。枠の上限があるものは超過を警告する */}
+              {(() => {
+                const byAccount = MA_ACCOUNT_OPTIONS.map((opt) => ({
+                  ...opt,
+                  total: SLOT_KEYS.reduce(
+                    (sum, k) => sum + (settings[k].account === opt.value ? settings[k].amount : 0), 0),
+                  cap: ACCOUNT_MONTHLY_CAP[opt.value],
+                })).filter((a) => a.total > 0);
+                const slotTotal = SLOT_KEYS.reduce((sum, k) => sum + settings[k].amount, 0);
+                if (byAccount.length === 0) return null;
+                return (
+                  <div className="border-t border-slate-700/60 pt-3 space-y-1">
+                    {byAccount.map((a) => (
+                      <div key={a.value} className="flex items-center justify-between text-xs">
+                        <span className="text-slate-400">
+                          {a.label}
+                          {a.cap && a.total > a.cap && (
+                            <span className="ml-2 text-amber-400">⚠️ 月{formatCurrency(a.cap)}を超過</span>
+                          )}
+                        </span>
+                        <span className={a.cap && a.total > a.cap ? 'text-amber-400' : 'text-slate-300'}>
+                          {formatCurrency(a.total)}
+                          {a.cap && <span className="text-slate-600"> / {formatCurrency(a.cap)}</span>}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between text-sm pt-1">
+                      <span className="text-slate-400">積立合計</span>
+                      <span className={slotTotal > settings.monthly_budget ? 'text-amber-400' : 'text-slate-200'}>
+                        {formatCurrency(slotTotal)}
+                        {slotTotal > settings.monthly_budget && <span className="ml-2 text-xs">⚠️ 月次予算を超過</span>}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
