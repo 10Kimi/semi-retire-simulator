@@ -1,36 +1,50 @@
 import { describe, it, expect } from 'vitest';
 import { getCapeMultiplier, getPbrMultiplier, getGsrMultiplier, calculateAllocation, estimateNikkeiPbr, resolveReserveBase } from './logic';
-import type { UserMaSettings, MaAssetClass, JpIndex } from './types';
+import type { UserMaSettings, MaAssetClass, MaAccount, MaSlot, JpIndex } from './types';
 
-/** テスト用ヘルパー: スロットを 1 行で構築（5〜7 個。未指定分は none/0） */
+/**
+ * テスト用ヘルパー: スロットを 1 行で構築（最大10個。未指定分は none/0）。
+ * 口座は既定で slot1=NISAつみたて / slot2=NISA成長 / slot3以降=特定口座。
+ * これは口座属性を導入する前の「スロット番号＝口座」と同じ割り当てなので、
+ * 既存テストの意味が変わらない。個別に変えたい場合は acct を指定する。
+ */
+type SlotSpec = { amount: number; ac: MaAssetClass; acct?: MaAccount };
+
 function buildSettings(
   monthly_budget: number,
   reserve_balance: number,
-  slots: { amount: number; ac: MaAssetClass }[],
+  slots: SlotSpec[],
   jp_index: JpIndex = 'topix',
 ): UserMaSettings {
-  const empty = { amount: 0, fund_name: '', asset_class: 'none' as MaAssetClass };
-  const toSlot = (s?: { amount: number; ac: MaAssetClass }) =>
-    s ? { amount: s.amount, fund_name: '', asset_class: s.ac } : empty;
-  const [s1, s2, s3, s4, s5, s6, s7] = slots;
+  const defaultAccounts: MaAccount[] = [
+    'nisa_tsumitate', 'nisa_growth',
+    'specific', 'specific', 'specific', 'specific', 'specific', 'specific', 'specific', 'specific',
+  ];
+  const toSlot = (s: SlotSpec | undefined, idx: number): MaSlot => ({
+    account: s?.acct ?? defaultAccounts[idx],
+    amount: s?.amount ?? 0,
+    fund_name: '',
+    asset_class: s?.ac ?? ('none' as MaAssetClass),
+  });
   return {
     user_id: 'test',
     monthly_budget,
-    ideco_amount: 0,
-    ideco_fund_name: '',
     reserve_balance,
     jp_index,
     reserve_month: null,
     reserve_month_base: null,
     nikkei_pbr_anchor: null,
     nikkei_price_anchor: null,
-    slot1: toSlot(s1),
-    slot2: toSlot(s2),
-    slot3: toSlot(s3),
-    slot4: toSlot(s4),
-    slot5: toSlot(s5),
-    slot6: toSlot(s6),
-    slot7: toSlot(s7),
+    slot1: toSlot(slots[0], 0),
+    slot2: toSlot(slots[1], 1),
+    slot3: toSlot(slots[2], 2),
+    slot4: toSlot(slots[3], 3),
+    slot5: toSlot(slots[4], 4),
+    slot6: toSlot(slots[5], 5),
+    slot7: toSlot(slots[6], 6),
+    slot8: toSlot(slots[7], 7),
+    slot9: toSlot(slots[8], 8),
+    slot10: toSlot(slots[9], 9),
   };
 }
 
@@ -194,6 +208,7 @@ describe('calculateAllocation (per-slot multiplier、migration 031 後の新構�
   const FAIR_PBR = 1.5;
   const FAIR_GSR = 60;
   const CAPE5Y = 30; // 乖離 0% → 1.0x
+  const EXPENSIVE_CAPE = 42; // 5年MA比 +40% → 割高（特定口座のみ控えめになる）
 
   it('全スロット asset_class=none → 月次予算がそのまま固定積立される', () => {
     const settings = buildSettings(1_000_000, 0, [
@@ -204,7 +219,7 @@ describe('calculateAllocation (per-slot multiplier、migration 031 後の新構�
       { amount: 200_000, ac: 'none' },
     ]);
     const r = calculateAllocation(FAIR_CAPE, FAIR_PBR, FAIR_GSR, true, true, true, true, CAPE5Y, settings, 'neutral');
-    expect(r.perSlotAmount).toEqual([200_000, 200_000, 200_000, 200_000, 200_000, 0, 0]);
+    expect(r.perSlotAmount).toEqual([200_000, 200_000, 200_000, 200_000, 200_000, 0, 0, 0, 0, 0]);
     expect(r.totalInvest).toBe(1_000_000);
     expect(r.monthlyReserve).toBe(0);
   });
@@ -219,7 +234,7 @@ describe('calculateAllocation (per-slot multiplier、migration 031 後の新構�
     ]);
     const r = calculateAllocation(FAIR_CAPE, FAIR_PBR, FAIR_GSR, true, true, true, true, CAPE5Y, settings, 'neutral');
     // 全 multiplier=1.0 なので各 100K のまま
-    expect(r.perSlotAmount).toEqual([100_000, 100_000, 100_000, 100_000, 100_000, 0, 0]);
+    expect(r.perSlotAmount).toEqual([100_000, 100_000, 100_000, 100_000, 100_000, 0, 0, 0, 0, 0]);
   });
 
   it('us 割高 (CAPE=37, 乖離 +23%) で 特定口座の us スロットだけ 0.5x', () => {
@@ -350,33 +365,41 @@ describe('calculateAllocation (per-slot multiplier、migration 031 後の新構�
     expect(r.monthlyReserve).toBe(800_000);
   });
 
-  it('iDeCo分は配分対象から除外され、待機資金に積まれない', () => {
-    // 月次予算15万に iDeCo 2.3万を含めたケース。スロット合計は12.7万。
-    // ideco_amount を引かないと 2.3万が毎月「実在しない待機資金」として積み上がる。
-    const settings = {
-      ...buildSettings(150_000, 0, [
-        { amount: 100_000, ac: 'none' as MaAssetClass },
-        { amount: 20_000, ac: 'none' as MaAssetClass },
-        { amount: 0, ac: 'none' as MaAssetClass },
-        { amount: 0, ac: 'none' as MaAssetClass },
-        { amount: 0, ac: 'none' as MaAssetClass },
-      ]),
-      ideco_amount: 23_000,
-    };
-    const r = calculateAllocation(FAIR_CAPE, FAIR_PBR, FAIR_GSR, true, true, true, true, CAPE5Y, settings, 'neutral');
+  it('iDeCoスロットは満額固定で、待機資金に二重計上されない', () => {
+    // 月次予算15万。NISAつみたて10万 + iDeCo 2万 = 12万を積み立てる。
+    // iDeCo はスロットとして計上されるため、差額3万だけが待機資金になる。
+    const settings = buildSettings(150_000, 0, [
+      { amount: 100_000, ac: 'none' },
+      { amount: 0, ac: 'none' },
+      { amount: 20_000, ac: 'us', acct: 'ideco' },   // 割高でも調整されないこと
+    ]);
+    const r = calculateAllocation(EXPENSIVE_CAPE, FAIR_PBR, FAIR_GSR, true, true, true, true, CAPE5Y, settings, 'neutral');
+    expect(r.perSlotAmount[2]).toBe(20_000);        // 非課税枠なので満額のまま
     expect(r.totalInvest).toBe(120_000);
-    expect(r.monthlyReserve).toBe(7_000); // 150,000 - 23,000(iDeCo) - 120,000 = 7,000
+    expect(r.monthlyReserve).toBe(30_000);
   });
 
-  it('iDeCo=0 なら従来どおりの計算', () => {
-    const settings = { ...buildSettings(150_000, 0, [
-      { amount: 100_000, ac: 'none' as MaAssetClass },
-      { amount: 20_000, ac: 'none' as MaAssetClass },
-      { amount: 0, ac: 'none' as MaAssetClass },
-      { amount: 0, ac: 'none' as MaAssetClass },
-      { amount: 0, ac: 'none' as MaAssetClass },
-    ]), ideco_amount: 0 };
-    const r = calculateAllocation(FAIR_CAPE, FAIR_PBR, FAIR_GSR, true, true, true, true, CAPE5Y, settings, 'neutral');
-    expect(r.monthlyReserve).toBe(30_000); // iDeCoを引かないと差額30,000が全て待機資金に
+  it('同じ非課税枠に複数商品を置ける（1枠1商品の制約がない）', () => {
+    // NISA成長枠に2商品、NISAつみたて枠に1商品、iDeCoに1商品。すべて満額固定。
+    const settings = buildSettings(200_000, 0, [
+      { amount: 100_000, ac: 'us', acct: 'nisa_tsumitate' },
+      { amount: 50_000, ac: 'bond', acct: 'nisa_growth' },
+      { amount: 30_000, ac: 'em', acct: 'nisa_growth' },
+      { amount: 20_000, ac: 'gold', acct: 'ideco' },
+    ]);
+    const r = calculateAllocation(EXPENSIVE_CAPE, FAIR_PBR, FAIR_GSR, true, true, true, true, CAPE5Y, settings, 'neutral');
+    expect(r.perSlotAmount.slice(0, 4)).toEqual([100_000, 50_000, 30_000, 20_000]);
+    expect(r.totalInvest).toBe(200_000);
+    expect(r.monthlyReserve).toBe(0);
+  });
+
+  it('特定口座だけがバリュエーション調整を受ける', () => {
+    const settings = buildSettings(200_000, 0, [
+      { amount: 100_000, ac: 'us', acct: 'nisa_tsumitate' },
+      { amount: 100_000, ac: 'us', acct: 'specific' },
+    ]);
+    const r = calculateAllocation(EXPENSIVE_CAPE, FAIR_PBR, FAIR_GSR, true, true, true, true, CAPE5Y, settings, 'neutral');
+    expect(r.perSlotAmount[0]).toBe(100_000);            // 非課税枠は満額
+    expect(r.perSlotAmount[1]).toBeLessThan(100_000);    // 特定口座は割高で控えめに
   });
 });

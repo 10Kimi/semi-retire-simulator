@@ -8,14 +8,13 @@ import type {
   AllocationResult,
   MaSlot,
   MaAssetClass,
+  MaAccount,
+  SlotKey,
   JpIndex,
 } from '../lib/ma/types';
-import { MA_ASSET_CLASS_OPTIONS, SLOT_LABELS } from '../lib/ma/types';
+import { MA_ASSET_CLASS_OPTIONS, MA_ACCOUNT_OPTIONS, ACCOUNT_MONTHLY_CAP, SLOT_LABELS, SLOT_KEYS, isTaxAdvantaged } from '../lib/ma/types';
 import { fetchLatestIndicators, fetchUserSettings, updateReserveBalance, updateSettings } from '../lib/ma/db';
 import { calculateAllocation, formatCurrency, getCapeMultiplier, estimateNikkeiPbr, resolveReserveBase } from '../lib/ma/logic';
-
-type SlotKey = 'slot1' | 'slot2' | 'slot3' | 'slot4' | 'slot5' | 'slot6' | 'slot7';
-const SLOT_KEYS: SlotKey[] = ['slot1', 'slot2', 'slot3', 'slot4', 'slot5', 'slot6', 'slot7'];
 
 export default function MonthlyAdvisorPage() {
   const { user } = useAuth();
@@ -131,25 +130,13 @@ export default function MonthlyAdvisorPage() {
     if (user) await updateSettings(user.id, { monthly_budget: value });
   };
 
-  const handleIdecoAmountChange = async (value: number) => {
-    const updated = { ...settings, ideco_amount: value };
-    setSettings(updated);
-    if (user) await updateSettings(user.id, { ideco_amount: value });
-  };
-
-  const handleIdecoFundNameChange = async (value: string) => {
-    const updated = { ...settings, ideco_fund_name: value };
-    setSettings(updated);
-    if (user) await updateSettings(user.id, { ideco_fund_name: value });
-  };
-
   const handleSlotFieldChange = async <K extends keyof MaSlot>(slotKey: SlotKey, field: K, value: MaSlot[K]) => {
     const currentSlot = settings[slotKey];
     const updatedSlot: MaSlot = { ...currentSlot, [field]: value };
     const updated = { ...settings, [slotKey]: updatedSlot };
     setSettings(updated);
     if (user) {
-      await updateSettings(user.id, { slot: slotKey, field, value: value as number | string | MaAssetClass });
+      await updateSettings(user.id, { slot: slotKey, field, value: value as number | string | MaAssetClass | MaAccount });
     }
   };
 
@@ -250,52 +237,51 @@ export default function MonthlyAdvisorPage() {
                 </div>
               </div>
 
-              {/* iDeCo/401k は既に拠出済みで手元に無いため、予算から差し引いてから配分する。
-                  銘柄名は計算に使わないが、後から何に拠出しているか分かるように記録できる */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm text-slate-400">うち iDeCo / 401k</label>
-                  <div className="relative w-40">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 pointer-events-none">¥</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      defaultValue={settings.ideco_amount.toLocaleString()}
-                      key={`ideco-${settings.ideco_amount}`}
-                      onBlur={(e) => handleIdecoAmountChange(parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-7 pr-3 py-2 text-right text-sm focus:border-blue-500 focus:outline-none"
-                    />
+              {/* 口座ごとの小計。枠の上限があるものは超過を警告する */}
+              {(() => {
+                const byAccount = MA_ACCOUNT_OPTIONS.map((opt) => ({
+                  ...opt,
+                  total: SLOT_KEYS.reduce(
+                    (sum, k) => sum + (settings[k].account === opt.value ? settings[k].amount : 0), 0),
+                  cap: ACCOUNT_MONTHLY_CAP[opt.value],
+                })).filter((a) => a.total > 0);
+                const slotTotal = SLOT_KEYS.reduce((sum, k) => sum + settings[k].amount, 0);
+                if (byAccount.length === 0) return null;
+                return (
+                  <div className="border-t border-slate-700/60 pt-3 space-y-1">
+                    {byAccount.map((a) => (
+                      <div key={a.value} className="flex items-center justify-between text-xs">
+                        <span className="text-slate-400">
+                          {a.label}
+                          {a.cap && a.total > a.cap && (
+                            <span className="ml-2 text-amber-400">⚠️ 月{formatCurrency(a.cap)}を超過</span>
+                          )}
+                        </span>
+                        <span className={a.cap && a.total > a.cap ? 'text-amber-400' : 'text-slate-300'}>
+                          {formatCurrency(a.total)}
+                          {a.cap && <span className="text-slate-600"> / {formatCurrency(a.cap)}</span>}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between text-sm pt-1">
+                      <span className="text-slate-400">積立合計</span>
+                      <span className={slotTotal > settings.monthly_budget ? 'text-amber-400' : 'text-slate-200'}>
+                        {formatCurrency(slotTotal)}
+                        {slotTotal > settings.monthly_budget && <span className="ml-2 text-xs">⚠️ 月次予算を超過</span>}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <input
-                  type="text"
-                  defaultValue={settings.ideco_fund_name}
-                  key={`ideco-name-${settings.ideco_fund_name}`}
-                  onBlur={(e) => handleIdecoFundNameChange(e.target.value)}
-                  placeholder="銘柄名（メモ・任意）"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-between border-t border-slate-700/60 pt-3">
-                <span className="text-sm text-slate-400">配分対象</span>
-                <span className="text-sm text-slate-200">
-                  {formatCurrency(Math.max(0, settings.monthly_budget - settings.ideco_amount))}
-                </span>
-              </div>
+                );
+              })()}
 
               <p className="text-xs text-slate-500 leading-relaxed">
-                月次予算に iDeCo / 401k の掛金を含めている場合は「うち iDeCo / 401k」に入力してください。掛金は変更が年1回に限られ、商品もプランごとに異なるため、<span className="text-slate-400">このツールでは配分の対象外</span>として予算から差し引きます。
+                各積立に口座を選んでください。同じ枠に複数の商品を入れられます。非課税枠（NISA・iDeCo/401k）は満額で積み立て、割高／割安によるバリュエーション調整は<span className="text-slate-400">特定口座のみ</span>に効きます。
               </p>
 
-              <p className="text-xs text-slate-500 leading-relaxed">
-                NISA枠は満額で積み立てます（税制優遇枠は満額埋めるのが有利）。割高／割安によるバリュエーション調整は<span className="text-slate-400">特定口座のみ</span>に効きます。
-              </p>
-
-              {/* 各スロット: 金額 + 銘柄名 + 資産クラス */}
+              {/* 各スロット: 口座 + 金額 + 銘柄名 + 資産クラス */}
               {SLOT_KEYS.map((slotKey) => {
                 const slot = settings[slotKey];
-                const isNisa = slotKey === 'slot1' || slotKey === 'slot2';
+                const isNisa = isTaxAdvantaged(slot.account);
                 return (
                   <div key={slotKey} className="bg-slate-800/50 rounded-lg p-3 space-y-2">
                     <div className="flex items-center justify-between">
@@ -317,6 +303,17 @@ export default function MonthlyAdvisorPage() {
                         />
                       </div>
                     </div>
+                    <select
+                      value={slot.account}
+                      onChange={(e) => handleSlotFieldChange(slotKey, 'account', e.target.value as MaAccount)}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:border-blue-500 focus:outline-none"
+                    >
+                      {MA_ACCOUNT_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                     <input
                       type="text"
                       defaultValue={slot.fund_name}

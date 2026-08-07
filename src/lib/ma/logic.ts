@@ -7,6 +7,7 @@ import type {
   MaSlot,
   JpIndex,
 } from './types';
+import { isTaxAdvantaged } from './types';
 
 // --- バリュエーション判定（index.htmlから移植） ---
 
@@ -160,32 +161,36 @@ export function calculateAllocation(
     settings.slot5,
     settings.slot6,
     settings.slot7,
+    settings.slot8,
+    settings.slot9,
+    settings.slot10,
   ];
 
-  // slot1/2 = NISA枠。税制優遇枠は「満額で埋める」のが確実に有利なため、
-  // バリュエーション/モメンタム/mode の調整対象外（満額固定）。調整は特定口座(slot3〜)のみ。
-  // ※iDeCo/401k も同じ税制優遇の考え方（枠は満額、タイミング調整は課税口座で）。
-  const NISA_SLOT_COUNT = 2;
+  // 非課税枠（NISAつみたて/成長・iDeCo/401k）は「満額で埋める」のが確実に有利なため、
+  // バリュエーション/モメンタム/mode の調整対象外（満額固定）。調整は特定口座のみ。
+  // ※ 2026-08-07 まではスロット番号で判定していたが、1つの非課税枠で複数商品を買う
+  //    ケースを表現できなかったため、スロットの口座属性で判定する方式に変更。
 
   // 各スロットの最終投資額を 1 万円単位に丸めて算出
-  const perSlotAmount = slots.map((slot, idx) => {
-    if (idx < NISA_SLOT_COUNT) {
-      return Math.round(slot.amount / 10000) * 10000; // NISA枠は満額（調整しない）
+  const perSlotAmount = slots.map((slot) => {
+    if (isTaxAdvantaged(slot.account)) {
+      return Math.round(slot.amount / 10000) * 10000; // 非課税枠は満額（調整しない）
     }
     const multiplier = getSlotMultiplier(slot.asset_class, { us: usBase, jp: jpBase, em: emBase, gold: goldBase }, mode);
     return Math.round((slot.amount * multiplier) / 10000) * 10000;
   });
 
   const baseInvest = perSlotAmount.reduce((sum, v) => sum + v, 0);
-  // 月次予算には iDeCo/401k の掛金が含まれうる。iDeCo は既に拠出済みで手元に無いため、
-  // 差し引いてから待機資金を計算する。含めたままだと実在しない資金が毎月積み上がり、
-  // 割安時に「無い資金を投入せよ」という指示になる。
-  const allocatable = Math.max(0, settings.monthly_budget - (settings.ideco_amount ?? 0));
-  const monthlyReserve = Math.max(0, allocatable - baseInvest);
+  // iDeCo/401k もスロットとして計上されるため、スロット合計＝その月の投資額。
+  // 予算との差額がそのまま待機資金になる（実在しない資金は積み上がらない）。
+  const monthlyReserve = Math.max(0, settings.monthly_budget - baseInvest);
 
   // 待機資金投入も特定口座のみが対象（NISA枠は満額固定＝上振れさせない）。
   // 特定口座(slot3〜)で最初に asset_class='us' のスロットに加算（無ければ 0）
-  const firstUsIdx = slots.findIndex((s, idx) => idx >= NISA_SLOT_COUNT && s.asset_class === 'us');
+  // 投入先は特定口座のみ（非課税枠は満額固定＝上振れさせない）。
+  // 全額を非課税枠に入れている人は投入先が無く 0 になるが、その場合は
+  // スロット合計＝予算で待機資金も積み上がらないため辻褄は合う。
+  const firstUsIdx = slots.findIndex((s) => !isTaxAdvantaged(s.account) && s.asset_class === 'us');
   const reserveDeployment =
     firstUsIdx >= 0 ? getReserveDeployment(capeResult.level, settings.reserve_balance) : 0;
   if (reserveDeployment > 0) {

@@ -46,7 +46,34 @@ export const MA_ASSET_CLASS_OPTIONS: { value: MaAssetClass; label: string }[] = 
   { value: 'bond', label: '債券' },
 ];
 
+/**
+ * スロットの口座。バリュエーション調整の可否はここで決まる（specific のみ調整対象）。
+ * 非課税枠（NISA つみたて/成長・iDeCo/401k）は「満額で埋める」のが確実に有利なため
+ * 割高・割安に関わらず設定額をそのまま積み立てる。
+ */
+export type MaAccount = 'nisa_tsumitate' | 'nisa_growth' | 'ideco' | 'specific';
+
+export const MA_ACCOUNT_OPTIONS: { value: MaAccount; label: string; taxAdvantaged: boolean }[] = [
+  { value: 'nisa_tsumitate', label: 'NISA つみたて枠', taxAdvantaged: true },
+  { value: 'nisa_growth', label: 'NISA 成長枠', taxAdvantaged: true },
+  { value: 'ideco', label: 'iDeCo / 401k', taxAdvantaged: true },
+  { value: 'specific', label: '特定口座', taxAdvantaged: false },
+];
+
+/** 月あたりの枠上限（円）。null は上限がツールから判定できないもの（iDeCoは職業区分による） */
+export const ACCOUNT_MONTHLY_CAP: Record<MaAccount, number | null> = {
+  nisa_tsumitate: 100000,   // 年120万
+  nisa_growth: 200000,      // 年240万
+  ideco: null,              // 職業区分により 1.2万〜6.8万
+  specific: null,
+};
+
+export function isTaxAdvantaged(account: MaAccount): boolean {
+  return account !== 'specific';
+}
+
 export interface MaSlot {
+  account: MaAccount;
   amount: number;
   fund_name: string;
   asset_class: MaAssetClass;
@@ -55,8 +82,6 @@ export interface MaSlot {
 export interface UserMaSettings {
   user_id: string;
   monthly_budget: number;
-  ideco_amount: number;               // 月次予算に含めた iDeCo/401k の掛金。配分対象外（表示と控除のみ）
-  ideco_fund_name: string;            // iDeCo/401k の銘柄メモ（任意・計算には使わない）
   reserve_balance: number;
   reserve_month: string | null;       // 待機資金を最後に更新した月 'YYYY-MM'（同月は上書き）
   reserve_month_base: number | null;  // その月に入る前の待機残高（同月再実行時の計算基点）
@@ -70,6 +95,9 @@ export interface UserMaSettings {
   slot5: MaSlot;
   slot6: MaSlot;
   slot7: MaSlot;
+  slot8: MaSlot;
+  slot9: MaSlot;
+  slot10: MaSlot;
 }
 
 export type MarketMode = 'bullish' | 'neutral' | 'cautious';
@@ -113,32 +141,36 @@ export interface AllocationResult {
 // （資産クラスのプリセットのみ、特定口座の使い方の例として残す）。
 export const DEFAULT_SETTINGS: Omit<UserMaSettings, 'user_id'> = {
   monthly_budget: 0,
-  ideco_amount: 0,
-  ideco_fund_name: '',
   reserve_balance: 0,
   reserve_month: null,
   reserve_month_base: null,
   jp_index: 'topix',
   nikkei_pbr_anchor: null,
   nikkei_price_anchor: null,
-  slot1: { amount: 0, fund_name: '', asset_class: 'none' },
-  slot2: { amount: 0, fund_name: '', asset_class: 'none' },
-  slot3: { amount: 0, fund_name: '', asset_class: 'us' },
-  slot4: { amount: 0, fund_name: '', asset_class: 'gold' },
-  slot5: { amount: 0, fund_name: '', asset_class: 'bond' },
-  slot6: { amount: 0, fund_name: '', asset_class: 'none' },
-  slot7: { amount: 0, fund_name: '', asset_class: 'none' },
+  slot1: { account: 'nisa_tsumitate', amount: 0, fund_name: '', asset_class: 'none' },
+  slot2: { account: 'nisa_growth', amount: 0, fund_name: '', asset_class: 'none' },
+  slot3: { account: 'nisa_growth', amount: 0, fund_name: '', asset_class: 'none' },
+  slot4: { account: 'ideco', amount: 0, fund_name: '', asset_class: 'none' },
+  slot5: { account: 'specific', amount: 0, fund_name: '', asset_class: 'us' },
+  slot6: { account: 'specific', amount: 0, fund_name: '', asset_class: 'gold' },
+  slot7: { account: 'specific', amount: 0, fund_name: '', asset_class: 'bond' },
+  slot8: { account: 'specific', amount: 0, fund_name: '', asset_class: 'none' },
+  slot9: { account: 'specific', amount: 0, fund_name: '', asset_class: 'none' },
+  slot10: { account: 'specific', amount: 0, fund_name: '', asset_class: 'none' },
 };
 
 /** スロット表示用のラベル定義（UI で参照） */
-export const SLOT_LABELS: Record<
-  'slot1' | 'slot2' | 'slot3' | 'slot4' | 'slot5' | 'slot6' | 'slot7', string
-> = {
-  slot1: 'NISA 積立枠',
-  slot2: 'NISA 成長枠',
-  slot3: '特定口座 1',
-  slot4: '特定口座 2',
-  slot5: '特定口座 3',
-  slot6: '特定口座 4',
-  slot7: '特定口座 5',
+export type SlotKey =
+  | 'slot1' | 'slot2' | 'slot3' | 'slot4' | 'slot5'
+  | 'slot6' | 'slot7' | 'slot8' | 'slot9' | 'slot10';
+
+export const SLOT_KEYS: SlotKey[] = [
+  'slot1', 'slot2', 'slot3', 'slot4', 'slot5',
+  'slot6', 'slot7', 'slot8', 'slot9', 'slot10',
+];
+
+/** 口座はスロットの属性になったので、ラベルは通し番号だけを持つ */
+export const SLOT_LABELS: Record<SlotKey, string> = {
+  slot1: '積立 1', slot2: '積立 2', slot3: '積立 3', slot4: '積立 4', slot5: '積立 5',
+  slot6: '積立 6', slot7: '積立 7', slot8: '積立 8', slot9: '積立 9', slot10: '積立 10',
 };
