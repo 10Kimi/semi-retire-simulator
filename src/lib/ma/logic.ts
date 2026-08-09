@@ -171,10 +171,11 @@ export function calculateAllocation(
   // ※ 2026-08-07 まではスロット番号で判定していたが、1つの非課税枠で複数商品を買う
   //    ケースを表現できなかったため、スロットの口座属性で判定する方式に変更。
 
-  // 各スロットの最終投資額を 1 万円単位に丸めて算出
+  // 各スロットの最終投資額を算出。特定口座は掛け算で端数が出るため 1 万円単位に丸めるが、
+  // 非課税枠はユーザーが入力した確定額（iDeCo の掛金など）なので丸めずそのまま使う。
   const perSlotAmount = slots.map((slot) => {
     if (isTaxAdvantaged(slot.account)) {
-      return Math.round(slot.amount / 10000) * 10000; // 非課税枠は満額（調整しない）
+      return slot.amount; // 非課税枠は満額（調整も丸めもしない）
     }
     const multiplier = getSlotMultiplier(slot.asset_class, { us: usBase, jp: jpBase, em: emBase, gold: goldBase }, mode);
     return Math.round((slot.amount * multiplier) / 10000) * 10000;

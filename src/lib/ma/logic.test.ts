@@ -393,6 +393,23 @@ describe('calculateAllocation (per-slot multiplier、migration 031 後の新構�
     expect(r.monthlyReserve).toBe(0);
   });
 
+  it('非課税枠は 1 万円未満の端数があっても入力額のまま（丸めない）', () => {
+    // 実機で報告されたケース: 入力合計15万なのに計算結果が16万になった。
+    // 37,500→40,000 / 45,000→50,000 / 15,000→20,000 / 22,500→20,000 と
+    // スロットごとに 1 万円単位へ丸めていたため、繰り上げ3件・繰り下げ1件が相殺せず +1万円。
+    const settings = buildSettings(150_000, 0, [
+      { amount: 37_500, ac: 'us', acct: 'ideco' },
+      { amount: 45_000, ac: 'bond', acct: 'nisa_growth' },
+      { amount: 30_000, ac: 'em', acct: 'nisa_growth' },
+      { amount: 15_000, ac: 'jp', acct: 'nisa_growth' },
+      { amount: 22_500, ac: 'gold', acct: 'nisa_growth' },
+    ]);
+    const r = calculateAllocation(EXPENSIVE_CAPE, FAIR_PBR, FAIR_GSR, true, true, true, true, CAPE5Y, settings, 'neutral');
+    expect(r.perSlotAmount.slice(0, 5)).toEqual([37_500, 45_000, 30_000, 15_000, 22_500]);
+    expect(r.totalInvest).toBe(150_000);
+    expect(r.monthlyReserve).toBe(0);
+  });
+
   it('特定口座だけがバリュエーション調整を受ける', () => {
     const settings = buildSettings(200_000, 0, [
       { amount: 100_000, ac: 'us', acct: 'nisa_tsumitate' },
