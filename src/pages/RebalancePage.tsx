@@ -37,6 +37,23 @@ function AdjustmentList({ items }: { items: AdjustmentItem[] }) {
   );
 }
 
+/**
+ * 売却が発生するときだけ出す口座順の注記。
+ * このツールは資産クラスの金額しか持たないため「どの口座で売るか」は計算できない。
+ * 判断の型（実践4-1 の原則）だけを渡して、口座別の実作業はワークシート側に寄せる。
+ */
+function SellAccountNote() {
+  return (
+    <div className="bg-amber-900/20 border border-amber-500/30 rounded-lg px-4 py-3">
+      <p className="text-sm text-amber-300 mb-1">どの口座で売るか</p>
+      <p className="text-xs text-amber-400/80 leading-relaxed">
+        ① iDeCo・401k内のスイッチング（非課税）→ ② NISA（非課税・枠は翌年復活）→ ③ 特定口座（課税）の順に検討してください。
+        特定口座で売ると含み益に約20%課税されます。口座をまたいで大きく動かすときは、口座別リバランス・ワークシートを使ってください。
+      </p>
+    </div>
+  );
+}
+
 const SEVERITY_COLORS: Record<DeviationItem['severity'], string> = {
   ok: 'text-slate-400',
   minor: 'text-blue-400',
@@ -596,6 +613,9 @@ export default function RebalancePage() {
                     ? <AdjustmentList items={adjustmentItems} />
                     : <p className="text-xs text-slate-500 text-center py-4">調整不要です</p>
                   }
+                  {adjustmentItems.some(i => i.amount < 0) && (
+                    <div className="mt-4"><SellAccountNote /></div>
+                  )}
                 </>
               )}
 
@@ -693,9 +713,10 @@ export default function RebalancePage() {
                           <h4 className="text-sm text-slate-300 font-medium">今月の操作（計算上の目安）</h4>
 
                           {sellOps.length > 0 && (
-                            <div>
+                            <div className="space-y-3">
                               <p className="text-xs text-red-400 mb-2">売却（毎月・分散）</p>
                               <AdjustmentList items={sellOps} />
+                              <SellAccountNote />
                             </div>
                           )}
 
