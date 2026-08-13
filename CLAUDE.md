@@ -6,7 +6,7 @@
 「セミリタイア資産運用パッケージ」の中核プロダクト。
 
 - 本番URL: https://fire.largogk.jp
-- パッケージ全体設計書: ../../Docs/設計書_v7_21_main.md（最新版。過去版は ../../Docs/archive/）
+- パッケージ全体設計書: ../../Docs/設計書_v7_22_main.md（最新版。過去版は ../../Docs/archive/）
 - パッケージ全体の判断文脈: ../../CLAUDE.md
 
 ## コマンド
@@ -82,6 +82,21 @@ DB 層は `rowToSettings` / `settingsToRow` でフラットな行と入れ子の
 口座別の入力（13クラス×4口座）を持たせるとUXが重く、iDeCo の取扱商品は
 運営管理機関ごとに異なり汎用ツールでは判定できないため、この設計にした。
 大きく動かすときは実践4-1の口座別ワークシートへ誘導する。
+
+### 最適PFの再計算（`scripts/optimize_portfolios.py`）
+```bash
+set -a && . scripts/market/.env && set +a
+scripts/market/.venv/bin/python scripts/optimize_portfolios.py          # dry-run
+scripts/market/.venv/bin/python scripts/optimize_portfolios.py --apply  # DB反映
+```
+- **パラメータは `asset_class_params`（DB）から読む**。スクリプト内の定数は
+  DB取得に失敗したときのフォールバックで、**正ではない**（2026-08-12 以前は定数を使っており
+  cron で更新されるDB値とズレ続けていた）
+- 実行には2〜3分かかる（サイズ2〜5の全部分集合を総当たり）
+- **反映後は `types.ts` の `MODEL_ALLOCATIONS` / `MODEL_META` も必ず同期する**。
+  `/risk` の採用ボタンが保存するのはこちらの値で、DBだけ直しても採用される中身は変わらない
+- **リスクレベルの帯（`EFF_UPPER`）を変えたら `classifyRiskLevel7` も対で変える**。
+  片方だけ動かすと「Lv7 のモデル配分を採用した人が診断すると Lv6 と出る」等の矛盾が起きる
 
 ### マイグレーション
 `supabase/migrations/`（〜037）。**CLI は使わず Supabase SQL Editor で直接適用する。**
@@ -194,7 +209,7 @@ DB 層は `rowToSettings` / `settingsToRow` でフラットな行と入れ子の
   - **招待コード生成スクリプトを追跡対象に**（`724e714`）: `scripts/generate-invite-code.ts` は有料ツールの招待コード発行の唯一の手段だが git 未追跡でローカルにしか存在しなかった。追跡し `npm run invite -- --count N` で実行できるよう `package.json` に追加。キーは `scripts/market/.env`（gitignore 済み）から読むためスクリプト本体に秘密は含まない
   - **/ma の待機資金ラベルから iBond 表記を削除**（`12bee19`）: 「待機資金残高（iBond）」「今月の待機分 → iBond」は運営者個人の運用先で一般ユーザーには当てはまらないため汎用表現に変更
   - **未追跡ファイルの整理**（`e359e5c` / `d451720`）: `__pycache__` と `scripts/market/indicators.json`（`fetch_indicators.py` の生成物）を gitignore、`Docs/lp_draft_age50s_v1.md` を追跡（CHANGELOG:295・CLAUDE.md:90 に「ドラフト保管」と書かれているのに未追跡だった）、`src/content/legal/privacy.md` を物理削除（CHANGELOG:661 で削除済みのローカル残骸。`/privacy` は `vercel.json` で largogk.jp へリダイレクトしており正本ではない。`tokushoho.md` と同じ処理）。これで `git status` はクリーン
-- **/ma スロットの口座属性化 ＋ iDeCo統合**（2026-08-04〜07、設計書 v7.21、semi-retire-app 4 commit＋migration 036〜038・全 push 済み）:
+- **/ma スロットの口座属性化 ＋ iDeCo統合**（2026-08-04〜07、設計書 v7.22、semi-retire-app 4 commit＋migration 036〜038・全 push 済み）:
   - **iDeCo/401k の控除欄を追加 → 後にスロットへ統合**（`4445f69` migration 036 / `80edce7` migration 037 → `2e03e00` migration 038 で廃止）: 「毎月15万投資する」という認識には iDeCo の掛金が含まれるのが自然だが、/ma は `monthly_budget` からスロット合計を引いた差額を待機資金として積む設計のため、iDeCo込みの予算を入れると**実在しない資金が毎月積み上がり**、割安時に「無い資金を投入せよ」という指示になっていた。当初は `ideco_amount` で差し引く方式にしたが、038 でスロットに統合して構造的に解消
   - **NISA枠の補正セレクタを無効化**（`4445f69`）: `logic.ts` は NISA枠を満額固定として補正を無視するのに、UIではセレクタが選べてしまい、選んでも結果が変わらず誤解を生んでいた。「満額固定（バリュエーション調整なし）」の固定表示に置換
   - **スロットに口座属性・7→10枠**（`2e03e00`、migration 038）: 「スロット番号＝口座」の固定構造では**1つの非課税枠に複数商品を置けなかった**。モデルケース（米国株25%/先進国債券30%/エマージング債20%/日本リート10%/ゴールド15%）を月15万で積むと非課税枠に全部収まり5商品を3口座に振り分けるが、旧構造ではNISAに1枠ずつしかない。さらに `logic.ts` がスロット番号で非課税を判定していた（`idx < 2`）ため、NISAの商品を特定口座スロットに入れて回避すると**非課税枠なのに調整がかかる**誤計算になっていた。`slot{N}_account`（nisa_tsumitate / nisa_growth / ideco / specific）を追加し `isTaxAdvantaged()` で判定する方式へ。待機資金の投入先も「特定口座かつ米国株」に変更
@@ -217,6 +232,35 @@ DB 層は `rowToSettings` / `settingsToRow` でフラットな行と入れ子の
     「① iDeCo内スイッチング → ② NISA（枠は翌年復活）→ ③ 特定口座（約20%課税）」の原則が
     ツール側で切れていた。売却が実際に出るとき（売却あり／期間指定モード）だけ静的注記を表示。
     ロジック・入力項目の変更なし。積立のみモードでは出さない
+- **最適PF再最適化 ＋ リスクレベル境界の変更**（2026-08-12、semi-retire-app 1 commit・push 済み）:
+  - **発端**: 実践4-3 のスライドを「Lv3の配分が◯%ずれるとLv4になる」と具体化するため
+    数字を検算したところ、`optimal_portfolios`（DB保存値）と現在の `asset_class_params` で
+    再計算した値が全レベルでズレていた。**Lv1〜3 は帯の上限を超え、Lv6〜7 は下限を割っていた**
+  - **原因**: `scripts/optimize_portfolios.py` が **DB を読まずスクリプト内の定数**
+    （`RETURNS` / `RISKS` / `CORR_FLAT`、2026-06 時点）を使っていた。その後 `fetch_volatility.py`
+    （cron 毎月1日）と日本株ボラ逆転バグ修正で **DB 側だけが更新され続け**、
+    ボラが 11/13 資産でズレていた（us_equity 20.00%→16.58%、emerging_equity 24.00%→19.29% 等）。
+    期待リターンは 2026-06 の GPIF 統一で両方直したため 13/13 一致していた
+  - **`--apply` が一度も成功していなかった**: PostgREST の upsert に必要な
+    `on_conflict=risk_level` が無く、`Prefer: resolution=merge-duplicates` だけでは
+    insert 扱いになり全レベル 409（一意制約違反）で失敗していた。前回（2026-06-20）の更新が
+    SQL Editor 手動だったのはこのため。修正して自動実行が通るようにした
+  - **リスクレベル境界を 20% → 16.5% に変更**（`classifyRiskLevel7` / `VOL_UPPER` /
+    `riskScoring.ts` の表示文言）。ボラ実測の反映で**単一資産の最大ボラが 19.50%（commodity）**
+    まで下がり、分散した状態で 20% を超える組み合わせが存在しなくなったため、
+    旧 Lv7 帯（20〜24%）が**到達不能**になっていた。16.5 なのは実現可能な
+    Lv6(15.11%) と Lv7(16.91%) を分ける必要があるため（17.0 だと Lv7 のモデル配分が Lv6 と判定される）
+  - **単一資産の上限を新設**: 従来は emerging_bond / emerging_equity にしか上限が無く、
+    最適化が「Lv6 = エマージング株15% + エマージングREIT85%」という2資産解を返した。
+    数学的には最大シャープだが両者は同じ地域リスクを共有し危機時に一緒に落ちる。
+    `DEFAULT_CAP = 0.45`（全資産45%）を追加。**シャープ最大化より分散を優先する価値判断**
+  - **最低資産数**: Lv4・5 は4資産、Lv6・7 は高ボラ資産が乏しいため3資産
+  - 新配分（全レベルで判定Lvと一致することを検証済み）:
+    Lv1 2.94% / Lv2 5.71% / Lv3 8.52% / Lv4 10.47% / Lv5 13.20% / Lv6 15.11% / Lv7 16.91%
+  - `MODEL_ALLOCATIONS` / `MODEL_META`（`types.ts`）も DB と同期。
+    **ここは `/risk` の「このPFを採用する」で保存される値**なので、DB だけ直しても意味がない
+  - 適用前のDB値は `optimal_portfolios_backup_20260812.json` に退避（scratchpad）
+  - テスト109件・`npm run build` 通過
 - 次の優先: Phase 3.5（ステップメール + リスク乖離の損失体感UI改善）
 
 ### SEO基盤 Phase 1 の設計方針（サマリ）

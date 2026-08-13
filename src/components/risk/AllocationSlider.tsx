@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 // ボラティリティ上限（各レベル）
 const VOL_UPPER: Record<number, number> = {
-  1: 3, 2: 6, 3: 9, 4: 12, 5: 15, 6: 20, 7: 100,
+  1: 3, 2: 6, 3: 9, 4: 12, 5: 15, 6: 16.5, 7: 100,   // 2026-08-12: Lv6上限 20→16.5
 };
 
 /** ウェイトからボラティリティを計算（pfSimple.tsと同じ式） */

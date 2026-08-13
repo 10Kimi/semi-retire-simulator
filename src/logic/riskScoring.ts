@@ -8,8 +8,8 @@ export const RISK_LEVEL_DEFS: RiskLevelDef[] = [
   { level: 3, name: 'やや保守型', volatility: '6〜9%',  color: 'bg-cyan-100',   textColor: 'text-cyan-800' },
   { level: 4, name: 'バランス型', volatility: '9〜12%', color: 'bg-green-100',  textColor: 'text-green-800' },
   { level: 5, name: 'やや積極型', volatility: '12〜15%', color: 'bg-yellow-100', textColor: 'text-yellow-800' },
-  { level: 6, name: '積極型',     volatility: '15〜20%', color: 'bg-orange-100', textColor: 'text-orange-800' },
-  { level: 7, name: '超積極型',   volatility: '20%〜',  color: 'bg-red-100',    textColor: 'text-red-800' },
+  { level: 6, name: '積極型',     volatility: '15〜16.5%', color: 'bg-orange-100', textColor: 'text-orange-800' },
+  { level: 7, name: '超積極型',   volatility: '16.5%〜',  color: 'bg-red-100',    textColor: 'text-red-800' },
 ];
 
 export function getRiskLevelDef(level: number): RiskLevelDef {

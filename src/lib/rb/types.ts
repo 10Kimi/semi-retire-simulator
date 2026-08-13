@@ -17,28 +17,28 @@ export const ASSET_CLASSES = [
 
 export type AssetClassKey = (typeof ASSET_CLASSES)[number]['key'];
 
-// リスクレベル別モデル配分（optimal_portfolios と一本化、2026-06-21 再最適化）
+// リスクレベル別モデル配分（optimal_portfolios と一本化、2026-08-12 再最適化）
 // 出所: scripts/optimize_portfolios.py（上限5資産 / vol上部狙い(実効上限の90%) / 新興上限）。
 // optimal_portfolios テーブルの確定値と一致させている。
 export const MODEL_ALLOCATIONS: Record<number, Record<AssetClassKey, number>> = {
-  1: { cash: 20, japan_equity: 0, us_equity: 10, developed_equity: 0, emerging_equity: 0, japan_bond: 55, developed_bond: 10, emerging_bond: 5, japan_reit: 0, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 0 },
-  2: { cash: 0, japan_equity: 0, us_equity: 20, developed_equity: 0, emerging_equity: 0, japan_bond: 35, developed_bond: 20, emerging_bond: 15, japan_reit: 0, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 10 },
-  3: { cash: 0, japan_equity: 0, us_equity: 25, developed_equity: 0, emerging_equity: 0, japan_bond: 0, developed_bond: 30, emerging_bond: 20, japan_reit: 10, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 15 },
-  4: { cash: 0, japan_equity: 0, us_equity: 35, developed_equity: 0, emerging_equity: 0, japan_bond: 0, developed_bond: 10, emerging_bond: 25, japan_reit: 15, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 15 },
-  5: { cash: 0, japan_equity: 0, us_equity: 35, developed_equity: 0, emerging_equity: 20, japan_bond: 0, developed_bond: 0, emerging_bond: 25, japan_reit: 10, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 10 },
-  6: { cash: 0, japan_equity: 0, us_equity: 45, developed_equity: 0, emerging_equity: 30, japan_bond: 0, developed_bond: 0, emerging_bond: 5, japan_reit: 0, developed_reit: 10, emerging_reit: 10, commodity: 0, gold: 0 },
-  7: { cash: 0, japan_equity: 0, us_equity: 35, developed_equity: 5, emerging_equity: 55, japan_bond: 0, developed_bond: 0, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 5, commodity: 0, gold: 0 },
+  1: { cash: 35, japan_equity: 0, us_equity: 10, developed_equity: 0, emerging_equity: 0, japan_bond: 35, developed_bond: 15, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 5 },
+  2: { cash: 0, japan_equity: 0, us_equity: 15, developed_equity: 0, emerging_equity: 10, japan_bond: 45, developed_bond: 25, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 5 },
+  3: { cash: 0, japan_equity: 0, us_equity: 25, developed_equity: 0, emerging_equity: 15, japan_bond: 15, developed_bond: 40, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 5 },
+  4: { cash: 0, japan_equity: 0, us_equity: 30, developed_equity: 0, emerging_equity: 20, japan_bond: 0, developed_bond: 35, emerging_bond: 0, japan_reit: 5, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 10 },
+  5: { cash: 0, japan_equity: 0, us_equity: 45, developed_equity: 0, emerging_equity: 30, japan_bond: 0, developed_bond: 15, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 10 },
+  6: { cash: 0, japan_equity: 0, us_equity: 45, developed_equity: 0, emerging_equity: 40, japan_bond: 0, developed_bond: 0, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 5, commodity: 0, gold: 10 },
+  7: { cash: 0, japan_equity: 0, us_equity: 35, developed_equity: 5, emerging_equity: 60, japan_bond: 0, developed_bond: 0, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 0 },
 };
 
 // リスクレベル別メタデータ（MODEL_ALLOCATIONS と同一PFの計算結果に同期）
 export const MODEL_META: Record<number, { name: string; expectedReturn: number; volatility: number; sharpe: number }> = {
-  1: { name: '超保守型',   expectedReturn: 1.6, volatility: 2.9,  sharpe: 0.37 },
-  2: { name: '保守型',     expectedReturn: 3.1, volatility: 6.0,  sharpe: 0.44 },
-  3: { name: 'やや保守型', expectedReturn: 4.3, volatility: 8.6,  sharpe: 0.45 },
-  4: { name: 'バランス型', expectedReturn: 5.0, volatility: 10.3, sharpe: 0.43 },
-  5: { name: 'やや積極型', expectedReturn: 5.9, volatility: 13.2, sharpe: 0.41 },
-  6: { name: '積極型',     expectedReturn: 7.0, volatility: 17.6, sharpe: 0.37 },
-  7: { name: '超積極型',   expectedReturn: 7.5, volatility: 20.0, sharpe: 0.35 },
+  1: { name: '超保守型', expectedReturn: 1.54, volatility: 2.94, sharpe: 0.35 },
+  2: { name: '保守型', expectedReturn: 2.98, volatility: 5.71, sharpe: 0.43 },
+  3: { name: 'やや保守型', expectedReturn: 4.27, volatility: 8.52, sharpe: 0.44 },
+  4: { name: 'バランス型', expectedReturn: 5.16, volatility: 10.47, sharpe: 0.44 },
+  5: { name: 'やや積極型', expectedReturn: 6.27, volatility: 13.2, sharpe: 0.44 },
+  6: { name: '積極型', expectedReturn: 6.99, volatility: 15.11, sharpe: 0.43 },
+  7: { name: '超積極型', expectedReturn: 7.53, volatility: 16.91, sharpe: 0.42 },
 };
 
 export interface Holdings {

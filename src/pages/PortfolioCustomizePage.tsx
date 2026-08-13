@@ -15,7 +15,7 @@ import type { MonteCarloResult } from '../logic/monteCarlo';
 const RISK_FREE_RATE = 0.5;
 
 const VOL_UPPER: Record<number, number> = {
-  1: 3, 2: 6, 3: 9, 4: 12, 5: 15, 6: 20, 7: 100,
+  1: 3, 2: 6, 3: 9, 4: 12, 5: 15, 6: 16.5, 7: 100,   // 2026-08-12: Lv6上限 20→16.5
 };
 
 // 資産パラメータ（ボラ・期待リターン・相関）。/pf と同じく asset_class_params（DB）を優先し、

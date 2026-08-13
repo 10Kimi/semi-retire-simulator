@@ -44,7 +44,14 @@ export function classifyRiskLevel7(volatility: number): number {
   if (volatility <= 9) return 3;
   if (volatility <= 12) return 4;
   if (volatility <= 15) return 5;
-  if (volatility <= 20) return 6;
+  // 2026-08-12: Lv6/Lv7 の境界を 20% → 16.5% に変更。
+  // ボラ実測の反映で単一資産の最大ボラが 19.50%（commodity）まで下がり、
+  // 分散した状態で 20% を超える組み合わせが存在しなくなったため
+  // （旧 Lv7 帯 20〜24% は到達不能だった）。optimize_portfolios.py の
+  // EFF_UPPER と対で変更している。片方だけ動かすと採用PFの判定が食い違う。
+  // 16.5 なのは、実現可能な Lv6(15.1%) と Lv7(16.9%) を分ける必要があるため。
+  // 17.0 にすると Lv7 のモデル配分(16.9%)が Lv6 と判定されて矛盾する。
+  if (volatility <= 16.5) return 6;
   return 7;
 }
 

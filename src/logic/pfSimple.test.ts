@@ -20,8 +20,8 @@ describe('classifyRiskLevel7', () => {
     expect(classifyRiskLevel7(12.01)).toBe(5);
     expect(classifyRiskLevel7(15)).toBe(5);
     expect(classifyRiskLevel7(15.01)).toBe(6);
-    expect(classifyRiskLevel7(20)).toBe(6);
-    expect(classifyRiskLevel7(20.01)).toBe(7);
+    expect(classifyRiskLevel7(16.5)).toBe(6);   // 2026-08-12: 境界 20→16.5
+    expect(classifyRiskLevel7(16.51)).toBe(7);
     expect(classifyRiskLevel7(30)).toBe(7);
   });
 });

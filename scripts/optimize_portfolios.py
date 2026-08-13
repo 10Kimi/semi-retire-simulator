@@ -63,9 +63,53 @@ RISK_FREE_RATE = 0.5  # %
 VOL_UPPER = {1: 3, 2: 6, 3: 9, 4: 12, 5: 15, 6: 20, 7: 50}
 
 N = len(ASSET_KEYS)
-mu = np.array([RETURNS[k] / 100 for k in ASSET_KEYS])
-sigma = np.array([RISKS[k] / 100 for k in ASSET_KEYS])
-corr = np.array(CORR_FLAT)
+
+
+def load_params_from_db():
+    """asset_class_params（DB）を最優先で読む。
+
+    ※ 2026-08-12 追加。上の RETURNS / RISKS / CORR_FLAT は 2026-06 時点の値で
+      固定されており、その後 fetch_volatility.py（cron 毎月1日）と
+      日本株ボラ逆転バグ修正（clean_monthly_returns）で **DB 側だけが更新され続けていた**。
+      その結果、スクリプト定数と DB のボラが 11/13 資産でズレ（us_equity 20.00% vs 16.58%、
+      emerging_equity 24.00% vs 19.29% など）、DB に保存済みの最適配分を
+      現在のパラメータで再計算すると Lv1〜3 が帯の上限を超え、Lv6〜7 は下限を割っていた。
+      定数のまま再最適化すると古い前提の配分を書き戻してしまうため、DB を正とする。
+
+    取得できなければ定数にフォールバックする（オフライン実行の保険）。
+    """
+    url = os.environ.get('SUPABASE_URL')
+    key = os.environ.get('SUPABASE_SERVICE_KEY')
+    if not url or not key:
+        print('[params] SUPABASE 未設定 → スクリプト内の定数を使用')
+        return RETURNS, RISKS, CORR_FLAT, 'constants'
+    try:
+        import requests
+        r = requests.get(f'{url}/rest/v1/asset_class_params?select=*',
+                         headers={'apikey': key, 'Authorization': f'Bearer {key}'},
+                         timeout=30)
+        rows = r.json()
+        P = {x['asset_class']: x for x in rows}
+        missing = [k for k in ASSET_KEYS if k not in P]
+        if missing:
+            print(f'[params] DB に不足 {missing} → 定数を使用')
+            return RETURNS, RISKS, CORR_FLAT, 'constants'
+        rets = {k: P[k]['expected_return'] for k in ASSET_KEYS}
+        risks = {k: P[k]['volatility'] for k in ASSET_KEYS}
+        corr_db = [[(1.0 if a == b else (P[a].get('correlation') or {}).get(b, 0.0))
+                    for b in ASSET_KEYS] for a in ASSET_KEYS]
+        print(f'[params] asset_class_params から取得（更新: {P[ASSET_KEYS[0]].get("updated_at", "?")[:10]}）')
+        return rets, risks, corr_db, 'db'
+    except Exception as e:
+        print(f'[params] DB取得失敗（{e}） → 定数を使用')
+        return RETURNS, RISKS, CORR_FLAT, 'constants'
+
+
+_RETURNS, _RISKS, _CORR, PARAM_SOURCE = load_params_from_db()
+
+mu = np.array([_RETURNS[k] / 100 for k in ASSET_KEYS])
+sigma = np.array([_RISKS[k] / 100 for k in ASSET_KEYS])
+corr = np.array(_CORR)
 cov = np.outer(sigma, sigma) * corr
 rf = RISK_FREE_RATE / 100
 
@@ -93,27 +137,44 @@ def neg_sharpe(w):
 #    実効上限をアセット最大ボラ相当の 24% とする。
 MAX_ASSETS = 5
 VOL_TARGET_RATIO = 0.90  # 実効上限の90%を vol 下限に据えて上部帯を狙う
-EFF_UPPER = {1: 3, 2: 6, 3: 9, 4: 12, 5: 15, 6: 20, 7: 24}
+# 2026-08-12: ボラ実測の反映（emerging_equity 24%→19.29% 等）で、
+# 単一資産の最大ボラが 19.50%（commodity）まで下がった。分散した状態で 20% を
+# 超える組み合わせが存在しなくなり、旧 Lv7 帯（20〜24%）は到達不能になっていた。
+# 上位2レベルの帯を実勢に合わせて下げる。判定しきい値（classifyRiskLevel7）も同時に変更。
+EFF_UPPER = {1: 3, 2: 6, 3: 9, 4: 12, 5: 15, 6: 17, 7: 19}
 
-# 単一アセット上限（ウェイト割合）。基本は全レベル共通。
+# 単一アセット上限（ウェイト割合）。
+#
+# ※ 2026-08-12 変更。従来は emerging_bond / emerging_equity にしか上限が無く、
+#   ボラ更新（emerging_reit 22%→18.98%）の結果、最適化が
+#   「Lv6 = エマージング株15% + エマージングREIT85%」という2資産解を返した。
+#   数学的には帯の中で最大シャープだが、両者は同じ地域リスクを共有していて
+#   危機時に一緒に落ちる。**分散は「数を増やすこと」ではなく「壊れ方が違うものを持つこと」**
+#   という方針に反するため、全資産に一律の上限をかける。
+#   これはシャープ最大化より分散を優先するという価値判断（本人決定）。
+DEFAULT_CAP = 0.45               # 1資産あたり最大45%
 CAPS = {'emerging_bond': 0.25, 'emerging_equity': 0.50}
 # レベル別の上限オーバーライド（指定キーは基本値を上書き／新規追加）。
-# Lv7（超積極）のみ：新興株を 65% まで許容して vol≥20% 帯に到達させつつ、新興REIT を 15% に抑える。
-LEVEL_CAPS = {7: {'emerging_equity': 0.65, 'emerging_reit': 0.15}}
+# Lv7（超積極）のみ：高ボラ帯に到達させるため新興株を緩める。
+LEVEL_CAPS = {6: {'developed_reit': 0.55}, 7: {'emerging_equity': 0.65, 'emerging_reit': 0.35, 'developed_reit': 0.55}}
 
 
 def _caps_for(level):
-    merged = dict(CAPS)
+    merged = {k: DEFAULT_CAP for k in ASSET_KEYS}
+    merged.update(CAPS)
     merged.update(LEVEL_CAPS.get(level, {}))
     return {ASSET_KEYS.index(k): v for k, v in merged.items()}
 
 
-# レベル別の最低アセット数（指定なきレベルは下限2）。Lv7 は集中回避のため最低4。
-MIN_ASSETS = {7: 4}
+# レベル別の最低アセット数（指定なきレベルは下限2）。
+# 2026-08-12: 集中を避けるため Lv4・5 は最低4資産。
+# Lv6・7 は高ボラ資産の選択肢が乏しく（単一最大が commodity 19.50%）、
+# 4資産を強制すると帯の下限に届かないため 3 に緩める。
+MIN_ASSETS = {4: 4, 5: 4, 6: 3, 7: 3}
 
 # レベル別の vol 下限オーバーライド（絶対値）。指定なきレベルは 実効上限×VOL_TARGET_RATIO。
 # Lv7：実効上限24%×0.9=21.6% は caps 下で到達不能なため、Lv7 定義の下限 20% を採用。
-LEVEL_VOL_MIN = {7: 0.20}
+LEVEL_VOL_MIN = {7: 0.170}   # Lv7 は Lv6 上限(17%)を下限とする
 
 
 def _solve_subset(idx, vol_min, vol_max, floor, caps_idx):
@@ -282,13 +343,19 @@ def main():
                 'expected_return': r['expected_return'],
                 'volatility': r['volatility'],
                 'sharpe_ratio': r['sharpe_ratio'],
+                'updated_at': 'now()',
             }
+            # ※ 2026-08-12 修正。Prefer: resolution=merge-duplicates だけでは upsert にならず、
+            #   PostgREST は競合解決の対象列を on_conflict クエリパラメータで指定する必要がある。
+            #   無いと通常の insert 扱いになり、risk_level の一意制約に 409 で弾かれていた
+            #   （--apply が全レベルで失敗していた）。
             resp = requests.post(
-                f'{url}/rest/v1/optimal_portfolios',
+                f'{url}/rest/v1/optimal_portfolios?on_conflict=risk_level',
                 headers=headers,
                 json=payload,
+                timeout=30,
             )
-            if resp.status_code in (200, 201):
+            if resp.status_code in (200, 201, 204):
                 print(f"  Lv{r['risk_level']}: Supabaseにupsert完了")
             else:
                 print(f"  Lv{r['risk_level']}: upsert失敗 {resp.status_code} {resp.text}")
