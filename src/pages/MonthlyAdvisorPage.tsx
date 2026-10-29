@@ -387,7 +387,7 @@ export default function MonthlyAdvisorPage() {
               )}
               {stale && (
                 <div className="mt-2 text-xs text-amber-200/90">
-                  指標が古い可能性があります。`fetch_indicators.py` を再実行して更新してください。
+                  指標の自動更新が遅れています。表示中の数値は上記の取得日時点のものです。
                 </div>
               )}
             </div>
