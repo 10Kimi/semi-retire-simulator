@@ -417,7 +417,7 @@ export default function MonthlyAdvisorPage() {
             {cape && cape5yMA && (
               <div className="mt-2 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">5年MA比較</span>
+                  <span className="text-slate-400">{getCapeMultiplier(parseFloat(cape), cape5yMA).deviation === undefined ? '絶対水準（CAPE 38超）' : '5年MA比較'}</span>
                   <span style={{ color: getCapeMultiplier(parseFloat(cape), cape5yMA).color }}>
                     {getCapeMultiplier(parseFloat(cape), cape5yMA).label} ({getCapeMultiplier(parseFloat(cape), cape5yMA).multiplier}x)
                   </span>

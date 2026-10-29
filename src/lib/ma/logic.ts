@@ -17,7 +17,7 @@ export function getCapeMultiplier(cape: number, ma5y: number | null): ValuationR
     return { multiplier: 0.5, label: '歴史的バブル級', color: '#dc2626', level: 'extreme', note: 'ITバブル超え（2000年: 44.2）' };
   }
   if (cape > 38) {
-    return { multiplier: 0.75, label: '要警戒水準', color: '#f87171', level: 'very-high', note: '過去2回のみ（1929, 2000, 2021）' };
+    return { multiplier: 0.75, label: '要警戒水準', color: '#f87171', level: 'very-high', note: '1929年の天井（32.6）超え。過去は2000年前後と2021年末のみ' };
   }
 
   // 相対評価ロジック
