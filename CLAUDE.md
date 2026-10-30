@@ -6,7 +6,7 @@
 「セミリタイア資産運用パッケージ」の中核プロダクト。
 
 - 本番URL: https://fire.largogk.jp
-- パッケージ全体設計書: ../../Docs/設計書_v7_22_main.md（最新版。過去版は ../../Docs/archive/）
+- パッケージ全体設計書: ../../Docs/設計書_v7_23_main.md（最新版。過去版は ../../Docs/archive/）
 - パッケージ全体の判断文脈: ../../CLAUDE.md
 
 ## コマンド
@@ -105,6 +105,7 @@ scripts/market/.venv/bin/python scripts/optimize_portfolios.py --apply  # DB反�
 ---
 
 ## ターゲット像
+- メインペルソナ＝氷河期世代の高収入層（現在40代半ば〜50代半ば）。定義は「状態」で切る（設計書 §1-3、`../../Docs/brand.md`）
 - セミリタイアに憧れているが「自分には無理」と思っている人
 - 世帯年収1,500万〜4,000万円の日本人サラリーマン・共働き夫婦
 - 投資はしている（or始めたい）が、運用方針に自信がない
@@ -261,7 +262,9 @@ scripts/market/.venv/bin/python scripts/optimize_portfolios.py --apply  # DB反�
     **ここは `/risk` の「このPFを採用する」で保存される値**なので、DB だけ直しても意味がない
   - 適用前のDB値は `optimal_portfolios_backup_20260812.json` に退避（scratchpad）
   - テスト109件・`npm run build` 通過
-- 次の優先: Phase 3.5（ステップメール + リスク乖離の損失体感UI改善）
+- 次の一手（2026-10-30〜。番号付き Phase は廃止）: 分散可視化ツール（インデックスのルックスルー）。
+  設計書 v7.23 §13-67、調査は `../../Docs/分散可視化ツール_実装調査_20261030.md`。
+  ステップメールは優先度を下げて最小構成で置く
 
 ### SEO基盤 Phase 1 の設計方針（サマリ）
 - URL 構造: ハブ型 `/tools/*`。既存 `/risk /pf /portfolio` はそのまま残す
