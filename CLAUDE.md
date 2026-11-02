@@ -90,7 +90,12 @@ DB 層は `rowToSettings` / `settingsToRow` でフラットな行と入れ子の
 毎月の送信日（`sendDay`＝25。土日祝は直前の営業日）に指標を取得し、/ma と同じ計算結果をメールで送る。
 - **構成**：計算・送信日判定・古さ判定・暴落ルール・本文は `src/lib/ma/` と `src/lib/ma/mail/`（実行環境に依存しない。Phase B でそのまま使う）。
   ローカル固有の部分（設定・状態ファイル、Python での取得、Resend 送信）だけが `scripts/ma-mail/run.ts`
-- **起動**：launchd `jp.largogk.fi.ma-mail`（毎月20〜31日 9:00 ＋ RunAtLoad）。送るかどうか・二重送信の防止・キャッチアップはスクリプトが判定
+- **起動**：launchd `jp.largogk.fi.ma-mail`（毎日 9:00 ＋ RunAtLoad、2026-11-02 に20〜31日から変更）。送るかどうか・二重送信の防止・キャッチアップはスクリプトが判定
+- **実行の記録と監視**：実行のたびに `~/Library/Logs/jp.largogk.fi/ma-mail-runs.jsonl`（1行追記・直近400行）と `ma-mail-last.json` に結果を書く（try/finally）。
+  healthchecks.io への合図は本番の送信（`HEALTHCHECK_URL`）とエラー（`/fail`）のときだけ。Mac は毎日起動しないので監視は月単位（設計書 §13-69）。
+  `HEALTHCHECK_URL`（`scripts/market/.env`）が未設定なら記録だけ書く。失敗側の確認は `--simulate-error`
+  **順序**：送信と `state.json`（送信済みの記録）は `main` の中、合図と記録ファイルはそのあと（`scripts/ma-mail/monitor.ts` の `runOnce`）。
+  合図の失敗・タイムアウト（10秒）は結果と終了コードを変えない（送信済みを error 扱いにすると次回また送るため。`monitor.test.ts`）。元の plist は `~/Library/Logs/jp.largogk.fi/` に退避
 - **ローカルファイル（gitignore）**：`scripts/ma-mail/config.local.json`（userId・宛先・sendDay・mode）、
   `state.json`（送信済みの月）、`out/`（HTML の書き出し）。秘密は `scripts/market/.env` の `RESEND_API_KEY`
 - **古いデータで黙って計算しない**：`indicators.as_of`（migration 039）の基準日で判定し、未更新なら件名に【データ未更新あり】、本文の指標と倍率の横に明記。

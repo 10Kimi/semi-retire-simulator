@@ -1,7 +1,7 @@
 /**
  * /ma 月次メール（Phase A：オーナー個人向け・ローカル実行）
  *
- * launchd（jp.largogk.fi.ma-mail）が毎月20〜31日 9:00 と RunAtLoad で起動する。
+ * launchd（jp.largogk.fi.ma-mail）が毎日 9:00 と RunAtLoad で起動する（送るかどうかはこのスクリプトが判定）。
  * 送信日の判定・計算・本文の組み立ては src/lib/ma/（画面と共通・実行環境に依存しない）。
  * このファイルはローカル固有の部分だけ：設定・状態ファイル、Python での取得、Resend への送信。
  * 暴落ルールの段階は user_ma_settings.crash_state（画面の「投資実行」で確定）を読むだけで、メールは書き換えない。
@@ -16,12 +16,19 @@
  *   --simulate-drawdown=-0.25   S&P500 ドル建ての現在値を「最高値×(1−25%)」に置き換える（暴落ルールの表示確認用）
  *   --simulate-fail=cape,sp500_usd   指定した指標を取得失敗として扱う
  *   --state=path                状態ファイルを差し替える
+ *   --simulate-error            開始直後にエラーにする（監視の失敗側の確認用）
+ *
+ * 監視: 実行のたびに ~/Library/Logs/jp.largogk.fi/ma-mail-runs.jsonl（1行追記・直近400行）と
+ *   ma-mail-last.json（最後の1回）に結果を書く。healthchecks.io への合図は、本番の送信をしたとき（HEALTHCHECK_URL）と
+ *   エラーのとき（/fail）だけ。送信日でない日・送信済み・dry-run・テスト送信では送らない（Mac は毎日起動するとは限らないため、
+ *   監視は「毎月、月末ごろまでに送信の合図が来るか」で行う）。HEALTHCHECK_URL が未設定なら記録だけ書く。金額は送らない
  *
  * 設定: scripts/ma-mail/config.local.json（gitignore。config.example.json を参照）
- * 秘密: scripts/market/.env の SUPABASE_URL / SUPABASE_SERVICE_KEY / RESEND_API_KEY
+ * 秘密: scripts/market/.env の SUPABASE_URL / SUPABASE_SERVICE_KEY / RESEND_API_KEY / HEALTHCHECK_URL（任意）
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Indicators, MarketMode, PricePoint } from '../../src/lib/ma/types';
@@ -30,10 +37,15 @@ import { rowToSettings, type UserMaSettingsRow } from '../../src/lib/ma/settings
 import { decideSend } from '../../src/lib/ma/mail/schedule';
 import { checkFreshness, type Freshness } from '../../src/lib/ma/mail/freshness';
 import { buildMail } from '../../src/lib/ma/mail/buildMail';
+import { runOnce, sendPing, type RunRecord, type RunResult } from './monitor';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
 const PYTHON = join(ROOT, 'scripts/market/.venv/bin/python');
+const LOG_DIR = join(homedir(), 'Library/Logs/jp.largogk.fi');
+const RUNS_LOG = join(LOG_DIR, 'ma-mail-runs.jsonl');
+const LAST_RUN = join(LOG_DIR, 'ma-mail-last.json');
+const RUNS_KEEP = 400;
 
 interface Config {
   userId: string;
@@ -81,7 +93,7 @@ function runPython(script: string, env: Record<string, string>, extraArgs: strin
   return r.status === 0;
 }
 
-async function main() {
+async function main(): Promise<{ result: RunResult; targetMonth: string; catchup: boolean }> {
   const dryRun = flag('dry-run');
   const forceSend = flag('force-send');
   const today = opt('today') ?? localToday();
@@ -93,9 +105,13 @@ async function main() {
     : { sentMonths: [] };
 
   console.log(`[${new Date().toISOString()}] /ma 月次メール today=${today}${dryRun ? ' dry-run' : ''}${forceSend ? ' force-send' : ''}`);
+  if (flag('simulate-error')) throw new Error('--simulate-error');
   const decision = decideSend(today, config.sendDay, state.sentMonths);
   console.log(`  判定: ${decision.send ? '送る' : '送らない'}（${decision.reason}）`);
-  if (!decision.send && !dryRun && !forceSend) return;
+  const catchup = decision.send && today !== decision.scheduled;
+  if (!decision.send && !dryRun && !forceSend) {
+    return { result: state.sentMonths.includes(decision.month) ? 'already_sent' : 'not_due', targetMonth: decision.month, catchup: false };
+  }
 
   // 1. 取得（送る日だけ。共有の indicators は通常の定期取得と同じく上書きされる）
   if (!flag('no-fetch')) {
@@ -156,7 +172,7 @@ async function main() {
   console.log(`  HTML: ${preview}`);
   const crash = calc?.crash;
   if (crash?.newlyTriggered.length) console.log(`  暴落ルール: 第${crash.newlyTriggered.map((s) => s / 10 - 1).join('・')}段階に該当（投入額の合計 ${crash.total}円）`);
-  if (dryRun) return;
+  if (dryRun) return { result: 'dry_run', targetMonth: decision.month, catchup };
 
   // 5. 送信（Resend。Phase A はドメイン認証なしの onboarding@resend.dev から本人宛て）
   if (!env.RESEND_API_KEY) throw new Error('scripts/market/.env に RESEND_API_KEY がありません');
@@ -174,9 +190,33 @@ async function main() {
     state.sentMonths = [...state.sentMonths, decision.month].slice(-24);
     writeFileSync(statePath, JSON.stringify(state, null, 2));
   }
+  return { result: forceSend ? 'force_sent' : 'sent', targetMonth: decision.month, catchup };
 }
 
-main().catch((e) => {
-  console.error(`  エラー: ${e instanceof Error ? e.message : e}`);
-  process.exit(1);
+function writeRecord(record: RunRecord) {
+  mkdirSync(LOG_DIR, { recursive: true });
+  const lines = existsSync(RUNS_LOG) ? readFileSync(RUNS_LOG, 'utf8').split('\n').filter(Boolean) : [];
+  lines.push(JSON.stringify(record));
+  writeFileSync(RUNS_LOG, lines.slice(-RUNS_KEEP).join('\n') + '\n');
+  writeFileSync(LAST_RUN, JSON.stringify(record, null, 2) + '\n');
+}
+
+function healthcheckUrl(): string | undefined {
+  if (process.env.HEALTHCHECK_URL) return process.env.HEALTHCHECK_URL;
+  try {
+    return loadEnv(join(ROOT, 'scripts/market/.env')).HEALTHCHECK_URL;
+  } catch {
+    return undefined; // .env が読めないときも記録は書く
+  }
+}
+
+// 送信と state.json は main の中、合図と記録ファイルはそのあと（monitor.ts の runOnce）
+runOnce(opt('today') ?? localToday(), {
+  main,
+  ping: (record) => sendPing(record, healthcheckUrl()),
+  write: writeRecord,
+}).then(({ record, exitCode }) => {
+  if (record.error) console.error(`  エラー: ${record.error}`);
+  console.log(`  記録: ${record.result}（合図: ${record.ping}）`);
+  process.exitCode = exitCode;
 });
