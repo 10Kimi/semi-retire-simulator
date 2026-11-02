@@ -1,4 +1,6 @@
 import type {
+  Indicators,
+  CapeHistoryEntry,
   ValuationResult,
   AllocationResult,
   UserMaSettings,
@@ -8,6 +10,7 @@ import type {
   JpIndex,
 } from './types';
 import { isTaxAdvantaged } from './types';
+import { evaluateCrash, resolveCrashBase, type CrashEvaluation } from './crash';
 
 // --- バリュエーション判定（index.htmlから移植） ---
 
@@ -92,14 +95,6 @@ function applyModeCorrection(multiplier: number, mode: MarketMode): number {
   return multiplier;
 }
 
-// --- 待機資金投入判定 ---
-
-function getReserveDeployment(capeLevel: string | undefined, currentReserve: number): number {
-  if (capeLevel === 'low') return Math.round((currentReserve * 0.25) / 10000) * 10000;
-  if (capeLevel === 'very-low') return Math.round((currentReserve * 0.5) / 10000) * 10000;
-  return 0;
-}
-
 // --- スロット単位の乗数ルックアップ ---
 
 interface MultiplierSet {
@@ -142,6 +137,8 @@ export function calculateAllocation(
   cape5yMA: number | null,
   settings: UserMaSettings,
   mode: MarketMode,
+  /** 暴落ルールで待機資金から投入する額（crash.ts の evaluateCrash で計算）。スロットには足さない */
+  crashDeployment = 0,
 ): AllocationResult {
   const capeResult = getCapeMultiplier(cape, cape5yMA);
   const pbrResult = getPbrMultiplier(pbr, settings.jp_index);
@@ -186,25 +183,16 @@ export function calculateAllocation(
   // 予算との差額がそのまま待機資金になる（実在しない資金は積み上がらない）。
   const monthlyReserve = Math.max(0, settings.monthly_budget - baseInvest);
 
-  // 待機資金投入も特定口座のみが対象（NISA枠は満額固定＝上振れさせない）。
-  // 特定口座(slot3〜)で最初に asset_class='us' のスロットに加算（無ければ 0）
-  // 投入先は特定口座のみ（非課税枠は満額固定＝上振れさせない）。
-  // 全額を非課税枠に入れている人は投入先が無く 0 になるが、その場合は
-  // スロット合計＝予算で待機資金も積み上がらないため辻褄は合う。
-  const firstUsIdx = slots.findIndex((s) => !isTaxAdvantaged(s.account) && s.asset_class === 'us');
-  const reserveDeployment =
-    firstUsIdx >= 0 ? getReserveDeployment(capeResult.level, settings.reserve_balance) : 0;
-  if (reserveDeployment > 0) {
-    perSlotAmount[firstUsIdx] += reserveDeployment;
-  }
-
+  // 待機資金の出口は暴落ルールだけ（2026-11-02 オーナー決定）。
+  // それまでの「CAPE が割安なら特定口座の最初の米国株スロットに残高の 25%／50% を投入」は廃止した
+  // （米国株の特定口座スロットが無い人は投入先が無く、待機資金が積み上がる一方になっていたため）。
   const totalInvest = perSlotAmount.reduce((sum, v) => sum + v, 0);
-  const newReserveBalance = settings.reserve_balance + monthlyReserve - reserveDeployment;
+  const newReserveBalance = settings.reserve_balance + monthlyReserve - crashDeployment;
 
   return {
     perSlotAmount,
     monthlyReserve,
-    reserveDeployment,
+    crashDeployment,
     totalInvest,
     newReserveBalance,
     details: {
@@ -217,6 +205,109 @@ export function calculateAllocation(
       goldMultiplier: applyModeCorrection(goldBase, mode),
     },
   };
+}
+
+// --- 指標から計算の入力値を組み立てる（画面と /ma 月次メールで共通） ---
+// 2026-11-02: MonthlyAdvisorPage.tsx の中にあった組み立て処理を切り出した。
+// メールが画面と1円単位で同じ結果になるよう、両方ともここを通す。
+
+/** CAPE 5年平均（cape_history の単純平均）。履歴が無ければ null */
+export function computeCape5yMA(history: CapeHistoryEntry[] | null | undefined): number | null {
+  if (!history || history.length === 0) return null;
+  return history.reduce((sum, h) => sum + h.cape, 0) / history.length;
+}
+
+/** 日経225 の現在値（モメンタム取得時の終値）。無ければ null */
+export function nikkeiNow(ind: Indicators | null): number | null {
+  return ind?.momentum?.jp?.last_price ?? null;
+}
+
+/** PBR の自動補完値: TOPIX=取得値、日経225=基準×株価比の近似推定。補完できなければ null */
+export function autofillPbr(ind: Indicators, settings: UserMaSettings): number | null {
+  if (settings.jp_index === 'topix') return ind.topix_pbr ? ind.topix_pbr : null;
+  const now = nikkeiNow(ind);
+  if (settings.nikkei_pbr_anchor != null && settings.nikkei_price_anchor && now) {
+    return estimateNikkeiPbr(settings.nikkei_pbr_anchor, settings.nikkei_price_anchor, now);
+  }
+  return null;
+}
+
+/** 'YYYY-MM'（待機資金の月判定に使う暦月） */
+export function monthKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export interface MonthlyInputs {
+  cape: number | null;
+  pbr: number | null;
+  gsr: number | null;
+  /** 取得できなかったモメンタムは null（画面は初期値 true のまま） */
+  momentum: { us: boolean | null; jp: boolean | null; em: boolean | null; gold: boolean | null };
+  cape5yMA: number | null;
+}
+
+/** 画面の自動補完と同じ規則で、指標と設定から計算の入力値を組み立てる */
+export function deriveMonthlyInputs(ind: Indicators, settings: UserMaSettings): MonthlyInputs {
+  return {
+    cape: ind.cape ? ind.cape : null,
+    pbr: autofillPbr(ind, settings),
+    gsr: ind.gold_silver_ratio ? ind.gold_silver_ratio : null,
+    momentum: {
+      us: ind.momentum?.us ? ind.momentum.us.above_ma : null,
+      jp: ind.momentum?.jp ? ind.momentum.jp.above_ma : null,
+      em: ind.momentum?.em ? ind.momentum.em.above_ma : null,
+      gold: ind.momentum?.gold ? ind.momentum.gold.above_ma : null,
+    },
+    cape5yMA: computeCape5yMA(ind.cape_history),
+  };
+}
+
+/**
+ * 画面で「計算する」を押したのと同じ計算（入力値は自動補完のまま、手で書き換えない前提）。
+ * 待機資金は同月なら月初 base を基点にする（画面と同じ）。DB は書き換えない。
+ * CAPE・PBR・金銀比率のどれかが無ければ null（画面も「すべての数値を入力してください」で止まる）。
+ */
+export function calculateMonthlyFromIndicators(
+  ind: Indicators,
+  settings: UserMaSettings,
+  mode: MarketMode,
+  now: Date,
+): { inputs: MonthlyInputs; result: AllocationResult; reserveMonthBase: number; crash: CrashEvaluation | null } | null {
+  const inputs = deriveMonthlyInputs(ind, settings);
+  if (inputs.cape == null || inputs.pbr == null || inputs.gsr == null) return null;
+  const reserveMonthBase = resolveReserveBase(
+    settings.reserve_balance, settings.reserve_month, settings.reserve_month_base, monthKey(now),
+  );
+  const crash = evaluateCrashForMonth(ind, settings, now, reserveMonthBase);
+  const result = calculateAllocation(
+    inputs.cape,
+    inputs.pbr,
+    inputs.gsr,
+    inputs.momentum.us ?? true,
+    inputs.momentum.jp ?? true,
+    inputs.momentum.em ?? true,
+    inputs.momentum.gold ?? true,
+    inputs.cape5yMA,
+    { ...settings, reserve_balance: reserveMonthBase },
+    mode,
+    crash?.total ?? 0,
+  );
+  return { inputs, result, reserveMonthBase, crash };
+}
+
+/**
+ * その月の暴落ルールの判定（画面とメールで共通）。S&P500 の高値データが無ければ null。
+ * @param reserveMonthBase その月の計算基点の待機資金残高（resolveReserveBase の結果）
+ */
+export function evaluateCrashForMonth(
+  ind: Indicators | null,
+  settings: UserMaSettings,
+  now: Date,
+  reserveMonthBase: number,
+): CrashEvaluation | null {
+  const sp500 = ind?.drawdown?.sp500_usd;
+  if (!sp500) return null;
+  return evaluateCrash(sp500, resolveCrashBase(settings.crash_state, monthKey(now)), reserveMonthBase);
 }
 
 export function formatCurrency(amount: number): string {

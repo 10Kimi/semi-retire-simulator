@@ -73,6 +73,34 @@ DB 層は `rowToSettings` / `settingsToRow` でフラットな行と入れ子の
   （37,500→40,000 / 45,000→50,000 / 15,000→20,000 / 22,500→20,000 で相殺せず +1万）。
   **テストの期待値を1万円の倍数だけで書かない**こと。既存テストが全て倍数だったため
   このバグが素通りしていた
+- **指標 → 計算の入力値の組み立ては `logic.ts` に1か所**（`deriveMonthlyInputs` / `calculateMonthlyFromIndicators`、2026-11-02）。
+  以前は `MonthlyAdvisorPage.tsx` の中にあった。画面と月次メールが同じ関数を通るので、**ここを変えると両方が変わる**
+
+### `/ma` 待機資金の出口＝暴落ルール（2026-11-02 オーナー決定）
+- **CAPE が割安なときの待機資金投入は廃止**（旧 `getReserveDeployment`）。米国株の特定口座スロットが無い人は投入先が無く、
+  待機資金が積み上がる一方だった。毎月の倍率と待機資金への積み増しはそのまま
+- **判定と投入額は `src/lib/ma/crash.ts`**（画面とメールで共通）：S&P500 ドル建ての高値比 −20% に入った時点の残高を基準残高とし、
+  −20%・−30% は基準残高の1/3、−40% は残高の全額。各段階1回、最高値更新でリセット
+- **投入額はスロットに足さない**（`AllocationResult.crashDeployment`、`totalInvest` に含めない）。何を買うかは本人が選ぶ。
+  「投資実行＆待機資金を更新」で待機資金から差し引き、`user_ma_settings.crash_state` に段階を確定する
+- **同じ月に計算し直しても二重に発動しない**：`crash_state` は `{ current, month, monthBase }`。待機資金の `reserve_month_base` と同じ考え方
+- 高値データは `fetch_indicators.py` が取得して `indicators.drawdown` に書く（migration 040。未適用ならその列だけ書かない）
+
+### `/ma` 月次メール（Phase A：オーナー個人向け、2026-11-02）
+毎月の送信日（`sendDay`＝25。土日祝は直前の営業日）に指標を取得し、/ma と同じ計算結果をメールで送る。
+- **構成**：計算・送信日判定・古さ判定・暴落ルール・本文は `src/lib/ma/` と `src/lib/ma/mail/`（実行環境に依存しない。Phase B でそのまま使う）。
+  ローカル固有の部分（設定・状態ファイル、Python での取得、Resend 送信）だけが `scripts/ma-mail/run.ts`
+- **起動**：launchd `jp.largogk.fi.ma-mail`（毎月20〜31日 9:00 ＋ RunAtLoad）。送るかどうか・二重送信の防止・キャッチアップはスクリプトが判定
+- **ローカルファイル（gitignore）**：`scripts/ma-mail/config.local.json`（userId・宛先・sendDay・mode）、
+  `state.json`（送信済みの月）、`out/`（HTML の書き出し）。秘密は `scripts/market/.env` の `RESEND_API_KEY`
+- **古いデータで黙って計算しない**：`indicators.as_of`（migration 039）の基準日で判定し、未更新なら件名に【データ未更新あり】、本文の指標と倍率の横に明記。
+  `fetch_indicators.py` は取得に失敗した値を null で上書きせず、前回の値と基準日を残す
+- **待機資金はメールでは書き換えない**（確定は /ma の画面）。市場モードは `config.local.json` の `mode`（初期値 neutral＝画面の「平常」）
+- **暴落ルール**は /ma 本体の機能（下の「待機資金の出口」）。メールは画面と同じ判定を表示するだけで、段階は書き換えない
+- **使い方**：`npx tsx scripts/ma-mail/run.ts --dry-run`（HTML だけ書き出す）／`--force-send`（テスト送信。送信済みの記録は残さない）。
+  テスト用に `--today=` `--no-fetch` `--simulate-drawdown=` `--simulate-fail=` `--state=`
+- **gotcha**：launchd から node が `~/Documents` を読むには macOS の許可が要る（初回にダイアログ）。node は nvm のパスを plist の PATH で渡しているので、
+  node のバージョンを上げたら plist の PATH も直す
 
 ### `/rb` の口座注記
 `/rb` は資産クラス単位で計算し、**口座（iDeCo/NISA/特定）の概念を一切持たない**。

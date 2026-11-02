@@ -8,6 +8,50 @@ export interface Indicators {
   gold_price: number | null;
   silver_price: number | null;
   momentum: MomentumData;
+  // 指標ごとの基準日（migration 039 以降。'YYYY-MM-DD'）。
+  // キー: cape / cape_history / topix_pbr / gold_silver_ratio / momentum_us / momentum_jp / momentum_em / momentum_gold
+  as_of?: Record<string, string> | null;
+  // 過去最高値と現在値（migration 040 以降）。暴落ルールの判定と、資産クラスごとの高値からの位置の表示に使う
+  drawdown?: DrawdownData | null;
+}
+
+/** 日足終値の現在値と過去最高値 */
+export interface PricePoint {
+  last: number;
+  lastDate: string;
+  ath: number;
+  athDate: string;
+}
+
+export interface DrawdownData {
+  /** S&P500 ドル建て（暴落ルールの判定に使う） */
+  sp500_usd: PricePoint | null;
+  /** S&P500 円建て（参考表示） */
+  sp500_jpy: PricePoint | null;
+  /** 資産クラスごと（us / jp / em / gold）。取得できなかったクラスは label だけ */
+  classes: Record<string, { label: string } & Partial<PricePoint>>;
+}
+
+/** 暴落ルールの段階の状態（2026-11-02） */
+export interface CrashState {
+  /** 段階の発動を数え始めた最高値（これを上回ったらリセット） */
+  athValue: number;
+  athDate: string;
+  /** 発動済みの段階（20 / 30 / 40） */
+  triggered: number[];
+  /** −20% に入った時点の待機資金残高（−20%・−30% の投入額はこの 1/3）。未発動なら null */
+  baseReserve: number | null;
+}
+
+/**
+ * user_ma_settings.crash_state（migration 040）。
+ * 待機資金の reserve_month / reserve_month_base と同じく、同じ月に計算し直しても
+ * 二重に発動しないよう、その月の「月初の状態」を持つ。
+ */
+export interface CrashRecord {
+  current: CrashState | null;
+  month: string | null;
+  monthBase: CrashState | null;
 }
 
 export interface CapeHistoryEntry {
@@ -85,6 +129,7 @@ export interface UserMaSettings {
   reserve_balance: number;
   reserve_month: string | null;       // 待機資金を最後に更新した月 'YYYY-MM'（同月は上書き）
   reserve_month_base: number | null;  // その月に入る前の待機残高（同月再実行時の計算基点）
+  crash_state: CrashRecord | null;    // 暴落ルールの段階（migration 040）
   jp_index: JpIndex;
   nikkei_pbr_anchor: number | null;   // 日経225 PBR 近似推定の基準PBR
   nikkei_price_anchor: number | null; // 基準を取った時の日経225株価
@@ -118,7 +163,9 @@ export interface AllocationResult {
   /** スロット 1〜5 の最終投資額（円）。インデックス順 = slot1, slot2, ..., slot5 */
   perSlotAmount: number[];
   monthlyReserve: number;
-  reserveDeployment: number;
+  /** 暴落ルールで待機資金から投入する額（スロットには足さない。何を買うかは本人が選ぶ） */
+  crashDeployment: number;
+  /** スロットの合計（暴落ルールの投入額は含まない） */
   totalInvest: number;
   newReserveBalance: number;
   details: {
@@ -144,6 +191,7 @@ export const DEFAULT_SETTINGS: Omit<UserMaSettings, 'user_id'> = {
   reserve_balance: 0,
   reserve_month: null,
   reserve_month_base: null,
+  crash_state: null,
   jp_index: 'topix',
   nikkei_pbr_anchor: null,
   nikkei_price_anchor: null,

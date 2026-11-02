@@ -33,6 +33,7 @@ function buildSettings(
     jp_index,
     reserve_month: null,
     reserve_month_base: null,
+    crash_state: null,
     nikkei_pbr_anchor: null,
     nikkei_price_anchor: null,
     slot1: toSlot(slots[0], 0),
@@ -303,37 +304,35 @@ describe('calculateAllocation (per-slot multiplier、migration 031 後の新構�
     expect(r.perSlotAmount[6]).toBe(100_000);
   });
 
-  it('待機資金投入: CAPE 割安 (level=low) 時、特定口座で最初の us スロットに reserve × 25% を加算', () => {
+  it('CAPE が割安でも待機資金は投入しない（出口は暴落ルールだけ。2026-11-02 オーナー決定）', () => {
     const settings = buildSettings(500_000, 1_000_000 /* reserve */, [
       { amount: 0, ac: 'none' },     // NISA積立
       { amount: 0, ac: 'none' },     // NISA成長
-      { amount: 100_000, ac: 'jp' }, // 特定1（us じゃない）
-      { amount: 100_000, ac: 'us' }, // 特定2 ★最初の us slot
-      { amount: 100_000, ac: 'us' }, // 特定3（2 つ目の us、投入対象ではない）
+      { amount: 100_000, ac: 'jp' },
+      { amount: 100_000, ac: 'us' },
+      { amount: 100_000, ac: 'us' },
       { amount: 100_000, ac: 'gold' },
       { amount: 100_000, ac: 'bond' },
     ]);
-    // CAPE 5y MA から -16.7% 乖離 → level='low' → 1.25x、reserve × 0.25 = 250K 投入
+    // CAPE 5y MA から -16.7% 乖離 → level='low' → 1.25x。以前はここで reserve × 25% を米国株スロットに足していた
     const r = calculateAllocation(25, FAIR_PBR, FAIR_GSR, true, true, true, true, 30, settings, 'neutral');
-    expect(r.perSlotAmount[2]).toBe(100_000); // jp 影響なし
-    // 100K × 1.25 = 125K → 1万円 half-up 丸めで 130K + reserve 250K = 380K
-    expect(r.perSlotAmount[3]).toBe(380_000);
-    expect(r.perSlotAmount[4]).toBe(130_000); // 2 つ目の us は乗数だけ
-    expect(r.reserveDeployment).toBe(250_000);
-    expect(r.newReserveBalance).toBe(1_000_000 - 250_000); // monthlyReserve=0 を仮定
+    expect(r.perSlotAmount[3]).toBe(130_000); // 100K × 1.25 → 1万円丸め。待機資金は足さない
+    expect(r.perSlotAmount[4]).toBe(130_000);
+    expect(r.crashDeployment).toBe(0);
+    expect(r.newReserveBalance).toBe(1_000_000); // monthlyReserve=0 → 残高そのまま
   });
 
-  it('待機資金投入: us スロットが 1 つも無ければ reserveDeployment=0、待機残高は維持', () => {
+  it('暴落ルールの投入額はスロットに足さず、待機資金から差し引く', () => {
     const settings = buildSettings(500_000, 1_000_000, [
-      { amount: 100_000, ac: 'jp' },
-      { amount: 100_000, ac: 'em' },
-      { amount: 100_000, ac: 'gold' },
-      { amount: 100_000, ac: 'bond' },
-      { amount: 100_000, ac: 'none' },
+      { amount: 0, ac: 'none' },
+      { amount: 0, ac: 'none' },
+      { amount: 100_000, ac: 'us' },
     ]);
-    const r = calculateAllocation(25, FAIR_PBR, FAIR_GSR, true, true, true, true, 30, settings, 'neutral');
-    expect(r.reserveDeployment).toBe(0);
-    expect(r.newReserveBalance).toBe(1_000_000); // monthlyReserve=0 → 残高そのまま
+    const r = calculateAllocation(30, FAIR_PBR, FAIR_GSR, true, true, true, true, 30, settings, 'neutral', 333_333);
+    expect(r.perSlotAmount[2]).toBe(100_000);
+    expect(r.totalInvest).toBe(100_000);
+    expect(r.crashDeployment).toBe(333_333);
+    expect(r.newReserveBalance).toBe(1_000_000 + 400_000 - 333_333); // 予算との差額 40万は積み増し
   });
 
   it('AC_US_RATIO 廃止: 旧 tokutei_ac_base 50万 + CAPE割高(0.75x) は旧設計 (0.834x ≒ 42万) と新設計 (0.75x → 1万単位丸めで 38万) で挙動が異なる', () => {

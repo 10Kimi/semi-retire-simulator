@@ -1,0 +1,7 @@
+{
+  "userId": "user_ma_settings を読むユーザーの ID（auth.users の id）",
+  "to": "送信先のメールアドレス",
+  "from": "onboarding@resend.dev",
+  "sendDay": 25,
+  "mode": "neutral"
+}

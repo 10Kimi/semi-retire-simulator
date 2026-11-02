@@ -14,7 +14,8 @@ import type {
 } from '../lib/ma/types';
 import { MA_ASSET_CLASS_OPTIONS, MA_ACCOUNT_OPTIONS, ACCOUNT_MONTHLY_CAP, SLOT_LABELS, SLOT_KEYS, isTaxAdvantaged } from '../lib/ma/types';
 import { fetchLatestIndicators, fetchUserSettings, updateReserveBalance, updateSettings } from '../lib/ma/db';
-import { calculateAllocation, formatCurrency, getCapeMultiplier, estimateNikkeiPbr, resolveReserveBase } from '../lib/ma/logic';
+import { calculateAllocation, formatCurrency, getCapeMultiplier, estimateNikkeiPbr, resolveReserveBase, deriveMonthlyInputs, computeCape5yMA, monthKey, nikkeiNow, evaluateCrashForMonth } from '../lib/ma/logic';
+import { resolveCrashBase, type CrashEvaluation } from '../lib/ma/crash';
 
 export default function MonthlyAdvisorPage() {
   const { user } = useAuth();
@@ -33,6 +34,7 @@ export default function MonthlyAdvisorPage() {
   const [momentumGold, setMomentumGold] = useState(true);
   const [mode, setMode] = useState<MarketMode>('neutral');
   const [result, setResult] = useState<AllocationResult | null>(null);
+  const [crash, setCrash] = useState<CrashEvaluation | null>(null);
   const [showSettings, setShowSettings] = useState(true);
 
   useEffect(() => {
@@ -51,21 +53,15 @@ export default function MonthlyAdvisorPage() {
       const ind = await fetchLatestIndicators();
       setIndicators(ind);
       if (ind) {
-        if (ind.cape) setCape(String(ind.cape));
-        // PBR の自動補完: TOPIX=取得値、日経225=基準×株価比の近似推定
-        if (sett.jp_index === 'topix') {
-          if (ind.topix_pbr) setPbr(String(ind.topix_pbr));
-        } else {
-          const now = ind.momentum?.jp?.last_price;
-          if (sett.nikkei_pbr_anchor != null && sett.nikkei_price_anchor && now) {
-            setPbr(String(estimateNikkeiPbr(sett.nikkei_pbr_anchor, sett.nikkei_price_anchor, now)));
-          }
-        }
-        if (ind.gold_silver_ratio) setGsr(String(ind.gold_silver_ratio));
-        if (ind.momentum?.us) setMomentumUS(ind.momentum.us.above_ma);
-        if (ind.momentum?.jp) setMomentumJP(ind.momentum.jp.above_ma);
-        if (ind.momentum?.em) setMomentumEM(ind.momentum.em.above_ma);
-        if (ind.momentum?.gold) setMomentumGold(ind.momentum.gold.above_ma);
+        // 自動補完の規則は logic.ts（/ma 月次メールと共通）。PBR は TOPIX=取得値、日経225=基準×株価比の近似推定
+        const inp = deriveMonthlyInputs(ind, sett);
+        if (inp.cape != null) setCape(String(inp.cape));
+        if (inp.pbr != null) setPbr(String(inp.pbr));
+        if (inp.gsr != null) setGsr(String(inp.gsr));
+        if (inp.momentum.us != null) setMomentumUS(inp.momentum.us);
+        if (inp.momentum.jp != null) setMomentumJP(inp.momentum.jp);
+        if (inp.momentum.em != null) setMomentumEM(inp.momentum.em);
+        if (inp.momentum.gold != null) setMomentumGold(inp.momentum.gold);
       }
       setLoading(false);
     };
@@ -80,10 +76,7 @@ export default function MonthlyAdvisorPage() {
     );
   }
 
-  const cape5yMA =
-    indicators?.cape_history && indicators.cape_history.length > 0
-      ? indicators.cape_history.reduce((sum, h) => sum + h.cape, 0) / indicators.cape_history.length
-      : null;
+  const cape5yMA = computeCape5yMA(indicators?.cape_history);
 
   const currentDate = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' });
 
@@ -95,6 +88,9 @@ export default function MonthlyAdvisorPage() {
       alert('すべての数値を入力してください');
       return;
     }
+    // 暴落ルール（待機資金の唯一の出口）。S&P500 の高値データが無ければ判定しない
+    const crashEval = evaluateCrashForMonth(indicators, settings, new Date(), reserveMonthBase);
+    setCrash(crashEval);
     setResult(
       calculateAllocation(
         capeVal,
@@ -107,6 +103,7 @@ export default function MonthlyAdvisorPage() {
         cape5yMA,
         { ...settings, reserve_balance: reserveMonthBase }, // 同月は月初baseを基点に（再実行で上書き）
         mode,
+        crashEval?.total ?? 0,
       ),
     );
   };
@@ -114,12 +111,17 @@ export default function MonthlyAdvisorPage() {
   const confirmAndUpdateReserve = async () => {
     if (!result || !user) return;
     // 同月内は月初base + 今月分で上書き（複数回実行しても最後の1回だけが反映される）
-    await updateReserveBalance(user.id, result.newReserveBalance, currentMonth, reserveMonthBase);
+    // 暴落ルールの段階も同じタイミングで確定（同月の再計算に備えて月初の状態も残す）
+    const crashState = crash
+      ? { current: crash.nextState, month: currentMonth, monthBase: resolveCrashBase(settings.crash_state, currentMonth) }
+      : undefined;
+    await updateReserveBalance(user.id, result.newReserveBalance, currentMonth, reserveMonthBase, crashState);
     setSettings({
       ...settings,
       reserve_balance: result.newReserveBalance,
       reserve_month: currentMonth,
       reserve_month_base: reserveMonthBase,
+      ...(crashState ? { crash_state: crashState } : {}),
     });
     alert('待機資金を更新しました');
   };
@@ -141,12 +143,12 @@ export default function MonthlyAdvisorPage() {
   };
 
   // 待機資金: 同月内は最後の実行で上書き（月初baseから再計算）
-  const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+  const currentMonth = monthKey(new Date());
   const reserveMonthBase = resolveReserveBase(
     settings.reserve_balance, settings.reserve_month, settings.reserve_month_base, currentMonth,
   );
 
-  const n225Now = indicators?.momentum?.jp?.last_price ?? null;
+  const n225Now = nikkeiNow(indicators);
   const nikkeiEstimate =
     settings.nikkei_pbr_anchor != null && settings.nikkei_price_anchor && n225Now
       ? estimateNikkeiPbr(settings.nikkei_pbr_anchor, settings.nikkei_price_anchor, n225Now)
@@ -568,7 +570,6 @@ export default function MonthlyAdvisorPage() {
             <h2 className="text-sm text-slate-400 mb-4">今月の投資配分（計算結果）</h2>
 
             {(() => {
-              const firstUsIdx = SLOT_KEYS.findIndex((k) => settings[k].asset_class === 'us');
               return SLOT_KEYS.map((slotKey, idx) => {
                 const slot = settings[slotKey];
                 const amount = result.perSlotAmount[idx];
@@ -583,13 +584,34 @@ export default function MonthlyAdvisorPage() {
                       <span>{slot.fund_name || SLOT_LABELS[slotKey]}</span>
                       <span className="text-green-400">{formatCurrency(amount)}</span>
                     </div>
-                    {idx === firstUsIdx && result.reserveDeployment > 0 && (
-                      <div className="text-xs text-amber-400 ml-2 mt-1">└ うち待機資金から: +{formatCurrency(result.reserveDeployment)}</div>
-                    )}
                   </div>
                 );
               });
             })()}
+
+            {crash && crash.total > 0 && (
+              <div className="bg-slate-800 rounded-xl p-4 mb-3 border-l-4 border-red-500">
+                <h3 className="text-xs text-slate-400 uppercase tracking-wide mb-2">暴落ルールによる投入（待機資金から）</h3>
+                {crash.deployments.map((d) => (
+                  <div key={d.stage} className="flex justify-between text-sm py-0.5">
+                    <span>第{d.stage / 10 - 1}段階（S&amp;P500 高値比 −{d.stage}%）{d.stage === 40 ? '：残高の全額' : '：基準残高の1/3'}</span>
+                    <span className="text-red-300">{formatCurrency(d.amount)}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between font-bold mt-1">
+                  <span>暴落ルールによる投入額</span>
+                  <span className="text-red-300">{formatCurrency(crash.total)}</span>
+                </div>
+                <p className="text-xs text-slate-400 mt-2">何を買うかはご自身で選んでください。資産クラスごとの高値からの下落率：</p>
+                <ul className="text-xs text-slate-300 mt-1">
+                  {Object.values(indicators?.drawdown?.classes ?? {}).map((c) => (
+                    <li key={c.label}>
+                      {c.label}：{c.last != null && c.ath != null ? `${((Math.min(0, c.last / c.ath - 1)) * 100).toFixed(1)}%（高値 ${c.athDate}）` : '取得できず'}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {result.monthlyReserve > 0 && (
               <div className="bg-slate-800 rounded-xl p-4 mb-3 border-l-4 border-amber-500">
@@ -606,10 +628,10 @@ export default function MonthlyAdvisorPage() {
                 <span>今月の投資額</span>
                 <span className="text-green-400 font-bold">{formatCurrency(result.totalInvest)}</span>
               </div>
-              {result.reserveDeployment > 0 && (
-                <div className="flex justify-between py-1 text-sm text-amber-400">
-                  <span>└ 待機資金から投入</span>
-                  <span>{formatCurrency(result.reserveDeployment)}</span>
+              {result.crashDeployment > 0 && (
+                <div className="flex justify-between py-1 text-sm text-red-300">
+                  <span>暴落ルールによる投入（待機資金から）</span>
+                  <span>{formatCurrency(result.crashDeployment)}</span>
                 </div>
               )}
               {result.monthlyReserve > 0 && (

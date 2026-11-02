@@ -51,3 +51,8 @@ __pycache__/
 
 # 市場指標の取得結果（fetch_indicators.py の生成物）
 scripts/market/indicators.json
+
+# /ma 月次メール（ローカル設定・状態・生成物）
+scripts/ma-mail/config.local.json
+scripts/ma-mail/state*.json
+scripts/ma-mail/out/
