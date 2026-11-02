@@ -51,7 +51,10 @@ export function classifyRiskLevel7(volatility: number): number {
   // EFF_UPPER と対で変更している。片方だけ動かすと採用PFの判定が食い違う。
   // 16.5 なのは、実現可能な Lv6(15.1%) と Lv7(16.9%) を分ける必要があるため。
   // 17.0 にすると Lv7 のモデル配分(16.9%)が Lv6 と判定されて矛盾する。
-  if (volatility <= 16.5) return 6;
+  // 2026-11-02: 16.5% → 16.0% に変更。10/30 のパラメータ更新で Lv7 のモデル配分が
+  // 16.5026%（丸めて 16.50）になり、境界ちょうどで Lv6 と判定されていた。
+  // パラメータの月次更新後は scripts/check_model_levels.py で全レベルを照合する。
+  if (volatility <= 16) return 6;
   return 7;
 }
 

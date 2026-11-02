@@ -6,7 +6,7 @@
 「セミリタイア資産運用パッケージ」の中核プロダクト。
 
 - 本番URL: https://fire.largogk.jp
-- パッケージ全体設計書: ../../Docs/設計書_v7_23_main.md（最新版。過去版は ../../Docs/archive/）
+- パッケージ全体設計書: ../../Docs/設計書_v7_24_main.md（最新版。過去版は ../../Docs/archive/）
 - パッケージ全体の判断文脈: ../../CLAUDE.md
 
 ## コマンド
@@ -97,6 +97,10 @@ scripts/market/.venv/bin/python scripts/optimize_portfolios.py --apply  # DB反�
   `/risk` の採用ボタンが保存するのはこちらの値で、DBだけ直しても採用される中身は変わらない
 - **リスクレベルの帯（`EFF_UPPER`）を変えたら `classifyRiskLevel7` も対で変える**。
   片方だけ動かすと「Lv7 のモデル配分を採用した人が診断すると Lv6 と出る」等の矛盾が起きる
+- **パラメータが変わると、配分を変えなくても判定がずれる**（2026-11-02 に Lv6・Lv7 で実際に発生）。
+  `scripts/check_model_levels.py` が `MODEL_ALLOCATIONS` と `classifyRiskLevel7` のしきい値をソースから読み、
+  DB の最新パラメータで全レベルを照合する。月次のボラ更新ジョブ（launchd）が更新直後に `--notify` 付きで実行する。
+  再最適化やしきい値の変更のあとも手で流して確認する（`python3 scripts/check_model_levels.py`、exit 1 なら不一致）
 
 ### マイグレーション
 `supabase/migrations/`（〜037）。**CLI は使わず Supabase SQL Editor で直接適用する。**
@@ -153,7 +157,7 @@ scripts/market/.venv/bin/python scripts/optimize_portfolios.py --apply  # DB反�
 - `scripts/market/` — 市場データ取得スクリプト（fetch_and_optimize.py, fetch_indicators.py）
   - `fetch_indicators.py` — `/ma`（月次投資アドバイザー）用の指標を取得し Supabase `indicators` テーブルへ upsert（画面の「自動取得済み」ブロックの元データ）。取得: 米国CAPE（multpl.com スクレイプ, lxml 必須）/ TOPIX PBR（JPX Excel, **openpyxl 必須**）/ 金銀比率（yfinance GC=F÷SI=F）/ モメンタムは yfinance。専用 `.venv` + `.env`（SUPABASE_URL / SUPABASE_SERVICE_KEY）。**スクリプト自身は dotenv を読まない**ため手動実行時は `set -a; source .env; set +a` で env を渡す。依存は `scripts/market/requirements.txt`（openpyxl / lxml 含む）
   - **必ず `--fetch-only` を付ける**: 付けないと取得後に **HTTPサーバー(`serve_and_open`, :8765)を永久起動**してプロセスが終わらない（cron が溜まる / 手動実行がハングする）。取得のみなら常に `--fetch-only`
-  - **cron（2026-06-23 追加、2026-07-27 `--fetch-only` 追加）**: 毎月 1・15 日 9:00 に自動実行（≒隔週）。crontab 行は `cd <dir> && set -a && . ./.env && set +a && .venv/bin/python fetch_indicators.py --fetch-only >> cron.log 2>&1`。ローカル cron なので Mac 起動時のみ走る。ログは `scripts/market/cron.log`
+  - **定期実行（2026-06-23 cron で追加、2026-07-27 `--fetch-only` 追加、2026-11-02 launchd `jp.largogk.fi.fetch-indicators` に移行）**: 毎月 1・15 日 9:00 に自動実行（≒隔週）。旧 crontab 行は `cd <dir> && set -a && . ./.env && set +a && .venv/bin/python fetch_indicators.py --fetch-only >> cron.log 2>&1`。launchd はスリープ中に過ぎた実行を復帰後に1回走らせる（電源オフ中の分は走らない）。ログは `scripts/market/cron.log`
   - **2026-07-27 修正**: `gold_silver_ratio` に `-0.5`（過去の壊れた値）が残り `/ma` が異常値を自動補完していた問題を再取得で解消（→68.4, 適正）。同時に openpyxl 未導入で PBR がずっと取得失敗していたのを requirements に追加して解消（→1.8）。`/ma` の「自動取得済み」ブロックに CAPE/PBR/金銀比率の数値＋20日超で⚠️警告を表示するUIも追加（`MonthlyAdvisorPage.tsx`）
   - **gotcha**: プロジェクトを `~/semi-retire-app` → 現パスへ移動した影響で `.venv/bin/pip` の shebang が旧パス参照で壊れている。pip 操作は `.venv/bin/python -m pip ...` で回避（python 本体は動作する）
 - `public/robots.txt`, `public/sitemap.xml` — SEO 基盤
@@ -262,8 +266,15 @@ scripts/market/.venv/bin/python scripts/optimize_portfolios.py --apply  # DB反�
     **ここは `/risk` の「このPFを採用する」で保存される値**なので、DB だけ直しても意味がない
   - 適用前のDB値は `optimal_portfolios_backup_20260812.json` に退避（scratchpad）
   - テスト109件・`npm run build` 通過
+- **モデル配分のレベル食い違いの修正 ＋ 月次の自動照合 ＋ launchd 移行**（2026-11-02、設計書 v7.24）:
+  - 10/30 のパラメータ更新で Lv6 のモデル配分が 14.77%（Lv5 判定）、Lv7 が 16.50%（境界 `<=16.5` で Lv6 判定）になっていた
+  - **Lv6/7 境界を 16.5% → 16.0%**（`classifyRiskLevel7` / `VOL_UPPER` ×2 / `riskScoring.ts` 表示 / `EFF_UPPER[6]`・`LEVEL_VOL_MIN[7]`）
+  - **Lv6 のモデル配分**：米国株45／新興国株45／新興国REIT5／金5（15.40%）。`MODEL_ALLOCATIONS[6]`・`MODEL_META[6]`・DB を同期
+  - **`scripts/check_model_levels.py` 新規**（上の「最適PFの再計算」参照）
+  - 定期ジョブ6本を cron から launchd（`~/Library/LaunchAgents/jp.largogk.fi.*.plist`）へ移行。
+    cron はフルディスクアクセス不足で `~/Documents` に書けず、スリープ中の実行も補わなかった
 - 次の一手（2026-10-30〜。番号付き Phase は廃止）: 分散可視化ツール（インデックスのルックスルー）。
-  設計書 v7.23 §13-67、調査は `../../Docs/分散可視化ツール_実装調査_20261030.md`。
+  設計書 §13-67、調査は `../../Docs/分散可視化ツール_実装調査_20261030.md`。
   ステップメールは優先度を下げて最小構成で置く
 
 ### SEO基盤 Phase 1 の設計方針（サマリ）

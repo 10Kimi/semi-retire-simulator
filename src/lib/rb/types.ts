@@ -26,7 +26,7 @@ export const MODEL_ALLOCATIONS: Record<number, Record<AssetClassKey, number>> = 
   3: { cash: 0, japan_equity: 0, us_equity: 25, developed_equity: 0, emerging_equity: 15, japan_bond: 15, developed_bond: 40, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 5 },
   4: { cash: 0, japan_equity: 0, us_equity: 30, developed_equity: 0, emerging_equity: 20, japan_bond: 0, developed_bond: 35, emerging_bond: 0, japan_reit: 5, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 10 },
   5: { cash: 0, japan_equity: 0, us_equity: 45, developed_equity: 0, emerging_equity: 30, japan_bond: 0, developed_bond: 15, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 10 },
-  6: { cash: 0, japan_equity: 0, us_equity: 45, developed_equity: 0, emerging_equity: 40, japan_bond: 0, developed_bond: 0, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 5, commodity: 0, gold: 10 },
+  6: { cash: 0, japan_equity: 0, us_equity: 45, developed_equity: 0, emerging_equity: 45, japan_bond: 0, developed_bond: 0, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 5, commodity: 0, gold: 5 },   // 2026-11-02: 新興国株40→45・金10→5（10/30 のパラメータで 14.77% となり Lv5 判定になっていた）
   7: { cash: 0, japan_equity: 0, us_equity: 35, developed_equity: 5, emerging_equity: 60, japan_bond: 0, developed_bond: 0, emerging_bond: 0, japan_reit: 0, developed_reit: 0, emerging_reit: 0, commodity: 0, gold: 0 },
 };
 
@@ -37,7 +37,7 @@ export const MODEL_META: Record<number, { name: string; expectedReturn: number; 
   3: { name: 'やや保守型', expectedReturn: 4.27, volatility: 8.52, sharpe: 0.44 },
   4: { name: 'バランス型', expectedReturn: 5.16, volatility: 10.47, sharpe: 0.44 },
   5: { name: 'やや積極型', expectedReturn: 6.27, volatility: 13.2, sharpe: 0.44 },
-  6: { name: '積極型', expectedReturn: 6.99, volatility: 15.11, sharpe: 0.43 },
+  6: { name: '積極型', expectedReturn: 7.22, volatility: 15.4, sharpe: 0.44 },   // 2026-11-02: 2026-10-30 のパラメータで計算
   7: { name: '超積極型', expectedReturn: 7.53, volatility: 16.91, sharpe: 0.42 },
 };
 
