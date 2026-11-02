@@ -97,6 +97,7 @@ DB 層は `rowToSettings` / `settingsToRow` でフラットな行と入れ子の
   `fetch_indicators.py` は取得に失敗した値を null で上書きせず、前回の値と基準日を残す
 - **待機資金はメールでは書き換えない**（確定は /ma の画面）。市場モードは `config.local.json` の `mode`（初期値 neutral＝画面の「平常」）
 - **暴落ルール**は /ma 本体の機能（下の「待機資金の出口」）。メールは画面と同じ判定を表示するだけで、段階は書き換えない
+- **本文の最後に「待機資金」の表**（現在の残高／今月の積み増し／暴落ルールによる投入／計算後の残高）。計算後の残高は「投資実行」をしたときの値と一致する
 - **使い方**：`npx tsx scripts/ma-mail/run.ts --dry-run`（HTML だけ書き出す）／`--force-send`（テスト送信。送信済みの記録は残さない）。
   テスト用に `--today=` `--no-fetch` `--simulate-drawdown=` `--simulate-fail=` `--state=`
 - **gotcha**：launchd から node が `~/Documents` を読むには macOS の許可が要る（初回にダイアログ）。node は nvm のパスを plist の PATH で渡しているので、
@@ -301,6 +302,11 @@ scripts/market/.venv/bin/python scripts/optimize_portfolios.py --apply  # DB反�
   - **`scripts/check_model_levels.py` 新規**（上の「最適PFの再計算」参照）
   - 定期ジョブ6本を cron から launchd（`~/Library/LaunchAgents/jp.largogk.fi.*.plist`）へ移行。
     cron はフルディスクアクセス不足で `~/Documents` に書けず、スリープ中の実行も補わなかった
+- **/ma 月次メール（Phase A）＋ 待機資金の出口を暴落ルールに一本化**（2026-11-02、`65a7f28`、migration 039・040、設計書 §13-69）:
+  - 月次メール：launchd `jp.largogk.fi.ma-mail` で毎月25日（土日祝は直前の営業日）に送信。初回の本番送信は 11/25
+  - CAPE が割安なときの待機資金投入（`getReserveDeployment`）を廃止し、暴落ルール（`src/lib/ma/crash.ts`）だけに。画面とメールが同じ判定
+  - 入力値の組み立てを `logic.ts` に切り出し（`calculateMonthlyFromIndicators`）。テスト136件・`npm run build` 通過、本番の配信ファイルで反映を確認
+  - 講義（実践4-2 スライド4）・スクリーンショット・動画は実装確定後にまとめて直す
 - 次の一手（2026-10-30〜。番号付き Phase は廃止）: 分散可視化ツール（インデックスのルックスルー）。
   設計書 §13-67、調査は `../../Docs/分散可視化ツール_実装調査_20261030.md`。
   ステップメールは優先度を下げて最小構成で置く
