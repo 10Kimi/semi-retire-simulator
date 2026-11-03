@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(*rm -rf*)",
+      "Bash(*rm -fr*)",
+      "Bash(*rm -r -f*)",
+      "Bash(*git push*--force*)",
+      "Bash(*git push* -f*)",
+      "Bash(*git reset --hard*)",
+      "Bash(*DROP TABLE*)",
+      "Bash(*drop table*)",
+      "Bash(*DROP SCHEMA*)",
+      "Bash(*drop schema*)",
+      "Bash(*TRUNCATE*)",
+      "Bash(*truncate table*)",
+      "Bash(*supabase db reset*)"
+    ]
+  }
+}

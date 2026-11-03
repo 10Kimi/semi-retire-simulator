@@ -39,7 +39,9 @@ scripts/market/.env
 scripts/market/.venv/
 
 # Claude
-.claude/
+.claude/*
+!.claude/agents/
+!.claude/settings.json
 .vercel
 
 # Supabase CLI 一時ファイル
