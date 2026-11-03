@@ -1,20 +1,28 @@
 import type { RiskLevel, AssetAllocation, PortfolioPreset, MarketDataInfo } from '../types/assessment';
 import { loadCurrentMarketData } from '../lib/assessmentDb';
+import { ASSET_CLASSES as RB_ASSET_CLASSES } from '../lib/rb/types';
+import type { AssetClassKey } from '../lib/rb/types';
 
-// 11資産クラス定義（仕様書セクション5.1準拠）
-export const ASSET_CLASSES: { key: string; label: string; color: string }[] = [
-  { key: 'japan_equity',      label: '日本株式',                   color: '#ef4444' },
-  { key: 'us_equity',         label: '米国株式',                   color: '#3b82f6' },
-  { key: 'developed_equity',  label: '先進国株式（米国・日本除く）', color: '#8b5cf6' },
-  { key: 'emerging_equity',   label: '新興国株式',                 color: '#f97316' },
-  { key: 'japan_bond',        label: '日本債券',                   color: '#06b6d4' },
-  { key: 'developed_bond',    label: '先進国債券',                 color: '#14b8a6' },
-  { key: 'emerging_bond',     label: '新興国債券',                 color: '#eab308' },
-  { key: 'japan_reit',        label: '日本REIT',                   color: '#ec4899' },
-  { key: 'developed_reit',    label: '先進国REIT',                 color: '#a855f7' },
-  { key: 'gold',              label: '金',                         color: '#f59e0b' },
-  { key: 'cash',              label: '現金',                       color: '#6b7280' },
-];
+// 資産クラスの定義（キー・ラベル・順番）は src/lib/rb/types.ts の13クラスを参照する。
+// ここではチャート用の色だけを持つ。
+const ASSET_COLORS: Record<AssetClassKey, string> = {
+  cash:             '#6b7280',
+  japan_equity:     '#ef4444',
+  us_equity:        '#3b82f6',
+  developed_equity: '#8b5cf6',
+  emerging_equity:  '#f97316',
+  japan_bond:       '#06b6d4',
+  developed_bond:   '#14b8a6',
+  emerging_bond:    '#eab308',
+  japan_reit:       '#ec4899',
+  developed_reit:   '#a855f7',
+  emerging_reit:    '#d946ef',
+  commodity:        '#84cc16',
+  gold:             '#f59e0b',
+};
+
+export const ASSET_CLASSES: { key: AssetClassKey; label: string; color: string }[] =
+  RB_ASSET_CLASSES.map(ac => ({ key: ac.key, label: ac.label, color: ASSET_COLORS[ac.key] }));
 
 function makeAllocations(percentages: Record<string, number>): AssetAllocation[] {
   return ASSET_CLASSES.map((ac) => ({

@@ -1,0 +1,799 @@
+{
+  "analysis": {
+    "A1": {
+      "riskLevel": 1,
+      "expectedReturn": 1.5,
+      "volatility": 2.9,
+      "sharpeRatio": 0.34,
+      "overLimit": false,
+      "baseLevel": 4,
+      "raw": {
+        "volatility": 2.85168809654913,
+        "volatility_exact_sqrt": 2.85168809654913,
+        "expectedReturn": 1.54,
+        "expectedReturn_exact": "77/50 (= 1.54)",
+        "sharpe_before_round": 0.3448275862068966
+      },
+      "notes": []
+    },
+    "A2": {
+      "riskLevel": 2,
+      "expectedReturn": 3.0,
+      "volatility": 5.8,
+      "sharpeRatio": 0.43,
+      "overLimit": false,
+      "baseLevel": 4,
+      "raw": {
+        "volatility": 5.783975708800997,
+        "volatility_exact_sqrt": 5.783975708800997,
+        "expectedReturn": 2.975,
+        "expectedReturn_exact": "119/40 (= 2.975)",
+        "sharpe_before_round": 0.4310344827586207
+      },
+      "notes": []
+    },
+    "A3": {
+      "riskLevel": 3,
+      "expectedReturn": 4.3,
+      "volatility": 8.9,
+      "sharpeRatio": 0.43,
+      "overLimit": false,
+      "baseLevel": 4,
+      "raw": {
+        "volatility": 8.923333177686464,
+        "volatility_exact_sqrt": 8.923333177686462,
+        "expectedReturn": 4.265000000000001,
+        "expectedReturn_exact": "853/200 (= 4.265)",
+        "sharpe_before_round": 0.42696629213483145
+      },
+      "notes": [
+        "丸め前ボラがレベル境界 9 に近い"
+      ]
+    },
+    "A4": {
+      "riskLevel": 4,
+      "expectedReturn": 5.2,
+      "volatility": 11.1,
+      "sharpeRatio": 0.42,
+      "overLimit": false,
+      "baseLevel": 4,
+      "raw": {
+        "volatility": 11.128971201328536,
+        "volatility_exact_sqrt": 11.12897120132854,
+        "expectedReturn": 5.154999999999999,
+        "expectedReturn_exact": "1031/200 (= 5.155)",
+        "sharpe_before_round": 0.42342342342342343
+      },
+      "notes": []
+    },
+    "A5": {
+      "riskLevel": 6,
+      "expectedReturn": 6.3,
+      "volatility": 15.1,
+      "sharpeRatio": 0.38,
+      "overLimit": true,
+      "baseLevel": 4,
+      "raw": {
+        "volatility": 15.090328028243787,
+        "volatility_exact_sqrt": 15.090328028243785,
+        "expectedReturn": 6.27,
+        "expectedReturn_exact": "627/100 (= 6.27)",
+        "sharpe_before_round": 0.3841059602649007
+      },
+      "notes": [
+        "丸め前ボラがレベル境界 15 に近い"
+      ]
+    },
+    "A6": {
+      "riskLevel": 7,
+      "expectedReturn": 7.2,
+      "volatility": 18.7,
+      "sharpeRatio": 0.36,
+      "overLimit": true,
+      "baseLevel": 4,
+      "raw": {
+        "volatility": 18.66231496894209,
+        "volatility_exact_sqrt": 18.662314968942088,
+        "expectedReturn": 7.18,
+        "expectedReturn_exact": "359/50 (= 7.18)",
+        "sharpe_before_round": 0.358288770053476
+      },
+      "notes": []
+    },
+    "A7": {
+      "riskLevel": 7,
+      "expectedReturn": 7.5,
+      "volatility": 20.5,
+      "sharpeRatio": 0.34,
+      "overLimit": true,
+      "baseLevel": 4,
+      "raw": {
+        "volatility": 20.463614050308905,
+        "volatility_exact_sqrt": 20.463614050308905,
+        "expectedReturn": 7.525,
+        "expectedReturn_exact": "301/40 (= 7.525)",
+        "sharpe_before_round": 0.34146341463414637
+      },
+      "notes": []
+    },
+    "B": {
+      "riskLevel": 7,
+      "expectedReturn": 7.2,
+      "volatility": 20.0,
+      "sharpeRatio": 0.34,
+      "overLimit": true,
+      "baseLevel": 4,
+      "raw": {
+        "volatility": 20.0,
+        "volatility_exact_sqrt": 20.0,
+        "expectedReturn": 7.2,
+        "expectedReturn_exact": "36/5 (= 7.2)",
+        "sharpe_before_round": 0.335
+      },
+      "notes": [
+        "シャープが .xx5 ちょうど付近（float 0.335）"
+      ]
+    },
+    "C": {
+      "riskLevel": 1,
+      "expectedReturn": 0.1,
+      "volatility": 0.5,
+      "sharpeRatio": -0.8,
+      "overLimit": false,
+      "baseLevel": 4,
+      "raw": {
+        "volatility": 0.5,
+        "volatility_exact_sqrt": 0.5,
+        "expectedReturn": 0.1,
+        "expectedReturn_exact": "1/10 (= 0.1)",
+        "sharpe_before_round": -0.8
+      },
+      "notes": []
+    },
+    "D": {
+      "riskLevel": 1,
+      "expectedReturn": 0.0,
+      "volatility": 0.0,
+      "sharpeRatio": 0,
+      "overLimit": false,
+      "baseLevel": 4,
+      "raw": {
+        "volatility": 0.0,
+        "volatility_exact_sqrt": 0.0,
+        "expectedReturn": 0.0,
+        "expectedReturn_exact": "0 (= 0.0)",
+        "sharpe_before_round": 0.0
+      },
+      "notes": []
+    },
+    "E": {
+      "riskLevel": 4,
+      "expectedReturn": 4.0,
+      "volatility": 9.9,
+      "sharpeRatio": 0.35,
+      "overLimit": true,
+      "baseLevel": 1,
+      "raw": {
+        "volatility": 9.890020222426243,
+        "volatility_exact_sqrt": 9.89002022242624,
+        "expectedReturn": 3.95,
+        "expectedReturn_exact": "79/20 (= 3.95)",
+        "sharpe_before_round": 0.35353535353535354
+      },
+      "notes": [
+        "期待リターンが .x5 ちょうど（厳密値 3.95、float 3.95）"
+      ]
+    },
+    "F": {
+      "riskLevel": 4,
+      "expectedReturn": 4.0,
+      "volatility": 9.9,
+      "sharpeRatio": 0.35,
+      "overLimit": false,
+      "baseLevel": 4,
+      "raw": {
+        "volatility": 9.890020222426243,
+        "volatility_exact_sqrt": 9.89002022242624,
+        "expectedReturn": 3.95,
+        "expectedReturn_exact": "79/20 (= 3.95)",
+        "sharpe_before_round": 0.35353535353535354
+      },
+      "notes": [
+        "期待リターンが .x5 ちょうど（厳密値 3.95、float 3.95）"
+      ]
+    },
+    "G": {
+      "riskLevel": 3,
+      "expectedReturn": 3.7,
+      "volatility": 8.9,
+      "sharpeRatio": 0.36,
+      "overLimit": false,
+      "baseLevel": 7,
+      "raw": {
+        "volatility": 8.91056382054469,
+        "volatility_exact_sqrt": 8.910563820544692,
+        "expectedReturn": 3.7325999999999993,
+        "expectedReturn_exact": "18663/5000 (= 3.7326)",
+        "sharpe_before_round": 0.3595505617977528
+      },
+      "notes": [
+        "丸め前ボラがレベル境界 9 に近い"
+      ]
+    }
+  },
+  "monteCarlo": {
+    "MC1": {
+      "final_before_round": 2421.301856517018,
+      "median": 2421,
+      "percentile25": 2421,
+      "percentile75": 2421,
+      "histogram": [
+        {
+          "bin": 2421,
+          "count": 1000
+        },
+        {
+          "bin": 2422,
+          "count": 0
+        },
+        {
+          "bin": 2423,
+          "count": 0
+        },
+        {
+          "bin": 2424,
+          "count": 0
+        },
+        {
+          "bin": 2425,
+          "count": 0
+        },
+        {
+          "bin": 2426,
+          "count": 0
+        },
+        {
+          "bin": 2427,
+          "count": 0
+        },
+        {
+          "bin": 2428,
+          "count": 0
+        },
+        {
+          "bin": 2429,
+          "count": 0
+        },
+        {
+          "bin": 2430,
+          "count": 0
+        },
+        {
+          "bin": 2431,
+          "count": 0
+        },
+        {
+          "bin": 2432,
+          "count": 0
+        },
+        {
+          "bin": 2433,
+          "count": 0
+        },
+        {
+          "bin": 2434,
+          "count": 0
+        },
+        {
+          "bin": 2435,
+          "count": 0
+        },
+        {
+          "bin": 2436,
+          "count": 0
+        },
+        {
+          "bin": 2437,
+          "count": 0
+        },
+        {
+          "bin": 2438,
+          "count": 0
+        },
+        {
+          "bin": 2439,
+          "count": 0
+        },
+        {
+          "bin": 2440,
+          "count": 0
+        }
+      ],
+      "trials": 1000
+    },
+    "MC2": {
+      "final_before_round": 0.0,
+      "median": 0,
+      "percentile25": 0,
+      "percentile75": 0,
+      "histogram": [
+        {
+          "bin": 0,
+          "count": 1000
+        },
+        {
+          "bin": 1,
+          "count": 0
+        },
+        {
+          "bin": 2,
+          "count": 0
+        },
+        {
+          "bin": 3,
+          "count": 0
+        },
+        {
+          "bin": 4,
+          "count": 0
+        },
+        {
+          "bin": 5,
+          "count": 0
+        },
+        {
+          "bin": 6,
+          "count": 0
+        },
+        {
+          "bin": 7,
+          "count": 0
+        },
+        {
+          "bin": 8,
+          "count": 0
+        },
+        {
+          "bin": 9,
+          "count": 0
+        },
+        {
+          "bin": 10,
+          "count": 0
+        },
+        {
+          "bin": 11,
+          "count": 0
+        },
+        {
+          "bin": 12,
+          "count": 0
+        },
+        {
+          "bin": 13,
+          "count": 0
+        },
+        {
+          "bin": 14,
+          "count": 0
+        },
+        {
+          "bin": 15,
+          "count": 0
+        },
+        {
+          "bin": 16,
+          "count": 0
+        },
+        {
+          "bin": 17,
+          "count": 0
+        },
+        {
+          "bin": 18,
+          "count": 0
+        },
+        {
+          "bin": 19,
+          "count": 0
+        }
+      ],
+      "trials": 1000
+    },
+    "MC3": {
+      "final_before_round": 1000,
+      "median": 1000,
+      "percentile25": 1000,
+      "percentile75": 1000,
+      "histogram": [
+        {
+          "bin": 1000,
+          "count": 1000
+        },
+        {
+          "bin": 1001,
+          "count": 0
+        },
+        {
+          "bin": 1002,
+          "count": 0
+        },
+        {
+          "bin": 1003,
+          "count": 0
+        },
+        {
+          "bin": 1004,
+          "count": 0
+        },
+        {
+          "bin": 1005,
+          "count": 0
+        },
+        {
+          "bin": 1006,
+          "count": 0
+        },
+        {
+          "bin": 1007,
+          "count": 0
+        },
+        {
+          "bin": 1008,
+          "count": 0
+        },
+        {
+          "bin": 1009,
+          "count": 0
+        },
+        {
+          "bin": 1010,
+          "count": 0
+        },
+        {
+          "bin": 1011,
+          "count": 0
+        },
+        {
+          "bin": 1012,
+          "count": 0
+        },
+        {
+          "bin": 1013,
+          "count": 0
+        },
+        {
+          "bin": 1014,
+          "count": 0
+        },
+        {
+          "bin": 1015,
+          "count": 0
+        },
+        {
+          "bin": 1016,
+          "count": 0
+        },
+        {
+          "bin": 1017,
+          "count": 0
+        },
+        {
+          "bin": 1018,
+          "count": 0
+        },
+        {
+          "bin": 1019,
+          "count": 0
+        }
+      ],
+      "trials": 1000
+    },
+    "MC4": {
+      "final_before_round": -72.5,
+      "median": 0,
+      "percentile25": 0,
+      "percentile75": 0,
+      "histogram": [
+        {
+          "bin": 0,
+          "count": 1000
+        },
+        {
+          "bin": 1,
+          "count": 0
+        },
+        {
+          "bin": 2,
+          "count": 0
+        },
+        {
+          "bin": 3,
+          "count": 0
+        },
+        {
+          "bin": 4,
+          "count": 0
+        },
+        {
+          "bin": 5,
+          "count": 0
+        },
+        {
+          "bin": 6,
+          "count": 0
+        },
+        {
+          "bin": 7,
+          "count": 0
+        },
+        {
+          "bin": 8,
+          "count": 0
+        },
+        {
+          "bin": 9,
+          "count": 0
+        },
+        {
+          "bin": 10,
+          "count": 0
+        },
+        {
+          "bin": 11,
+          "count": 0
+        },
+        {
+          "bin": 12,
+          "count": 0
+        },
+        {
+          "bin": 13,
+          "count": 0
+        },
+        {
+          "bin": 14,
+          "count": 0
+        },
+        {
+          "bin": 15,
+          "count": 0
+        },
+        {
+          "bin": 16,
+          "count": 0
+        },
+        {
+          "bin": 17,
+          "count": 0
+        },
+        {
+          "bin": 18,
+          "count": 0
+        },
+        {
+          "bin": 19,
+          "count": 0
+        }
+      ],
+      "trials": 1000
+    },
+    "MC5": {
+      "final_before_round": 3230.9240331415785,
+      "median": 3231,
+      "percentile25": 3231,
+      "percentile75": 3231,
+      "histogram": [
+        {
+          "bin": 3231,
+          "count": 10
+        },
+        {
+          "bin": 3232,
+          "count": 0
+        },
+        {
+          "bin": 3233,
+          "count": 0
+        },
+        {
+          "bin": 3234,
+          "count": 0
+        },
+        {
+          "bin": 3235,
+          "count": 0
+        },
+        {
+          "bin": 3236,
+          "count": 0
+        },
+        {
+          "bin": 3237,
+          "count": 0
+        },
+        {
+          "bin": 3238,
+          "count": 0
+        },
+        {
+          "bin": 3239,
+          "count": 0
+        },
+        {
+          "bin": 3240,
+          "count": 0
+        },
+        {
+          "bin": 3241,
+          "count": 0
+        },
+        {
+          "bin": 3242,
+          "count": 0
+        },
+        {
+          "bin": 3243,
+          "count": 0
+        },
+        {
+          "bin": 3244,
+          "count": 0
+        },
+        {
+          "bin": 3245,
+          "count": 0
+        },
+        {
+          "bin": 3246,
+          "count": 0
+        },
+        {
+          "bin": 3247,
+          "count": 0
+        },
+        {
+          "bin": 3248,
+          "count": 0
+        },
+        {
+          "bin": 3249,
+          "count": 0
+        },
+        {
+          "bin": 3250,
+          "count": 0
+        }
+      ],
+      "trials": 10
+    }
+  },
+  "modelMetaComparison": {
+    "A1": {
+      "calc": {
+        "ER": 1.5,
+        "vol": 2.9,
+        "sharpe": 0.34,
+        "riskLevel": 1
+      },
+      "meta": {
+        "ER": 1.54,
+        "vol": 2.94,
+        "riskLevel_from_meta_vol": 1
+      },
+      "diff": {
+        "ER": 0.0,
+        "vol": -0.0883
+      },
+      "levelMatchesLv": true
+    },
+    "A2": {
+      "calc": {
+        "ER": 3.0,
+        "vol": 5.8,
+        "sharpe": 0.43,
+        "riskLevel": 2
+      },
+      "meta": {
+        "ER": 2.98,
+        "vol": 5.71,
+        "riskLevel_from_meta_vol": 2
+      },
+      "diff": {
+        "ER": -0.005,
+        "vol": 0.074
+      },
+      "levelMatchesLv": true
+    },
+    "A3": {
+      "calc": {
+        "ER": 4.3,
+        "vol": 8.9,
+        "sharpe": 0.43,
+        "riskLevel": 3
+      },
+      "meta": {
+        "ER": 4.27,
+        "vol": 8.52,
+        "riskLevel_from_meta_vol": 3
+      },
+      "diff": {
+        "ER": -0.005,
+        "vol": 0.4033
+      },
+      "levelMatchesLv": true
+    },
+    "A4": {
+      "calc": {
+        "ER": 5.2,
+        "vol": 11.1,
+        "sharpe": 0.42,
+        "riskLevel": 4
+      },
+      "meta": {
+        "ER": 5.16,
+        "vol": 10.47,
+        "riskLevel_from_meta_vol": 4
+      },
+      "diff": {
+        "ER": -0.005,
+        "vol": 0.659
+      },
+      "levelMatchesLv": true
+    },
+    "A5": {
+      "calc": {
+        "ER": 6.3,
+        "vol": 15.1,
+        "sharpe": 0.38,
+        "riskLevel": 6
+      },
+      "meta": {
+        "ER": 6.27,
+        "vol": 13.2,
+        "riskLevel_from_meta_vol": 5
+      },
+      "diff": {
+        "ER": 0.0,
+        "vol": 1.8903
+      },
+      "levelMatchesLv": false
+    },
+    "A6": {
+      "calc": {
+        "ER": 7.2,
+        "vol": 18.7,
+        "sharpe": 0.36,
+        "riskLevel": 7
+      },
+      "meta": {
+        "ER": 7.22,
+        "vol": 15.4,
+        "riskLevel_from_meta_vol": 6
+      },
+      "diff": {
+        "ER": -0.04,
+        "vol": 3.2623
+      },
+      "levelMatchesLv": false
+    },
+    "A7": {
+      "calc": {
+        "ER": 7.5,
+        "vol": 20.5,
+        "sharpe": 0.34,
+        "riskLevel": 7
+      },
+      "meta": {
+        "ER": 7.53,
+        "vol": 16.91,
+        "riskLevel_from_meta_vol": 7
+      },
+      "diff": {
+        "ER": -0.005,
+        "vol": 3.5536
+      },
+      "levelMatchesLv": true
+    }
+  }
+}

@@ -173,6 +173,12 @@ def _caps_for(level):
 # 4資産を強制すると帯の下限に届かないため 3 に緩める。
 MIN_ASSETS = {4: 4, 5: 4, 6: 3, 7: 3}
 
+# モデル配分（最適化）から外す資産クラス。定義（13クラス）には残す（保有者が入力できるように）。
+# 2026-11-03 オーナー決定（#12）：新興国REITは日本の個人が買える商品が少なく、値動きのデータも短いため、
+# モデル配分に入れても実行しにくく、最適化の入力も不安定になりやすい。
+EXCLUDED_FROM_MODEL = {'emerging_reit'}
+CANDIDATES = [i for i, k in enumerate(ASSET_KEYS) if k not in EXCLUDED_FROM_MODEL]
+
 # レベル別の vol 下限オーバーライド（絶対値）。指定なきレベルは 実効上限×VOL_TARGET_RATIO。
 # Lv7：実効上限24%×0.9=21.6% は caps 下で到達不能なため、Lv7 定義の下限 20% を採用。
 LEVEL_VOL_MIN = {7: 0.160}   # Lv7 は Lv6 上限(16%)を下限とする（2026-11-02: 17→16）
@@ -271,7 +277,7 @@ def optimize_for_level(level):
     best = None  # (pct, vol, ret, sharpe, active)
     best_score = -np.inf
     for size in range(min_assets, MAX_ASSETS + 1):
-        for combo in itertools.combinations(range(N), size):
+        for combo in itertools.combinations(CANDIDATES, size):
             idx = list(combo)
             w, _ = _solve_subset(idx, vol_min, vol_max, floor, caps_idx)
             if w is None:

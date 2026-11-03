@@ -45,7 +45,7 @@ export async function fetchLatestSnapshot(userId: string): Promise<{ holdings: H
     .select('snapshot_date, asset_class, amount')
     .eq('user_id', userId)
     .order('snapshot_date', { ascending: false })
-    .limit(11); // 最大11クラス
+    .limit(ASSET_CLASSES.length); // 1日分の最大件数＝資産クラス数
 
   if (error) {
     console.error('rb snapshot fetch error:', error);

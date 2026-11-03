@@ -21,11 +21,11 @@ import { softwareApplicationSchema } from '../lib/seo/schemas';
 type Phase = 'input' | 'result';
 
 // 資産クラスをカテゴリで分類
-const CATEGORIES = [
+export const CATEGORIES = [
   { label: '株式', keys: ['japan_equity', 'us_equity', 'developed_equity', 'emerging_equity'] },
   { label: '債券', keys: ['japan_bond', 'developed_bond', 'emerging_bond'] },
-  { label: 'REIT', keys: ['japan_reit', 'developed_reit'] },
-  { label: 'その他', keys: ['gold', 'cash'] },
+  { label: 'REIT', keys: ['japan_reit', 'developed_reit', 'emerging_reit'] },
+  { label: 'その他', keys: ['commodity', 'gold', 'cash'] },
 ];
 
 export default function PfDiagnosisSimplePage() {
