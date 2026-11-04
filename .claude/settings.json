@@ -13,7 +13,15 @@
       "Bash(*drop schema*)",
       "Bash(*TRUNCATE*)",
       "Bash(*truncate table*)",
-      "Bash(*supabase db reset*)"
+      "Bash(*supabase db reset*)",
+      "Bash(*supabase db query*)",
+      "Bash(*supabase db execute*)",
+      "Bash(*psql *)",
+      "Bash(*supabase db dump*)"
+    ],
+    "ask": [
+      "Bash(*supabase db push*)",
+      "Bash(*supabase migration repair*)"
     ]
   }
 }

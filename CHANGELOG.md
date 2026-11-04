@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-11-04 — マイグレーションの適用を Supabase CLI に／Playwright MCP／3役の定義の更新（FI_project #17）
+
+- マイグレーションの適用手順を SQL Editor から `supabase db push` に（CLAUDE.md「マイグレーション」）。`db push`・`migration repair` は `.claude/settings.json` の ask、`supabase db query`・`psql` などは deny。本番の登録状況の整合（`migration repair`）は CLI の導入と `supabase link` のあと、オーナーの OK を待って行う
+- `.mcp.json` に Playwright MCP（`@playwright/mcp@0.0.83`、`--isolated --headless`、出力は `.playwright-mcp/`）。app-verifier・app-reviewer が画面を確かめる（開発サーバー・本番とも見るだけ、保存・送信しない、スマホ幅）
+- app-reviewer の資産クラスの記述を #12（13クラスに統一）後に。app-* に「作業ログは FI_project の `logs/app-calc.md`」「地図・定義が名指しする状態を変えたら同じコミットで直す」
+
 ## 2026-05-23 — Footer の特商法リンクを largogk.jp 直リンク化 + prerender コメント清掃
 
 ### 概要

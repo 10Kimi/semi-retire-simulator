@@ -58,3 +58,6 @@ scripts/market/indicators.json
 scripts/ma-mail/config.local.json
 scripts/ma-mail/state*.json
 scripts/ma-mail/out/
+
+# Playwright MCP の出力（スクリーンショット等）
+.playwright-mcp/

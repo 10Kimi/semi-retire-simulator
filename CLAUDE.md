@@ -143,8 +143,9 @@ scripts/market/.venv/bin/python scripts/optimize_portfolios.py --apply  # DB反�
   再最適化やしきい値の変更のあとも手で流して確認する（`python3 scripts/check_model_levels.py`、exit 1 なら不一致）
 
 ### マイグレーション
-`supabase/migrations/`（〜037）。**CLI は使わず Supabase SQL Editor で直接適用する。**
-コード側を push する前に適用すること（逆順だと保存時にエラーになる）。
+`supabase/migrations/`（〜040）。**適用は Supabase CLI の `supabase db push`**（2026-11-04、#17。SQL Editor への貼り付けはやめた）。
+CC がマイグレーションを書き、SQL をオーナーに見せ、**オーナーの OK のあと** CC が `supabase db push` する。`db push`・`migration repair` は settings.json の ask、`supabase db query`・`psql` は deny。`supabase login`・`link` はオーナーが行う。Supabase MCP は使わない。
+コード側を push する前に適用すること（逆順だと保存時にエラーになる）。適用の OK が出るまでコードは push しない。
 
 ---
 
@@ -201,7 +202,7 @@ scripts/market/.venv/bin/python scripts/optimize_portfolios.py --apply  # DB反�
   - **2026-07-27 修正**: `gold_silver_ratio` に `-0.5`（過去の壊れた値）が残り `/ma` が異常値を自動補完していた問題を再取得で解消（→68.4, 適正）。同時に openpyxl 未導入で PBR がずっと取得失敗していたのを requirements に追加して解消（→1.8）。`/ma` の「自動取得済み」ブロックに CAPE/PBR/金銀比率の数値＋20日超で⚠️警告を表示するUIも追加（`MonthlyAdvisorPage.tsx`）
   - **gotcha**: プロジェクトを `~/semi-retire-app` → 現パスへ移動した影響で `.venv/bin/pip` の shebang が旧パス参照で壊れている。pip 操作は `.venv/bin/python -m pip ...` で回避（python 本体は動作する）
 - `public/robots.txt`, `public/sitemap.xml` — SEO 基盤
-- `supabase/migrations/` — DBマイグレーション（〜035。番号衝突あり、TODO参照。適用は SQL Editor 直接。032〜035 は /ma 拡張）
+- `supabase/migrations/` — DBマイグレーション（〜040。番号衝突あり、TODO参照。適用は `supabase db push`、#17。032〜035 は /ma 拡張）
 
 ## 制約
 - Excel V4.2の計算ロジックを正確に再現すること
