@@ -4,6 +4,8 @@
 
 - マイグレーションの適用手順を SQL Editor から `supabase db push` に（CLAUDE.md「マイグレーション」）。`db push`・`migration repair` は `.claude/settings.json` の ask、`supabase db query`・`psql` などは deny。本番の登録状況の整合（`migration repair`）は CLI の導入と `supabase link` のあと、オーナーの OK を待って行う
 - `.mcp.json` に Playwright MCP（`@playwright/mcp@0.0.83`、`--isolated --headless`、出力は `.playwright-mcp/`）。app-verifier・app-reviewer が画面を確かめる（開発サーバー・本番とも見るだけ、保存・送信しない、スマホ幅）
+- 本番の登録状況をそろえた（`migration repair --remote` で 025・027〜040 を applied に。001〜040 が一致）。`db push`・`repair` も既定はローカルなので手順に `--remote`、エージェントからは `--yes` が要ることを追記
+- テスト用アカウントを作成（有料の状態。ログイン情報は `.env.local`）。app-verifier・app-reviewer に置き場所を追記
 - app-reviewer の資産クラスの記述を #12（13クラスに統一）後に。app-* に「作業ログは FI_project の `logs/app-calc.md`」「地図・定義が名指しする状態を変えたら同じコミットで直す」
 
 ## 2026-05-23 — Footer の特商法リンクを largogk.jp 直リンク化 + prerender コメント清掃
