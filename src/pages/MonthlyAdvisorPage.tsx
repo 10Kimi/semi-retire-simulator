@@ -207,7 +207,7 @@ export default function MonthlyAdvisorPage() {
               <span className="text-2xl">💰</span>
               <div>
                 <div className="text-xs text-amber-300/70 uppercase tracking-wide">待機資金残高</div>
-                <div className="text-amber-200 text-sm mt-0.5">割安時に投入 -10%→1/4, -20%→1/2</div>
+                <div className="text-amber-200 text-sm mt-0.5">暴落時に投入 高値比 −20%・−30%→1/3、−40%→全額</div>
               </div>
             </div>
             <div className="text-2xl font-bold text-amber-300">{formatCurrency(settings.reserve_balance)}</div>
