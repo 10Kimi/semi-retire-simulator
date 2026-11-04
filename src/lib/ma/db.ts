@@ -30,17 +30,28 @@ export async function fetchUserSettings(userId: string): Promise<UserMaSettings>
   // 初回：デフォルト値で作成
   if (error?.code === 'PGRST116') {
     const row = settingsToRow(userId, DEFAULT_SETTINGS);
+    // 同時に2回作ろうとしても失敗しない。既にある行は上書きしない（重複なら行が返らないので読み直す）
     const { data: inserted, error: insertError } = await supabase
       .from('user_ma_settings')
-      .insert(row)
+      .upsert(row, { onConflict: 'user_id', ignoreDuplicates: true })
       .select()
-      .single();
+      .maybeSingle();
 
     if (insertError) {
       console.error('settings insert error:', insertError);
       return { user_id: userId, ...DEFAULT_SETTINGS };
     }
-    return rowToSettings(inserted as UserMaSettingsRow);
+    if (inserted) return rowToSettings(inserted as UserMaSettingsRow);
+
+    const { data: existing, error: refetchError } = await supabase
+      .from('user_ma_settings')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (existing) return rowToSettings(existing as UserMaSettingsRow);
+    console.error('settings refetch error:', refetchError);
+    return { user_id: userId, ...DEFAULT_SETTINGS };
   }
 
   console.error('settings fetch error:', error);

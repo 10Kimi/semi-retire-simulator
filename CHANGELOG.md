@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-04 — /ma の設定の行の初回作成で重複しても失敗しないように（FI_project #18）
+
+- `fetchUserSettings` の初回作成を insert から重複を無視する upsert に。重複で行が返らなければ読み直す。既存の行は上書きしない（`src/lib/ma/db.test.ts`）
+
 ## 2026-11-04 — マイグレーションの適用を Supabase CLI に／Playwright MCP／3役の定義の更新（FI_project #17）
 
 - マイグレーションの適用手順を SQL Editor から `supabase db push` に（CLAUDE.md「マイグレーション」）。`db push`・`migration repair` は `.claude/settings.json` の ask、`supabase db query`・`psql` などは deny。本番の登録状況の整合（`migration repair`）は CLI の導入と `supabase link` のあと、オーナーの OK を待って行う
