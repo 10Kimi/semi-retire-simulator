@@ -144,7 +144,7 @@ scripts/market/.venv/bin/python scripts/optimize_portfolios.py --apply  # DB反�
 
 ### マイグレーション
 `supabase/migrations/`（〜040）。**適用は Supabase CLI の `supabase db push`**（2026-11-04、#17。SQL Editor への貼り付けはやめた）。
-CC がマイグレーションを書き、SQL をオーナーに見せ、**オーナーの OK のあと** CC が `supabase db push` する。`db push`・`migration repair` は settings.json の ask、`supabase db query`・`psql` は deny。`supabase login`・`link` はオーナーが行う。Supabase MCP は使わない。
+CC がマイグレーションを書き、SQL をオーナーに見せ、**オーナーの OK のあと** CC が `supabase db push` する。`db push`・`migration repair` は settings.json の ask、`supabase db query`・`psql` は deny。`supabase login`・`link` はオーナーが行う。Supabase MCP は使わない。CLI は `npx supabase …` で使う（brew は不可）。`migration list` は既定でローカル（Docker）を見るので `--remote` を付ける。
 コード側を push する前に適用すること（逆順だと保存時にエラーになる）。適用の OK が出るまでコードは push しない。
 
 ---
