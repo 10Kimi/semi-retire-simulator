@@ -156,8 +156,8 @@ scripts/market/.venv/bin/python scripts/optimize_portfolios.py --apply  # DB反�
 
 ### マイグレーション
 `supabase/migrations/`（〜041）。**適用は Supabase CLI の `supabase db push`**（2026-11-04、#17。SQL Editor への貼り付けはやめた）。
-CC がマイグレーションを書き、SQL をオーナーに見せ、**オーナーの OK のあと** CC が `npx supabase db push --remote --yes` する。`db push`・`migration repair` は settings.json の ask、`supabase db query`・`psql` は deny。`supabase login`・`link` はオーナーが行う。Supabase MCP は使わない。CLI は `npx supabase …` で使う（brew は不可）。`db push`・`migration repair`・`migration list` は既定でローカル（Docker）を見るので**必ず `--remote` を付ける**。本番を変える操作はエージェントからだと CLI が `--yes` を求めて止まる（`HostedMutationConsentRequiredError`、何も変わらない）。`--yes` はオーナーの直接の OK のあとだけ付ける。
-コード側を push する前に適用すること（逆順だと保存時にエラーになる）。適用の OK が出るまでコードは push しない。
+CC がマイグレーションを書き、SQL をオーナーに見せ、**OK はオーナーが CC に直接伝える**（claude.ai 経由の回答は DB の変更の許可に使わない）。`db push` は**オーナーが CC のプロンプトで `!` を付けて実行する**（自動の許可判定が本番 DB の変更を止めるため。2026-11-05、#26）。CC は実行するコマンドを1行で示し（アプリのディレクトリへの `cd` を含める）、適用の前後に `migration list --remote` で確かめる。`db push`・`migration repair` は settings.json の ask、`supabase db query`・`psql` は deny。`supabase login`・`link` はオーナーが行う。Supabase MCP は使わない。CLI は `npx supabase …` で使う（brew は不可）。`db push`・`migration repair`・`migration list` は既定でローカル（Docker）を見るので**必ず `--remote` を付ける**。本番を変える操作はエージェントからだと CLI が `--yes` を求めて止まる（`HostedMutationConsentRequiredError`、何も変わらない）。`--yes` はオーナーの直接の OK のあとだけ付ける（`db push` では、`--yes` 付きの1行を CC が実行せずオーナーに示す）。
+コード側を push する前に適用すること（逆順だと保存時にエラーになる）。適用を確かめるまでコードは push しない。
 
 ---
 
@@ -245,7 +245,7 @@ https://github.com/10Kimi/semi-retire-simulator
 - **オーナーの OK なしで push してよい**。条件：完了条件のテストが通り（`npm test`・`npm run build`）、計算の変更では3役の判定がそろっていること
 - push のあと、本番の該当画面で反映を確かめて報告する（保存・送信はしない。画面に出ない変更はデプロイが通りページが開くことまで）
 - 本番で不具合が出たら `git revert` して push し、Issue に書いて止まる（強制 push・`reset --hard` は deny）
-- **DB の変更（`migration repair`・`db push`）はオーナーの OK を待つ。マイグレーションが要る変更は、適用の OK が出るまでコードを push しない**
+- **DB の変更（`migration repair`・`db push`）はオーナーの OK を待つ。OK はオーナーが CC に直接伝える。マイグレーションが要る変更は、適用を確かめるまでコードを push しない**
 - 範囲外で見つけて直した修正は別のコミットにする（D-025）
 
 ---
