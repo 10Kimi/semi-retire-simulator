@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-05 — 画面の確認はログインなしの範囲に（FI_project #31）
+
+- app-verifier・app-reviewer の定義を変更。本番でログインせず、ログイン後の画面はオーナーに頼む
+
 ## 2026-11-05 — fund_master の BTI とセゾン・グローバルバランスファンドを修正（FI_project #25）
 
 - migration 041（本番に適用済み）。BTI を `us_equity` から `developed_equity` に戻した。英国の会社の ADR で、`developed_equity` は米・日除く
