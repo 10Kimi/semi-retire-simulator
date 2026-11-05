@@ -1,15 +1,15 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ASSET_CLASSES } from '../../lib/rb/types';
 import type { Holdings } from '../../lib/rb/types';
-import { parseMfExcel } from '../../lib/rb/mfParser';
+import { parseMfText, clampNegativeHoldings } from '../../lib/rb/mfParser';
 import type { MfHolding } from '../../lib/rb/mfParser';
 import { allocateHoldings, summarizeAllocations } from '../../lib/rb/allocator';
 import type { AllocatedHolding } from '../../lib/rb/allocator';
 import { fetchFundMaster, submitFundRequest, fetchSubmittedRequestTickers, saveSnapshot } from '../../lib/rb/db';
 import { formatCurrency } from '../../lib/rb/logic';
 
-type ImportStep = 'select' | 'preview' | 'unclassified' | 'confirm';
+type ImportStep = 'paste' | 'preview' | 'unclassified' | 'confirm';
 
 interface Props {
   onImportComplete: (holdings: Holdings, saved: boolean) => void;
@@ -21,14 +21,26 @@ const ASSET_CLASS_OPTIONS = [
   { value: 'exclude', label: '保有資産に含めない' },
 ];
 
+function WarningList({ items }: { items: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div role="alert" className="bg-amber-900/30 border border-amber-500/50 rounded-2xl p-4 space-y-1">
+      {items.map((w, i) => (
+        <p key={i} className="text-sm text-amber-200">{w}</p>
+      ))}
+    </div>
+  );
+}
+
 export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
   const { user } = useAuth();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [step, setStep] = useState<ImportStep>('select');
+  const [step, setStep] = useState<ImportStep>('paste');
+  const [pastedText, setPastedText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const [rawHoldings, setRawHoldings] = useState<MfHolding[]>([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [allocated, setAllocated] = useState<AllocatedHolding[]>([]);
   const [submittedTickers, setSubmittedTickers] = useState<Set<string>>(new Set());
   const [requestedTickers, setRequestedTickers] = useState<Set<string>>(new Set());
@@ -37,41 +49,35 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
 
   const unclassified = allocated.filter(a => !a.matched);
   const classified = allocated.filter(a => a.matched);
+  const { holdings: summary, clamped } = clampNegativeHoldings(summarizeAllocations(allocated));
+  const hasBalance = Object.values(summary).some(v => v > 0);
+  const clampedLabels = ASSET_CLASSES.filter(ac => clamped.includes(ac.key)).map(ac => ac.label);
 
-  const handleFileSelect = async (file: File) => {
-    if (!file.name.endsWith('.xlsx')) {
-      setError('.xlsx ファイルのみ対応しています');
+  const handleRead = async () => {
+    const { holdings, warnings: parseWarnings } = parseMfText(pastedText);
+    setPastedText(''); // 貼ったテキストは読んだら持たない
+    setError('');
+    setWarnings(parseWarnings);
+
+    if (holdings.length === 0) {
+      setError('読み取れる区分がありませんでした。マネーフォワードの「資産」ページの全体をコピーして貼り付けてください。');
       return;
     }
+
     setLoading(true);
-    setError('');
-
     try {
-      const data = await file.arrayBuffer();
-      const parsed = parseMfExcel(data);
-      setRawHoldings(parsed);
-
       const [fundMaster, submitted] = await Promise.all([
         fetchFundMaster(),
         user ? fetchSubmittedRequestTickers(user.id) : Promise.resolve(new Set<string>()),
       ]);
       setSubmittedTickers(submitted);
-
-      const result = allocateHoldings(parsed, fundMaster);
-      setAllocated(result);
-
-      const hasUnclassified = result.some(a => !a.matched);
-      setStep(hasUnclassified ? 'preview' : 'preview');
+      setRawHoldings(holdings);
+      setAllocated(allocateHoldings(holdings, fundMaster));
+      setStep('preview');
     } catch {
-      setError('Excelの解析に失敗しました。MoneyForwardからエクスポートしたファイルか確認してください。');
+      setError('読み込みに失敗しました。時間をおいて、もう一度貼り付けてください。');
     }
     setLoading(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) handleFileSelect(file);
   };
 
   const handleManualClass = (index: number, assetClass: string) => {
@@ -108,45 +114,48 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
   const allUnclassifiedHandled = unclassified.every(a => a.manualClass);
 
   const handleConfirm = async () => {
-    const summary = summarizeAllocations(allocated);
     const saved = user ? await saveSnapshot(user.id, summary) : true;
     onImportComplete(summary, saved);
   };
 
   return (
     <div className="space-y-4">
-      {/* STEP 1: ファイル選択 */}
-      {step === 'select' && (
-        <div
-          onDrop={handleDrop}
-          onDragOver={e => e.preventDefault()}
-          className="border-2 border-dashed border-slate-600 rounded-2xl p-8 text-center cursor-pointer hover:border-emerald-500/50 transition-colors"
-          onClick={() => fileRef.current?.click()}
-        >
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".xlsx"
-            className="hidden"
-            onChange={e => {
-              const file = e.target.files?.[0];
-              if (file) handleFileSelect(file);
-            }}
+      {/* STEP 1: テキストの貼り付け */}
+      {step === 'paste' && (
+        <div className="bg-slate-900 rounded-2xl p-4 space-y-3">
+          <p className="text-slate-300 text-sm">
+            MoneyForwardの「資産」ページを開き、ページ全体をコピーして貼り付けてください。
+          </p>
+          <textarea
+            value={pastedText}
+            onChange={e => setPastedText(e.target.value)}
+            rows={8}
+            spellCheck={false}
+            autoComplete="off"
+            aria-label="MoneyForwardの資産ページのテキスト"
+            placeholder="ここに貼り付け"
+            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:border-emerald-500 focus:outline-none"
           />
-          <div className="text-3xl mb-3">📁</div>
-          <p className="text-slate-300 text-sm mb-1">MoneyForwardのExcelをアップロード</p>
-          <p className="text-slate-500 text-xs">ドラッグ＆ドロップ または クリックで選択（.xlsx）</p>
-          {loading && <p className="text-emerald-400 text-sm mt-3">解析中...</p>}
-          {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
+          {error && <p role="alert" className="text-red-400 text-sm">{error}</p>}
+          <WarningList items={warnings} />
+          <button
+            onClick={handleRead}
+            disabled={loading || !pastedText.trim()}
+            className="w-full py-3 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-2xl font-bold text-sm hover:opacity-90 disabled:opacity-40"
+          >
+            {loading ? '読み取り中...' : '読み取る'}
+          </button>
         </div>
       )}
 
       {/* STEP 2: プレビュー */}
       {step === 'preview' && (
         <>
+          <WarningList items={warnings} />
+
           <div className="bg-slate-900 rounded-2xl p-4">
             <h3 className="text-sm text-slate-400 mb-3">
-              解析結果（{rawHoldings.length}銘柄 / {classified.length}件自動振り分け / {unclassified.length}件未分類）
+              解析結果（{rawHoldings.length}件 / {classified.length}件自動振り分け / {unclassified.length}件未分類）
             </h3>
 
             {/* 自動振り分け済み */}
@@ -229,7 +238,7 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
 
           <div className="flex gap-3">
             <button
-              onClick={() => { setStep('select'); setAllocated([]); setRawHoldings([]); }}
+              onClick={() => { setStep('paste'); setAllocated([]); setRawHoldings([]); setWarnings([]); }}
               className="flex-1 py-3 bg-slate-800 border border-slate-700 rounded-2xl text-sm text-slate-400 hover:bg-slate-700"
             >
               やり直す
@@ -250,17 +259,18 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
       {/* STEP 3: 確認（プレビューから直接確定） */}
       {step === 'confirm' && (
         <>
+          {clampedLabels.length > 0 && (
+            <WarningList items={[`${clampedLabels.join('・')}は合計がマイナスのため、0円にしました`]} />
+          )}
+
           <div className="bg-slate-900 rounded-2xl p-4">
             <h3 className="text-sm text-slate-400 mb-3">アセットクラス別 合計</h3>
-            {(() => {
-              const summary = summarizeAllocations(allocated);
-              return ASSET_CLASSES.filter(ac => summary[ac.key] > 0).map(ac => (
-                <div key={ac.key} className="flex justify-between py-2 border-b border-slate-800 last:border-0">
-                  <span className="text-sm">{ac.label}</span>
-                  <span className="text-emerald-400 text-sm">{formatCurrency(summary[ac.key])}</span>
-                </div>
-              ));
-            })()}
+            {ASSET_CLASSES.filter(ac => summary[ac.key] > 0).map(ac => (
+              <div key={ac.key} className="flex justify-between py-2 border-b border-slate-800 last:border-0">
+                <span className="text-sm">{ac.label}</span>
+                <span className="text-emerald-400 text-sm">{formatCurrency(summary[ac.key])}</span>
+              </div>
+            ))}
           </div>
 
           <div className="flex gap-3">
@@ -272,11 +282,17 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
             </button>
             <button
               onClick={handleConfirm}
-              className="flex-[2] py-4 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-2xl font-bold text-lg hover:opacity-90"
+              disabled={!hasBalance}
+              className="flex-[2] py-4 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-2xl font-bold text-lg hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               この内容で保存する
             </button>
           </div>
+          {!hasBalance && (
+            <p role="alert" className="text-sm text-amber-300 text-center">
+              保存できる残高がありません
+            </p>
+          )}
         </>
       )}
 

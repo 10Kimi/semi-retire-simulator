@@ -29,6 +29,7 @@ dist-ssr
 # Test/debug files
 *.txt
 !requirements.txt
+!src/lib/rb/__fixtures__/*.txt
 test_sim.mjs
 excel_reference.py
 formulas_output.txt

@@ -26,7 +26,7 @@ export function allocateHoldings(
   fundMaster: FundMasterEntry[],
 ): AllocatedHolding[] {
   return holdings.map(h => {
-    // 合計セクション（預金・債券・年金）の自動振り分け
+    // 預金・債券は fund_master を見ずに自動で振り分ける（年金は fund_master で照合）
     if (h.section === '預金・現金・暗号資産') {
       return {
         holding: h,

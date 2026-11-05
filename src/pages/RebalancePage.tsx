@@ -278,7 +278,7 @@ export default function RebalancePage() {
           ))}
         </div>
 
-        {/* MFエクセル取り込み */}
+        {/* 保存の失敗の表示・MF取り込み */}
         {failedSaves.length > 0 && (
           <div role="alert" className="mb-4 p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-center space-y-2">
             <p className="text-sm text-red-300">
@@ -325,7 +325,7 @@ export default function RebalancePage() {
               onClick={() => setStep('import')}
               className="w-full py-3 mb-4 bg-slate-800 border border-slate-700 rounded-2xl text-sm text-slate-300 hover:bg-slate-700 flex items-center justify-center gap-2"
             >
-              <span>📁</span> MoneyForwardのExcelから取り込む
+              <span>📋</span> MoneyForwardの資産ページから取り込む
             </button>
 
             <div className="bg-slate-900 rounded-2xl p-4 mb-4">

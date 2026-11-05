@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-11-05 — /rb の取り込みを MF の Excel から「資産」ページの貼り付けに（FI_project #24）
+
+- マネーフォワードの Excel がダウンロードできなくなったため、`parseMfExcel` を `parseMfText` に置き換え。区分の見出し・列の位置・合算の読み方は `src/lib/rb/mfParser.ts`。`xlsx` の依存を外した
+- `MfImportFlow.tsx` の最初のステップをテキストの貼り付け欄に。テキストはブラウザの中で読むだけで、読んだら state から消す。振り分け・未分類の手当ては今のまま（`allocator.ts` のロジックは変えていない）
+- 区分の合計のずれ（1,000円超）・未対応の区分・同じ区分の2回目・内訳にあって本文に無い区分は preview に警告を出す（取り込みは止めない）
+- 預金は口座ごとの行に（全部 `cash`）。マイナスの行も足す。Excel のときはマイナスの行を読み飛ばしていた。資産クラスの合計がマイナスになったら0にそろえ、confirm に警告を出す（`clampNegativeHoldings`）
+- テストは `src/lib/rb/mfParser.test.ts`、見本は `src/lib/rb/__fixtures__/mf_assets_sample.txt`（架空のデータ）。`.gitignore` の `*.txt` に見本の例外を追加
+
 ## 2026-11-05 — /rb の残高の復元は最後の保存だけを読む（FI_project #23）
 
 - `fetchLatestSnapshot` を `created_at` で最後の保存の行だけ読む形に。同じ日に保存し直すと、古い金額や、途中で0にした資産クラスの古い金額が混ざることがあった。DB は変えていない
