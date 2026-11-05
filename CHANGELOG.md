@@ -4,8 +4,8 @@
 
 - /risk：診断結果の保存に失敗したら、その旨と「もう一度保存する」を表示する。マジックリンクからの復元の経路は、保存できたときだけ回答を消す（`RiskPage.tsx`）
 - /risk「このPFを採用する」：失敗したら「採用しました」にせず、失敗を表示してもう一度押せるようにする（`adoptModelAllocation`、`RiskResultDisplay.tsx`）
-- /rb：目標配分の保存に失敗したら、結果の画面に表示してもう一度保存できるようにする（`RebalancePage.tsx`）
-- `saveTargetAllocation` は成否を返す。テストは `src/lib/riskDb.test.ts`・`src/lib/rb/db.test.ts`
+- /rb：目標配分・保有残高・生活費の設定の保存に失敗したら、どのステップでも表示してもう一度保存できるようにする（`RebalancePage.tsx`。MF 取込の保存も同じ）
+- `saveTargetAllocation`・`saveSnapshot`・`saveRbProfile` は成否を返す。テストは `src/lib/riskDb.test.ts`・`src/lib/rb/db.test.ts`
 
 ## 2026-11-04 — /ma の設定の行の初回作成で重複しても失敗しないように（FI_project #18）
 

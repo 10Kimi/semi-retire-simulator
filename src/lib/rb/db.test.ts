@@ -13,11 +13,12 @@ vi.mock('../supabase', () => ({
         db.rows = rows;
         return db.result;
       },
+      insert: async () => db.result,
     }),
   },
 }));
 
-import { adoptModelAllocation, saveTargetAllocation } from './db';
+import { adoptModelAllocation, saveRbProfile, saveSnapshot, saveTargetAllocation } from './db';
 
 describe('目標配分の保存', () => {
   beforeEach(() => {
@@ -47,5 +48,23 @@ describe('目標配分の保存', () => {
   it('adoptModelAllocation：失敗したら false', async () => {
     db.result = { error: { message: 'failed' } };
     expect(await adoptModelAllocation('user-1', 4)).toBe(false);
+  });
+
+  it('saveSnapshot：保存できたら true、失敗したら false', async () => {
+    expect(await saveSnapshot('user-1', { us_equity: 100 })).toBe(true);
+    db.result = { error: { message: 'failed' } };
+    expect(await saveSnapshot('user-1', { us_equity: 100 })).toBe(false);
+  });
+
+  it('saveSnapshot：保存する行が無ければ true', async () => {
+    db.result = { error: { message: 'failed' } };
+    expect(await saveSnapshot('user-1', {})).toBe(true);
+  });
+
+  it('saveRbProfile：保存できたら true、失敗したら false', async () => {
+    const profile = { monthly_living_cost: null, emergency_months: 6 };
+    expect(await saveRbProfile('user-1', profile)).toBe(true);
+    db.result = { error: { message: 'failed' } };
+    expect(await saveRbProfile('user-1', profile)).toBe(false);
   });
 });

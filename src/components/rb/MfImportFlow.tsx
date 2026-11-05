@@ -12,7 +12,7 @@ import { formatCurrency } from '../../lib/rb/logic';
 type ImportStep = 'select' | 'preview' | 'unclassified' | 'confirm';
 
 interface Props {
-  onImportComplete: (holdings: Holdings) => void;
+  onImportComplete: (holdings: Holdings, saved: boolean) => void;
   onCancel: () => void;
 }
 
@@ -109,8 +109,8 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
 
   const handleConfirm = async () => {
     const summary = summarizeAllocations(allocated);
-    if (user) await saveSnapshot(user.id, summary);
-    onImportComplete(summary);
+    const saved = user ? await saveSnapshot(user.id, summary) : true;
+    onImportComplete(summary, saved);
   };
 
   return (

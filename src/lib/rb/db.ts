@@ -77,8 +77,8 @@ export async function fetchLatestSnapshot(userId: string): Promise<{ holdings: H
   return { holdings, date: latestDate };
 }
 
-/** スナップショットを保存 */
-export async function saveSnapshot(userId: string, holdings: Holdings): Promise<void> {
+/** スナップショットを保存。成否を返す（保存する行が無ければ true） */
+export async function saveSnapshot(userId: string, holdings: Holdings): Promise<boolean> {
   const today = new Date().toISOString().slice(0, 10);
   const rows = ASSET_CLASSES
     .filter(ac => (holdings[ac.key] || 0) > 0)
@@ -89,13 +89,17 @@ export async function saveSnapshot(userId: string, holdings: Holdings): Promise<
       amount: holdings[ac.key] || 0,
     }));
 
-  if (rows.length === 0) return;
+  if (rows.length === 0) return true;
 
   const { error } = await supabase
     .from('rb_snapshots')
     .insert(rows);
 
-  if (error) console.error('rb snapshot save error:', error);
+  if (error) {
+    console.error('rb snapshot save error:', error);
+    return false;
+  }
+  return true;
 }
 
 /** スナップショット履歴（日付一覧）を取得 */
@@ -248,7 +252,7 @@ export async function fetchRbProfile(userId: string): Promise<RbProfile> {
 }
 
 /** 緊急資金設定を保存 */
-export async function saveRbProfile(userId: string, profile: RbProfile): Promise<void> {
+export async function saveRbProfile(userId: string, profile: RbProfile): Promise<boolean> {
   const { error } = await supabase
     .from('user_rb_profile')
     .upsert({
@@ -257,5 +261,9 @@ export async function saveRbProfile(userId: string, profile: RbProfile): Promise
       emergency_months: profile.emergency_months,
     }, { onConflict: 'user_id' });
 
-  if (error) console.error('rb profile save error:', error);
+  if (error) {
+    console.error('rb profile save error:', error);
+    return false;
+  }
+  return true;
 }
