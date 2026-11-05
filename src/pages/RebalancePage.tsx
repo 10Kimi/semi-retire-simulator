@@ -89,6 +89,7 @@ export default function RebalancePage() {
     return t;
   });
   const [hasExistingTarget, setHasExistingTarget] = useState(false);
+  const [targetSaveFailed, setTargetSaveFailed] = useState(false);
 
   // 乖離・調整結果
   const [deviation, setDeviation] = useState<DeviationItem[]>([]);
@@ -212,10 +213,11 @@ export default function RebalancePage() {
 
   const goToResult = async () => {
     if (user) {
-      await Promise.all([
+      const [saved] = await Promise.all([
         saveTargetAllocation(user.id, target),
         saveRbProfile(user.id, { monthly_living_cost: livingCostNum || null, emergency_months: emergencyMonths }),
       ]);
+      setTargetSaveFailed(!saved);
     }
     setHasExistingTarget(true);
     setDeviation(calculateDeviation(investableHoldings, target));
@@ -504,6 +506,20 @@ export default function RebalancePage() {
         )}
 
         {/* STEP 3: 乖離表示 + 調整計算 */}
+        {step === 'result' && targetSaveFailed && (
+          <div role="alert" className="mb-4 p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-center space-y-2">
+            <p className="text-sm text-red-300">
+              目標配分を保存できませんでした。この画面の計算には反映されていますが、次に開いたときは前の目標配分に戻ります
+            </p>
+            <button
+              onClick={goToResult}
+              className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition-colors"
+            >
+              もう一度保存する
+            </button>
+          </div>
+        )}
+
         {step === 'result' && (
           <>
             {/* 乖離サマリー */}
