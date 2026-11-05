@@ -51,14 +51,18 @@ export async function adoptModelAllocation(userId: string, level: number): Promi
   return saveTargetAllocation(userId, target);
 }
 
-/** 最新のスナップショットを取得 */
+/**
+ * 最後に保存した1回分のスナップショットを取得。
+ * 同じ日に何度も保存すると行が増える（UPDATE・DELETE のポリシーが無い）ので、日付ではなく created_at で見分ける。
+ * 1回の insert の行は created_at が同じ（DEFAULT now()＝トランザクションの開始時刻）。金額が0の資産クラスは行が無い。
+ */
 export async function fetchLatestSnapshot(userId: string): Promise<{ holdings: Holdings; date: string } | null> {
   const { data, error } = await supabase
     .from('rb_snapshots')
-    .select('snapshot_date, asset_class, amount')
+    .select('snapshot_date, asset_class, amount, created_at')
     .eq('user_id', userId)
-    .order('snapshot_date', { ascending: false })
-    .limit(ASSET_CLASSES.length); // 1日分の最大件数＝資産クラス数
+    .order('created_at', { ascending: false })
+    .limit(ASSET_CLASSES.length); // 1回の保存の最大件数＝資産クラス数
 
   if (error) {
     console.error('rb snapshot fetch error:', error);
@@ -66,20 +70,25 @@ export async function fetchLatestSnapshot(userId: string): Promise<{ holdings: H
   }
   if (!data || data.length === 0) return null;
 
-  // 最新日付のレコードのみ抽出
-  const latestDate = data[0].snapshot_date;
-  const latestRows = data.filter(r => r.snapshot_date === latestDate);
+  // 最後の保存の行だけを抽出
+  const latest = data[0];
+  const latestRows = data.filter(r => r.created_at === latest.created_at);
 
   const holdings: Holdings = {};
   for (const row of latestRows) {
     holdings[row.asset_class] = Number(row.amount);
   }
-  return { holdings, date: latestDate };
+  return { holdings, date: latest.snapshot_date };
+}
+
+/** 日本時間の日付（YYYY-MM-DD） */
+export function todayInJapan(now: Date = new Date()): string {
+  return now.toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
 }
 
 /** スナップショットを保存。成否を返す（保存する行が無ければ true） */
 export async function saveSnapshot(userId: string, holdings: Holdings): Promise<boolean> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInJapan();
   const rows = ASSET_CLASSES
     .filter(ac => (holdings[ac.key] || 0) > 0)
     .map(ac => ({
