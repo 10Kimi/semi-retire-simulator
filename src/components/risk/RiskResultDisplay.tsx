@@ -2,10 +2,9 @@ import { useState } from 'react';
 import type { RiskResult } from '../../types/risk';
 import { RISK_LEVEL_DEFS, getRiskLevelDef } from '../../logic/riskScoring';
 import { MODEL_ALLOCATIONS, MODEL_META, ASSET_CLASSES } from '../../lib/rb/types';
-import type { TargetAllocation } from '../../lib/rb/types';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { saveTargetAllocation } from '../../lib/rb/db';
+import { adoptModelAllocation } from '../../lib/rb/db';
 import AllocationDisclaimer from '../AllocationDisclaimer';
 
 interface Props {
@@ -31,17 +30,13 @@ function LevelBar({ level, label }: { level: number; label: string }) {
 export default function RiskResultDisplay({ result, onRetry }: Props) {
   const { capacityScore, toleranceScore, finalLevel, gapMessage, levelDef } = result;
   const { user } = useAuth();
-  const [adopt, setAdopt] = useState<'idle' | 'saving' | 'done'>('idle');
+  const [adopt, setAdopt] = useState<'idle' | 'saving' | 'done' | 'failed'>('idle');
 
   const handleAdopt = async () => {
     if (!user || adopt === 'saving') return;
     setAdopt('saving');
-    const target: TargetAllocation = {};
-    ASSET_CLASSES.forEach(ac => {
-      target[ac.key] = MODEL_ALLOCATIONS[finalLevel]?.[ac.key] ?? 0;
-    });
-    await saveTargetAllocation(user.id, target);
-    setAdopt('done');
+    const ok = await adoptModelAllocation(user.id, finalLevel);
+    setAdopt(ok ? 'done' : 'failed');
   };
 
   return (
@@ -159,6 +154,11 @@ export default function RiskResultDisplay({ result, onRetry }: Props) {
             >
               {adopt === 'saving' ? '保存中...' : 'このPFを採用する'}
             </button>
+            {adopt === 'failed' && (
+              <p role="alert" className="text-sm text-red-700">
+                保存できませんでした。もう一度お試しください
+              </p>
+            )}
             <p className="text-xs text-gray-500">
               このLv{finalLevel}のモデル配分を、あなたの目標配分として保存します
             </p>

@@ -32,6 +32,13 @@ type Phase =
   | 'auth_gate'
   | 'result';
 
+type PendingSave = {
+  res: RiskResult;
+  answers: RiskAnswer[];
+  /** ログイン前に localStorage へ退避した回答か（保存できたら消す） */
+  fromStorage: boolean;
+};
+
 const TOTAL_QUESTIONS = DETAIL_TOTAL_QUESTIONS;
 const CAPACITY_COUNT = DETAIL_CAPACITY_QUESTIONS.length;
 
@@ -46,8 +53,28 @@ export default function RiskPage() {
   );
   const [result, setResult] = useState<RiskResult | null>(null);
   const [saving, setSaving] = useState(false);
+  const [failedSave, setFailedSave] = useState<PendingSave | null>(null);
   const [restored, setRestored] = useState(false);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
+
+  const persistResult = useCallback(async (userId: string, save: PendingSave) => {
+    setSaving(true);
+    setFailedSave(null);
+    const id = await saveRiskResult(
+      userId,
+      save.res.capacityScore,
+      save.res.toleranceScore,
+      save.res.finalLevel,
+      save.answers,
+      'detail'
+    );
+    setSaving(false);
+    if (!id) {
+      setFailedSave(save);
+      return;
+    }
+    if (save.fromStorage) clearAnswersStorage();
+  }, []);
 
   const currentQuestion = RISK_DETAIL_QUESTIONS[questionIndex];
   const selectedAnswer = answers[questionIndex];
@@ -100,13 +127,7 @@ export default function RiskPage() {
         setShowNicknameModal(true);
       }
 
-      setSaving(true);
-      saveRiskResult(
-        user.id, res.capacityScore, res.toleranceScore, res.finalLevel, saved, 'detail'
-      ).then(() => {
-        setSaving(false);
-        clearAnswersStorage();
-      });
+      persistResult(user.id, { res, answers: saved, fromStorage: true });
 
       setSearchParams({}, { replace: true });
     } else {
@@ -116,7 +137,7 @@ export default function RiskPage() {
       setRestored(true);
       setSearchParams({}, { replace: true });
     }
-  }, [authLoading, user, searchParams, restored, setSearchParams]);
+  }, [authLoading, user, searchParams, restored, setSearchParams, persistResult]);
 
   const showResult = useCallback(
     async (validAnswers: RiskAnswer[]) => {
@@ -128,14 +149,10 @@ export default function RiskPage() {
       }
 
       if (user) {
-        setSaving(true);
-        await saveRiskResult(
-          user.id, res.capacityScore, res.toleranceScore, res.finalLevel, validAnswers, 'detail'
-        );
-        setSaving(false);
+        await persistResult(user.id, { res, answers: validAnswers, fromStorage: false });
       }
     },
-    [user]
+    [user, persistResult]
   );
 
   const startDiagnosis = useCallback(() => {
@@ -203,6 +220,7 @@ export default function RiskPage() {
     setQuestionIndex(0);
     setAnswers(new Array(TOTAL_QUESTIONS).fill(null));
     setResult(null);
+    setFailedSave(null);
     setRestored(false);
     setPhase('questions');
   }, []);
@@ -332,6 +350,19 @@ export default function RiskPage() {
               <p className="text-center text-xs text-gray-400 mb-4">
                 結果を保存中...
               </p>
+            )}
+            {failedSave && user && (
+              <div role="alert" className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 text-center space-y-2">
+                <p className="text-sm text-red-700">
+                  診断結果を保存できませんでした。保存するまで、各ツールにはこの結果が反映されません
+                </p>
+                <button
+                  onClick={() => persistResult(user.id, failedSave)}
+                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition-colors"
+                >
+                  もう一度保存する
+                </button>
+              </div>
             )}
             <RiskResultDisplay
               result={result}

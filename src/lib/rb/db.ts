@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import { ASSET_CLASSES } from './types';
+import { ASSET_CLASSES, MODEL_ALLOCATIONS } from './types';
 import type { AssetClassKey, Holdings, TargetAllocation } from './types';
 import type { FundMasterEntry } from './allocator';
 
@@ -23,8 +23,8 @@ export async function fetchTargetAllocation(userId: string): Promise<TargetAlloc
   return allocation;
 }
 
-/** 目標配分を保存（upsert） */
-export async function saveTargetAllocation(userId: string, allocation: TargetAllocation): Promise<void> {
+/** 目標配分を保存（upsert）。成否を返す */
+export async function saveTargetAllocation(userId: string, allocation: TargetAllocation): Promise<boolean> {
   const rows = ASSET_CLASSES.map(ac => ({
     user_id: userId,
     asset_class: ac.key,
@@ -35,7 +35,20 @@ export async function saveTargetAllocation(userId: string, allocation: TargetAll
     .from('user_rb_settings')
     .upsert(rows, { onConflict: 'user_id,asset_class' });
 
-  if (error) console.error('rb settings save error:', error);
+  if (error) {
+    console.error('rb settings save error:', error);
+    return false;
+  }
+  return true;
+}
+
+/** /risk の「このPFを採用する」：そのレベルのモデル配分を目標配分として保存する。成否を返す */
+export async function adoptModelAllocation(userId: string, level: number): Promise<boolean> {
+  const target: TargetAllocation = {};
+  ASSET_CLASSES.forEach(ac => {
+    target[ac.key] = MODEL_ALLOCATIONS[level]?.[ac.key] ?? 0;
+  });
+  return saveTargetAllocation(userId, target);
 }
 
 /** 最新のスナップショットを取得 */
