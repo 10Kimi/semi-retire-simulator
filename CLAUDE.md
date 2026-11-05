@@ -45,13 +45,15 @@ npm run legal-check            # 法的表現チェック（baseline 7 件）
 ### 認証は用途別
 - メインのログインゲート＝**パスワード認証**（`components/auth/LoginForm.tsx`）
 - `/risk` 等のメアドゲート＝**マジックリンク**（`components/risk/RiskAuthGate.tsx`）
-- 再設定＝`/reset-password`、ログイン中の変更＝`PasswordChangeModal`（ともに `updateUser({password})`）
+- 再設定＝`/reset-password`、ログイン中の変更＝`PasswordChangeModal`（ともに `updateUser({password})`）。
+  現在のパスワードは要求しない（リカバリ直後は本人が知らないため）
 - Supabase クライアントは `flowType: 'implicit'`（デフォルト）。リカバリのトークンは URL ハッシュで戻る
 
 ### 有料ゲート
 `PremiumGate` が `profiles.is_premium` を見る（`/ma` `/rb` `/portfolio`）。
 付与は招待コード（`lib/inviteDb.ts` が `invite_codes` を使用済みにして `profiles` を upsert）。
 **パスワードは `auth.users`、有料状態は `profiles` と別テーブル**なので、パスワード変更で有料状態は失われない。
+PF診断の `/portfolio` への CTA は、無料ユーザーには招待画面が出る**意図的なアップセル導線**。
 
 ### 計算ロジックの置き場
 - `src/logic/` — 診断・シミュレーション（`simulator` / `riskScoring` / `riskDetailScoring` / `pfSimple` / `monteCarlo`）
@@ -72,6 +74,8 @@ DB 層は `rowToSettings` / `settingsToRow` でフラットな行と入れ子の
   migration 038 でスロットに `account` を持たせて以降、`NISA_SLOT_COUNT` は存在しない。
   スロット番号で判定していた頃は「1つの非課税枠に複数商品」を表現できなかった
 - iDeCo/401k もスロットの1つ（`account: 'ideco'`）。migration 038 で `ideco_amount` は廃止
+- **つみたて投資枠で買えるのは株式のみ**。債券インデックス・REIT・ゴールドは成長投資枠でのみ購入可（SBI実機で確認）。
+  バランス型で代用する案は、配分を自分で決められずリバランスもできないため不採用
 - **非課税枠の金額は丸めない**（2026-08-09 修正、commit `2f4c949`）。
   ユーザーが入力した確定額（iDeCo の掛金など）をそのまま使う。
   丸めるのは特定口座だけ（`amount × multiplier` で端数が出るため）。
@@ -123,6 +127,11 @@ DB 層は `rowToSettings` / `settingsToRow` でフラットな行と入れ子の
 運営管理機関ごとに異なり汎用ツールでは判定できないため、この設計にした。
 大きく動かすときは実践4-1の口座別ワークシートへ誘導する。
 
+### 採用PF＝全ツールのアンカー
+`/risk` の「このPFを採用する」が `MODEL_ALLOCATIONS[finalLevel]` を `user_rb_settings` に保存し、`/rb` が目標配分として読む（`Docs/計算ロジックの地図.md`）。
+- ツールの役割：初回移行＝口座別ワークシート（講座配布物）／毎月の積立＝`/ma`／定期リバランス（6ヶ月〜1年に一度）＝`/rb`
+- `/ma` は holdings も target も読まない。「/ma の積立リバランス」の go/no-go は**実践4-2 の脚本着手時に確定する**（脚本と機能の一致が必須）。実装するなら現在保有の配管が要る
+
 ### 最適PFの再計算（`scripts/optimize_portfolios.py`）
 ```bash
 set -a && . scripts/market/.env && set +a
@@ -134,7 +143,10 @@ scripts/market/.venv/bin/python scripts/optimize_portfolios.py --apply  # DB反�
   cron で更新されるDB値とズレ続けていた）
 - 実行には2〜3分かかる（サイズ2〜5の全部分集合を総当たり）
 - **反映後は `types.ts` の `MODEL_ALLOCATIONS` / `MODEL_META` も必ず同期する**。
-  `/risk` の採用ボタンが保存するのはこちらの値で、DBだけ直しても採用される中身は変わらない
+  `/risk` の採用ボタンが保存するのはこちらの値で、DBだけ直しても採用される中身は変わらない。
+  `MODEL_META` は /risk・/rb で静的に表示されるので、月次の DB 更新とはズレうる（再実行で同期する）
+- **全資産に上限（`DEFAULT_CAP = 0.45`）と最低資産数（`MIN_ASSETS`）を置くのは、シャープ最大化より分散を優先する価値判断**。
+  外すと「Lv6 = 新興国株＋新興国REIT」のように同じ地域リスクの2資産に寄る
 - **リスクレベルの帯（`EFF_UPPER`）を変えたら `classifyRiskLevel7` も対で変える**。
   片方だけ動かすと「Lv7 のモデル配分を採用した人が診断すると Lv6 と出る」等の矛盾が起きる
 - **パラメータが変わると、配分を変えなくても判定がずれる**（2026-11-02 に Lv6・Lv7 で実際に発生）。
@@ -179,7 +191,7 @@ CC がマイグレーションを書き、SQL をオーナーに見せ、**オ�
 
 ## フォルダ構成
 - `reference/` — 元Excel V4.2、解析スクリプト、解析結果（加工前）
-- `src/pages/` — ページ単位コンポーネント（6ページ稼働中）
+- `src/pages/` — ページ単位コンポーネント（ルートは `App.tsx` が正）
 - `src/logic/` — 計算エンジン（simulator, riskScoring, pfSimple, monteCarlo等）
 - `src/components/` — UIコンポーネント
 - `src/components/assessment/` — 旧 v1 リスク診断（App.tsx でコメントアウト中、デッドコード扱い）
@@ -199,10 +211,9 @@ CC がマイグレーションを書き、SQL をオーナーに見せ、**オ�
   - `fetch_indicators.py` — `/ma`（月次投資アドバイザー）用の指標を取得し Supabase `indicators` テーブルへ upsert（画面の「自動取得済み」ブロックの元データ）。取得: 米国CAPE（multpl.com スクレイプ, lxml 必須）/ TOPIX PBR（JPX Excel, **openpyxl 必須**）/ 金銀比率（yfinance GC=F÷SI=F）/ モメンタムは yfinance。専用 `.venv` + `.env`（SUPABASE_URL / SUPABASE_SERVICE_KEY）。**スクリプト自身は dotenv を読まない**ため手動実行時は `set -a; source .env; set +a` で env を渡す。依存は `scripts/market/requirements.txt`（openpyxl / lxml 含む）
   - **必ず `--fetch-only` を付ける**: 付けないと取得後に **HTTPサーバー(`serve_and_open`, :8765)を永久起動**してプロセスが終わらない（cron が溜まる / 手動実行がハングする）。取得のみなら常に `--fetch-only`
   - **定期実行（2026-06-23 cron で追加、2026-07-27 `--fetch-only` 追加、2026-11-02 launchd `jp.largogk.fi.fetch-indicators` に移行）**: 毎月 1・15 日 9:00 に自動実行（≒隔週）。旧 crontab 行は `cd <dir> && set -a && . ./.env && set +a && .venv/bin/python fetch_indicators.py --fetch-only >> cron.log 2>&1`。launchd はスリープ中に過ぎた実行を復帰後に1回走らせる（電源オフ中の分は走らない）。ログは `scripts/market/cron.log`
-  - **2026-07-27 修正**: `gold_silver_ratio` に `-0.5`（過去の壊れた値）が残り `/ma` が異常値を自動補完していた問題を再取得で解消（→68.4, 適正）。同時に openpyxl 未導入で PBR がずっと取得失敗していたのを requirements に追加して解消（→1.8）。`/ma` の「自動取得済み」ブロックに CAPE/PBR/金銀比率の数値＋20日超で⚠️警告を表示するUIも追加（`MonthlyAdvisorPage.tsx`）
   - **gotcha**: プロジェクトを `~/semi-retire-app` → 現パスへ移動した影響で `.venv/bin/pip` の shebang が旧パス参照で壊れている。pip 操作は `.venv/bin/python -m pip ...` で回避（python 本体は動作する）
 - `public/robots.txt`, `public/sitemap.xml` — SEO 基盤
-- `supabase/migrations/` — DBマイグレーション（〜040。番号衝突あり、TODO参照。適用は `supabase db push`、#17。032〜035 は /ma 拡張）
+- `supabase/migrations/` — DBマイグレーション（〜040。適用は `supabase db push`、#17。032〜035 は /ma 拡張）
 
 ## 制約
 - Excel V4.2の計算ロジックを正確に再現すること
@@ -214,114 +225,9 @@ CC がマイグレーションを書き、SQL をオーナーに見せ、**オ�
 ## 現在のフェーズ
 - Phase 1-2 完了（無料版シミュレーター + 認証ゲート + コンテンツパイプライン）
 - Phase 3 完了（有料ツール群: /portfolio, /ma, /rb + 招待コード基盤）
-- **SEO基盤 Phase 1 / LP 群の詳細（2026-04〜05）** → [Docs/phase-history-2026H1.md](Docs/phase-history-2026H1.md) に退避
-- **PF診断〜最適PFの一本化 + データ品質修正 完了**（2026-06-21、semi-retire-app 6 commit + FI_project 2 commit + SQL Editor 適用）:
-  - **PF診断ラベル修正**（`4bc7857`）: PF診断結果のスコア表示ラベル「あなたのリスク許容度（簡易診断結果）」→「あなたのリスク許容度」。`PfDiagnosisSimplePage.tsx:172` の 1 行のみ
-  - **PF診断 → /portfolio 導線追加**（`54c3ea3` match / `3a62545` pf_lower）: ギャップ分析で `gapType==='match'`（合っている）と `'pf_lower'`（保守的すぎ）の場合に「ポートフォリオを最適化する」CTA（`<a href="/portfolio">`、薄緑/黄でケース別配色）を追加。`/portfolio` は `PremiumGate` で有料・招待制のため、無料ユーザーには 🔒 招待画面が出る**アップセル導線**として意図的に設置。`pf_higher` は既存 `RiskExcessWarning`（暴落シミュ + 調整導線）を維持。リスクレベルは `/portfolio` 側が DB から取得するため素リンクで OK
-  - **最適PF再設計**（`9b6f7b6`、`scripts/optimize_portfolios.py`）: 旧実装は「5アセット以上・乱択200試行・vol帯下限張り付き」で 8〜9 資産に分散しがちだった。**①上限5資産（サイズ2〜5の部分集合を総当たり）②vol目標を実効上限の90%（上部帯狙い）③新興債≤25%・新興株≤50%（全レベル）④Lv7 のみ新興株≤65%・新興REIT≤15%・最低4資産・vol下限20%（VOL_UPPER[7]=50 はセンチネルで実効上限24%を採用しても0.9×24=21.6%が到達不能なため）⑤--apply 無しは dry-run** に刷新。検証で「分散はLv4で5資産が頭打ち（9資産はシャープ+0.006のみ）」を実測した上での設計判断
-  - **optimal_portfolios テーブル更新**（SQL Editor 直接適用、7 レベル upsert）: 上記の確定配分を反映。vol が帯上部へ・資産数すっきり5以下・Lv4 の新興債40%偏重も解消
-  - **MODEL_ALLOCATIONS/MODEL_META を一本化**（`687ba68`、`src/lib/rb/types.ts`）: 初期表示用のハードコード配分を optimal_portfolios の確定値と一致させ、`/risk`（無料・RiskResultDisplay）/ `/portfolio` 初期表示 / `/rb` プリセット の値ズレを解消。MODEL_META の期待リターン/ボラ/シャープも同一PFの計算結果に同期（旧 MODEL_META のシャープ Lv1=0.75 等は根拠不明だった）
-  - **「理論上の最適PF」ボタン→「初期配分に戻す」**（`833ebcb`、`PortfolioCustomizePage.tsx`）: 一本化で初期表示=optimal_portfolios になり DB フェッチボタンが同値を返すだけになったため、同期で MODEL_ALLOCATIONS を復元するリセットボタンに変更。不要な `supabase` import / `optimalLoading` state を削除
-  - **日本株ボラ逆転バグ修正**（FI_project `50a65ce`、`content-pipeline/fetch_volatility.py`）: PF診断で「日本株+現金=Lv5、米国株+現金=Lv3」と逆転していた根本原因は、`asset_class_params.japan_equity.volatility=27.40%`（全資産で最大という異常値）。1306.T(TOPIX ETF)の **2026-03 10:1株式分割が Yahoo データで未調整のまま -91% の偽月次リターンとして混入**し、年率ボラを ~17%→27.4% に押し上げていた（`auto_adjust=True` でも未補正）。月次±50%超を分割等の価格不連続とみなして除外する `clean_monthly_returns` を追加し、vol と相関の両方をクリーンに再計算。再実行で japan_equity vol 16.96% に正常化、両ケースとも Lv3 に収束（cron 毎月1日も以後クリーン）
-  - **期待リターンを全13資産GPIFベースに統一**（FI_project `9b7a97e`、同スクリプト）: 従来は GPIF4資産以外が Yahoo 実現リターンにフォールバックし gold 13.4%・emerging_equity 16.1%・developed_reit 11.5% 等が過大だった。`GPIF_EXPECTED_RETURNS` を全13資産に拡張し `optimize_portfolios.py` の RETURNS と一致させ、診断の期待リターンと最適PF/モデル配分の前提を整合（ボラは引き続き Yahoo 実績、リターンのみ前向き推計）
-- **/portfolio 金額入力 + /tools 招待コード導線 + 現PF vs 最適配分の比較**（2026-07-07〜08、設計書 v7.15〜v7.16、3 commit）:
-  - **金額入力**（`1d77a06`）: アセット配分を %／金額で切替可能に（金額→自動%換算、合計額をモンテカルロ初期資産へ反映）。金額モードは 'cash' を activeKeys に含め、余剰現金の入力を促す
-  - **/tools 招待コード導線**（`11701fa`, `ToolsHubPage.tsx`）: 有料ロックカードのモーダルから招待コード入力（ログイン済→`InviteCodeModal`、未ログイン→トップ誘導）、成功で is_premium refresh し全ツール解放
-  - **現PF vs 最適配分の比較 + MC比較**（`3a2dbd0`, `PortfolioCustomizePage.tsx`）: ボタン「初期配分に戻す」→「**最適配分に戻す**」に改称。分析結果に「今の配分／最適配分（`MODEL_ALLOCATIONS[baseLevel]`）」の指標比較（期待リターン・ボラ・シャープ）を並記。最適の指標は `MODEL_META` の生値ではなく現PFと同じ `calcExpectedReturn`/`calcVolatility` で算出し同一基準に。モンテカルロも最適配分で同条件実行し 3シナリオ＋中央値差を並記（`mcOptimalResult` state 追加、表示は `mcResult && mcOptimalResult` でゲート）。未使用化した `getRiskLevelDef` import 削除。tsc 0エラー・vite build 成功
-- **/portfolio 金額モードの最適配分 + 比較左列の出し分け**（2026-07-10〜11、設計書 v7.17、`PortfolioCustomizePage.tsx`、4 commit）:
-  - **金額モードで「最適配分にする／戻す」を機能**（`f8fc558`）: 従来は金額入力時にボタンを押すと `amounts` が消え %モードへ飛ぶだけだった。金額モードでは**保有総額を維持したまま最適配分（`MODEL_ALLOCATIONS[baseLevel]`）の比率で各アセット金額に再割り当て**（丸め誤差は最大配分アセットで吸収し合計を厳密一致）。ボタン文言は `amountOptimalApplied` で未適用「最適配分にする」／適用後「最適配分に戻す」を出し分け
-  - **tsc -b 型エラー修正**（`0a0edd1`）: `reduce` の string キーで `Record<AssetClassKey,number>` を添字アクセスし TS7053 で Vercel ビルド失敗。`newKeys` を `AssetClassKey[]` 型に。**教訓＝このリポは `tsc -b`（project references、`tsc --noEmit` より厳格）を使うので確認は `npm run build` で行う**
-  - **比較左列を保有PF/調整後で出し分け**（`f9dd2f8`→`0b8ec1d`）: `heldWeights` スナップショットを保持し、「最適配分にする」で入力欄を最適に置換しても比較の左列は保有PFのまま。金額を編集するとスナップショット破棄→以降は `調整後 vs 最適配分`（※この weights スナップショット方式は下記 v7.18 で `heldAmounts`＋カードに作り直し）
-- **/portfolio 保有PFデータ化＋明示カード＋3列比較＋DB化**（2026-07-11〜12、設計書 v7.18、`PortfolioCustomizePage.tsx`、5 commit）:
-  - **保有PFを編集可能データ化＋明示カード＋すり替わりバグ修正**（`7d5d048`）: 状態モデルを `heldAmounts`（保有PF金額スナップショット）＋`editingHeld`＋`adjustedOptimal` に作り直し。折りたたみ式📌保有中のPFカード（内訳・合計・4指標・「✏️修正」で入力欄へ復元）を新設。**バグ根治**＝「最適配分に戻す」2度押しで保有PFが最適にすり替わる不具合を、入力欄が保有PFを表す `editingHeld` のときだけ撮り直す方式で解消。以降は入力欄で書き換え→分析で保有PF更新（＝将来のデータ修正）。カード指標追加`9ebefc0`／開閉式`1802273`
-  - **比較表を3列に**（`42900c8`）: 調整後があるとき（保有PFあり＋調整済み）は「保有中／調整後／最適配分」の3列で並列表示。未調整時は2列
-  - **ボラ計算のDB化**（`b11adbc`）: 従来 /portfolio だけ古いフォールバック定数（米国株ボラ20%等）を直接使い 2026-06 補正済みDB値（米国株16.58%等）とズレて vol・Lv が過大だった（同PFで 9.2%/Lv4→DB値なら約8.1%/Lv3）。`/pf` と同じ `loadAssetClassParams()` でDB取得し `calcVolatility`/`calcExpectedReturn`/`computeResult`/`optimal`/`heldInfo` に `MarketParams` を渡す方式に。取得失敗時のみフォールバック。保有中・調整後・最適の全列がDB基準になり `/pf` と一致
-  - **残TODO**: `MODEL_META`（types.ts）は /risk・/rb で静的表示され毎月cronのDB更新と乖離しうる（別途 optimize_portfolios.py 再実行で再同期）。`AllocationSlider.tsx` はフォールバック直だが未使用デッドコード
-- **/risk「このPFを採用する」ボタン ＋ 採用PF＝全ツールのアンカー確定**（2026-07-14、設計書 v7.19、semi-retire-app 1 commit `98534b5`・push 済み）:
-  - **採用ボタン**（`RiskResultDisplay.tsx` のみ、+54/-8）: /risk 診断結果のモデル配分カード直下に「このPFを採用する」を新設。タップで `MODEL_ALLOCATIONS[finalLevel]` を `saveTargetAllocation` で `user_rb_settings`（＝/rb が `fetchTargetAllocation` で自動読み込みする目標配分）に保存。採用後は「✓ 採用しました。あなたの目標配分に設定されました」＋次の一歩（口座別リバランス）のテキスト案内のみ（**A案・最小**、/rb への hard CTA は「順番が飛ぶ」ため撤去）。`useAuth()` の user で保存し未ログイン時はボタン無効。`npm run build`（tsc -b + vite + prerender）通過。これで「診断→最適PF→ワンタップ採用（＝目標配分アンカー生成）」が一本化
-  - **ツールのライフサイクル確定**: 初回移行リバランス＝口座別ワークシート（講座配布物・Google Sheet）／普段の積立（毎月）＝/ma／定期リバランス（6ヶ月〜1年に一度）＝/rb
-  - **「採用PF＝全ツールのアンカー」構想＝採用（Yes）**。大半は実現済み（採用＝保存、/rb が参照）。唯一の新規候補「**/ma の積立リバランス**（採用PFを読んで積立を不足アセットに寄せる／ノーセル・リバランス）」の go/no-go は**実践4-2（維持リバランス）の脚本着手時にレビュー確定**（脚本と機能の一致が必須＝棚上げ防止トリガー）。/ma は現状 holdings も target も読まず指標＋積立設定のみのため、実装するなら現在保有の配管が要る
-- **/ma 月次投資アドバイザーの大改修**（2026-07-27、semi-retire-app 6 commit＋migration 032〜035・全 push 済み）: `src/lib/ma/*` と `MonthlyAdvisorPage.tsx` が中心。
-  - **指標取得の信頼性修正**（`2cf1424`）: `indicators.gold_silver_ratio` に過去の壊れた値 `-0.5` が残り /ma が異常補完していたのを再取得で解消（→68.4）。`openpyxl` 未導入で TOPIX PBR がずっと取得失敗していたのを `scripts/market/requirements.txt` に openpyxl/lxml 追加で解消（→1.8）。`fetch_indicators.py` は `--fetch-only` 必須（無いと `serve_and_open` の HTTP サーバーで永久ハング）を明記＋crontab 修正。「自動取得済み」ブロックに CAPE/PBR/金銀比率の数値＋20日超で⚠️表示を追加
-  - **積立スロット 5→7（特定口座 3→5）**（`a8ede6a`、migration 032）: slot6/7 追加。`SLOT_KEYS`/`slots` 配列/`_row`/`UpdatePatch` を7スロット対応
-  - **バリュエーション調整を特定口座オンリー・NISA枠は満額固定**（`e0f1aab`）: `logic.ts` の `NISA_SLOT_COUNT=2` で slot1/2(NISA)は係数・mode・待機投入の対象外＝満額。税制優遇枠は満額が確実に有利という原則（iDeCo/401k も同様）。UIに「満額」バッジ＋注記
-  - **日本株の指標を TOPIX / 日経225 で選択**（`11aacef`、migration 033）: `UserMaSettings.jp_index`。`PBR_THRESHOLDS[jpIndex]`（TOPIX 割高≥1.8 / 日経225 割高≥2.0）。TOPIX は自動取得、日経225 は日経公式が自動取得不可のため手入力
-  - **日経225 PBR の近似オートフィル**（`ce3c1e7`、migration 034）: 実測PBRを一度「基準」入力→以降は既取得の日経225株価で `estimateNikkeiPbr = 基準PBR × 現在株価/基準時株価`。`nikkei_pbr_anchor`/`nikkei_price_anchor` に保存、数ヶ月ごと再基準
-  - **待機資金は同月内は最後の実行で上書き**（`03fe4e6`、migration 035）: `reserve_month`/`reserve_month_base`（月初base）を記録し `resolveReserveBase()` で同月再実行時は base から計算＝二重加算しない。カレンダー月境界。翌月は現残高が新base
-  - **設計の芯**: 「税制優遇枠は満額／タイミング調整は課税口座で／自分が買ってる指数で割高感を測る」。講座コンテンツの骨子にもなる。テストは `logic.test.ts` 37件パス
-- **認証まわりの不具合修正 ＋ リポジトリ整理**（2026-08-03、semi-retire-app 6 commit・全 push 済み）:
-  - **パスワードリセットが完了できずループする問題を修正**（`accdc9e`）: `resetPasswordForEmail` の `redirectTo` が `window.location.origin`（＝トップ）で、しかも新パスワードを設定する画面自体が存在しなかった。未ログインのトップはログイン画面のため「忘れた方→メール→リンク→ログイン画面」を無限に繰り返す状態だった。`ResetPasswordPage.tsx` を新設（`/reset-password`）し、implicit フローで戻るリカバリセッション（`PASSWORD_RECOVERY`）を待って `updateUser({password})` で再設定。リンク期限切れ／使用済みは専用メッセージで案内。ルートは**未ログイン・メール未確認・ログイン済みの3分岐すべて**に登録（リカバリ時にセッションが張られるかで到達分岐が変わるため）。Supabase の Redirect URLs は既存の `fire.largogk.jp/**` でカバー済み（追加設定は不要だった）
-  - **ログイン中のパスワード変更画面を追加**（`61cf592`）: 変更手段がリセットメールしかなく、リカバリリンクでログインした人は「ログインできたがパスワードは分からない」まま、もう一度メールを発行する往復が必要だった。`PasswordChangeModal.tsx` を新設し `UserStatusBar` のログアウト横に導線（`Layout` 経由で全ページ）。**現在のパスワードは要求しない**——リカバリ直後は本人が現在のパスワードを知らないため、要求すると変更できず同じ往復に戻る。厳格化する場合は Supabase 側の Secure password change を有効にすればこの画面はエラー表示で対応する。パスワードは `auth.users`、有料状態は `profiles.is_premium` と別テーブルのため、**変更しても招待コードで付与した有料状態は維持される**
-  - **招待コード生成スクリプトを追跡対象に**（`724e714`）: `scripts/generate-invite-code.ts` は有料ツールの招待コード発行の唯一の手段だが git 未追跡でローカルにしか存在しなかった。追跡し `npm run invite -- --count N` で実行できるよう `package.json` に追加。キーは `scripts/market/.env`（gitignore 済み）から読むためスクリプト本体に秘密は含まない
-  - **/ma の待機資金ラベルから iBond 表記を削除**（`12bee19`）: 「待機資金残高（iBond）」「今月の待機分 → iBond」は運営者個人の運用先で一般ユーザーには当てはまらないため汎用表現に変更
-  - **未追跡ファイルの整理**（`e359e5c` / `d451720`）: `__pycache__` と `scripts/market/indicators.json`（`fetch_indicators.py` の生成物）を gitignore、`Docs/lp_draft_age50s_v1.md` を追跡（CHANGELOG:295・CLAUDE.md:90 に「ドラフト保管」と書かれているのに未追跡だった）、`src/content/legal/privacy.md` を物理削除（CHANGELOG:661 で削除済みのローカル残骸。`/privacy` は `vercel.json` で largogk.jp へリダイレクトしており正本ではない。`tokushoho.md` と同じ処理）。これで `git status` はクリーン
-- **/ma スロットの口座属性化 ＋ iDeCo統合**（2026-08-04〜07、設計書 v7.22、semi-retire-app 4 commit＋migration 036〜038・全 push 済み）:
-  - **iDeCo/401k の控除欄を追加 → 後にスロットへ統合**（`4445f69` migration 036 / `80edce7` migration 037 → `2e03e00` migration 038 で廃止）: 「毎月15万投資する」という認識には iDeCo の掛金が含まれるのが自然だが、/ma は `monthly_budget` からスロット合計を引いた差額を待機資金として積む設計のため、iDeCo込みの予算を入れると**実在しない資金が毎月積み上がり**、割安時に「無い資金を投入せよ」という指示になっていた。当初は `ideco_amount` で差し引く方式にしたが、038 でスロットに統合して構造的に解消
-  - **NISA枠の補正セレクタを無効化**（`4445f69`）: `logic.ts` は NISA枠を満額固定として補正を無視するのに、UIではセレクタが選べてしまい、選んでも結果が変わらず誤解を生んでいた。「満額固定（バリュエーション調整なし）」の固定表示に置換
-  - **スロットに口座属性・7→10枠**（`2e03e00`、migration 038）: 「スロット番号＝口座」の固定構造では**1つの非課税枠に複数商品を置けなかった**。モデルケース（米国株25%/先進国債券30%/エマージング債20%/日本リート10%/ゴールド15%）を月15万で積むと非課税枠に全部収まり5商品を3口座に振り分けるが、旧構造ではNISAに1枠ずつしかない。さらに `logic.ts` がスロット番号で非課税を判定していた（`idx < 2`）ため、NISAの商品を特定口座スロットに入れて回避すると**非課税枠なのに調整がかかる**誤計算になっていた。`slot{N}_account`（nisa_tsumitate / nisa_growth / ideco / specific）を追加し `isTaxAdvantaged()` で判定する方式へ。待機資金の投入先も「特定口座かつ米国株」に変更
-  - **¥表示・初期値を全額0**（`80edce7`）: 金額入力3種に ¥ を重ね表示（pointer-events-none）。`DEFAULT_SETTINGS` は運営者個人の設定（月次予算100万等）が新規ユーザーの既定値になっていたため全額0に
-  - **口座別サマリー**（`2e03e00` → `ecef453` で位置修正）: 口座ごとの小計と NISAつみたて月10万／成長月20万の超過警告。当初は入力欄の上に置いたが「入力していないのに金額がある」と誤解されたため**積立欄の下**へ移動（入力→合計の順に読める）
-  - **制度上の制約**: つみたて投資枠で買えるのは**株式のみ**。純粋な債券インデックス・REIT・ゴールドは成長投資枠でのみ購入可（SBI実機で確認）。バランス型で代用する案は配分を自分で決められずリバランスもできないため不採用
-  - **運用知見**: Supabase SQL Editor が**長いスクリプトの貼り付けで文字を落とす**（`ALTADD`、`user_ma_sSTS`）。複数文をまとめて貼るとブロックの先頭1文しか実行されないケースも。**マイグレーションは最初から1文ずつ短く提示する**
-  - テスト108件パス。「同じ非課税枠に複数商品」「iDeCoスロットは満額固定」「特定口座だけ調整」を新規に固定
-- **`/ma` 非課税枠の丸めバグ修正 ＋ `/rb` に口座注記**（2026-08-09〜10、semi-retire-app 2 commit・push 済み）:
-  - **非課税枠を1万円単位に丸めていた不具合を修正**（`2f4c949`）: 実機で「入力合計15万・計算結果16万」を
-    ユーザーが発見。`logic.ts` が非課税枠にも `Math.round(amount/10000)*10000` をかけており、
-    37,500→40,000 / 45,000→50,000 / 15,000→20,000 / 22,500→20,000 で繰り上げ3件・繰り下げ1件が
-    相殺せず +1万円になっていた。コメントには「満額（調整しない）」と書いてあり実装と食い違っていた。
-    非課税枠の金額は iDeCo の掛金など**ユーザーが入力した確定額**で、掛け算をしないので端数も出ない。
-    丸める理由がないため `return slot.amount` に変更。特定口座の丸めは維持。
-    **既存テストが非課税枠の金額を全て1万円の倍数（100,000/50,000/20,000）で書いていたため
-    バグを検出できていなかった**。実機の再現ケースをテストに追加（テスト109件パス）
-  - **`/rb` の売却提案に「どの口座で売るか」の注記**（`be19b52`、`RebalancePage.tsx`）:
-    `/rb` は資産クラス単位で計算し口座の概念を持たないため、実践4-1で教えた
-    「① iDeCo内スイッチング → ② NISA（枠は翌年復活）→ ③ 特定口座（約20%課税）」の原則が
-    ツール側で切れていた。売却が実際に出るとき（売却あり／期間指定モード）だけ静的注記を表示。
-    ロジック・入力項目の変更なし。積立のみモードでは出さない
-- **最適PF再最適化 ＋ リスクレベル境界の変更**（2026-08-12、semi-retire-app 1 commit・push 済み）:
-  - **発端**: 実践4-3 のスライドを「Lv3の配分が◯%ずれるとLv4になる」と具体化するため
-    数字を検算したところ、`optimal_portfolios`（DB保存値）と現在の `asset_class_params` で
-    再計算した値が全レベルでズレていた。**Lv1〜3 は帯の上限を超え、Lv6〜7 は下限を割っていた**
-  - **原因**: `scripts/optimize_portfolios.py` が **DB を読まずスクリプト内の定数**
-    （`RETURNS` / `RISKS` / `CORR_FLAT`、2026-06 時点）を使っていた。その後 `fetch_volatility.py`
-    （cron 毎月1日）と日本株ボラ逆転バグ修正で **DB 側だけが更新され続け**、
-    ボラが 11/13 資産でズレていた（us_equity 20.00%→16.58%、emerging_equity 24.00%→19.29% 等）。
-    期待リターンは 2026-06 の GPIF 統一で両方直したため 13/13 一致していた
-  - **`--apply` が一度も成功していなかった**: PostgREST の upsert に必要な
-    `on_conflict=risk_level` が無く、`Prefer: resolution=merge-duplicates` だけでは
-    insert 扱いになり全レベル 409（一意制約違反）で失敗していた。前回（2026-06-20）の更新が
-    SQL Editor 手動だったのはこのため。修正して自動実行が通るようにした
-  - **リスクレベル境界を 20% → 16.5% に変更**（`classifyRiskLevel7` / `VOL_UPPER` /
-    `riskScoring.ts` の表示文言）。ボラ実測の反映で**単一資産の最大ボラが 19.50%（commodity）**
-    まで下がり、分散した状態で 20% を超える組み合わせが存在しなくなったため、
-    旧 Lv7 帯（20〜24%）が**到達不能**になっていた。16.5 なのは実現可能な
-    Lv6(15.11%) と Lv7(16.91%) を分ける必要があるため（17.0 だと Lv7 のモデル配分が Lv6 と判定される）
-  - **単一資産の上限を新設**: 従来は emerging_bond / emerging_equity にしか上限が無く、
-    最適化が「Lv6 = エマージング株15% + エマージングREIT85%」という2資産解を返した。
-    数学的には最大シャープだが両者は同じ地域リスクを共有し危機時に一緒に落ちる。
-    `DEFAULT_CAP = 0.45`（全資産45%）を追加。**シャープ最大化より分散を優先する価値判断**
-  - **最低資産数**: Lv4・5 は4資産、Lv6・7 は高ボラ資産が乏しいため3資産
-  - 新配分（全レベルで判定Lvと一致することを検証済み）:
-    Lv1 2.94% / Lv2 5.71% / Lv3 8.52% / Lv4 10.47% / Lv5 13.20% / Lv6 15.11% / Lv7 16.91%
-  - `MODEL_ALLOCATIONS` / `MODEL_META`（`types.ts`）も DB と同期。
-    **ここは `/risk` の「このPFを採用する」で保存される値**なので、DB だけ直しても意味がない
-  - 適用前のDB値は `optimal_portfolios_backup_20260812.json` に退避（scratchpad）
-  - テスト109件・`npm run build` 通過
-- **モデル配分のレベル食い違いの修正 ＋ 月次の自動照合 ＋ launchd 移行**（2026-11-02、設計書 v7.24）:
-  - 10/30 のパラメータ更新で Lv6 のモデル配分が 14.77%（Lv5 判定）、Lv7 が 16.50%（境界 `<=16.5` で Lv6 判定）になっていた
-  - **Lv6/7 境界を 16.5% → 16.0%**（`classifyRiskLevel7` / `VOL_UPPER` ×2 / `riskScoring.ts` 表示 / `EFF_UPPER[6]`・`LEVEL_VOL_MIN[7]`）
-  - **Lv6 のモデル配分**：米国株45／新興国株45／新興国REIT5／金5（15.40%）。`MODEL_ALLOCATIONS[6]`・`MODEL_META[6]`・DB を同期
-  - **`scripts/check_model_levels.py` 新規**（上の「最適PFの再計算」参照）
-  - 定期ジョブ6本を cron から launchd（`~/Library/LaunchAgents/jp.largogk.fi.*.plist`）へ移行。
-    cron はフルディスクアクセス不足で `~/Documents` に書けず、スリープ中の実行も補わなかった
-- **/ma 月次メール（Phase A）＋ 待機資金の出口を暴落ルールに一本化**（2026-11-02、`65a7f28`、migration 039・040、設計書 §13-69）:
-  - 月次メール：launchd `jp.largogk.fi.ma-mail` で毎月25日（土日祝は直前の営業日）に送信。初回の本番送信は 11/25
-  - CAPE が割安なときの待機資金投入（`getReserveDeployment`）を廃止し、暴落ルール（`src/lib/ma/crash.ts`）だけに。画面とメールが同じ判定
-  - 入力値の組み立てを `logic.ts` に切り出し（`calculateMonthlyFromIndicators`）。テスト136件・`npm run build` 通過、本番の配信ファイルで反映を確認
-  - 講義（実践4-2 スライド4）・スクリーンショット・動画は実装確定後にまとめて直す
-- 次の一手（2026-10-30〜。番号付き Phase は廃止）: 分散可視化ツール（インデックスのルックスルー）。
-  設計書 §13-67、調査は `../../Docs/分散可視化ツール_実装調査_20261030.md`。
-  ステップメールは優先度を下げて最小構成で置く
+- 2026-06〜11 に完了：PF診断〜最適PFの一本化、/portfolio の金額入力・保有PF・比較、採用PF、/ma の改修（口座属性・月次メール・暴落ルール）、認証の修正、リスクレベル境界の見直し、定期ジョブの launchd 移行
+- 詳細は `CHANGELOG.md`、2026-04〜05 は [Docs/phase-history-2026H1.md](Docs/phase-history-2026H1.md)
+- 現在地と次の一手は FI_project の `Docs/STATUS.md` を見る（`../../Docs/STATUS.md`）
 
 ### SEO基盤 Phase 1 の設計方針（サマリ）
 - URL 構造: ハブ型 `/tools/*`。既存 `/risk /pf /portfolio` はそのまま残す
@@ -431,8 +337,16 @@ curl -s -H "apikey: $SUPABASE_SERVICE_KEY" \
 **関数本体 + テスト 5 ケースをまとめて削除可能**。削除しても build / typecheck /
 test に影響なし（テストごと消えるため）。リスクゼロ。
 
-実施タイミング: Phase 3.5 の合間や、別件で `riskScoring.ts` を触る際の「ついで」で
+実施タイミング: 別件で `riskScoring.ts` を触る際の「ついで」で
 よい。緊急性なし。
+
+---
+
+### `src/components/risk/AllocationSlider.tsx` デッドコード削除
+
+🔲 **未対応（後続タスク）**
+
+どこからも import されていない未使用コンポーネント。ボラのフォールバック定数を直接使っている。
 
 ---
 
