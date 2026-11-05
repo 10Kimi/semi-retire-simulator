@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-11-05 — 保存の失敗を画面に出す（/risk・/rb）（FI_project #22）
+
+- /risk：診断結果の保存に失敗したら、その旨と「もう一度保存する」を表示する。マジックリンクからの復元の経路は、保存できたときだけ回答を消す（`RiskPage.tsx`）
+- /risk「このPFを採用する」：失敗したら「採用しました」にせず、失敗を表示してもう一度押せるようにする（`adoptModelAllocation`、`RiskResultDisplay.tsx`）
+- /rb：目標配分の保存に失敗したら、結果の画面に表示してもう一度保存できるようにする（`RebalancePage.tsx`）
+- `saveTargetAllocation` は成否を返す。テストは `src/lib/riskDb.test.ts`・`src/lib/rb/db.test.ts`
+
 ## 2026-11-04 — /ma の設定の行の初回作成で重複しても失敗しないように（FI_project #18）
 
 - `fetchUserSettings` の初回作成を insert から重複を無視する upsert に。重複で行が返らなければ読み直す。既存の行は上書きしない（`src/lib/ma/db.test.ts`）
