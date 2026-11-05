@@ -155,7 +155,7 @@ scripts/market/.venv/bin/python scripts/optimize_portfolios.py --apply  # DB反�
   再最適化やしきい値の変更のあとも手で流して確認する（`python3 scripts/check_model_levels.py`、exit 1 なら不一致）
 
 ### マイグレーション
-`supabase/migrations/`（〜040）。**適用は Supabase CLI の `supabase db push`**（2026-11-04、#17。SQL Editor への貼り付けはやめた）。
+`supabase/migrations/`（〜041）。**適用は Supabase CLI の `supabase db push`**（2026-11-04、#17。SQL Editor への貼り付けはやめた）。
 CC がマイグレーションを書き、SQL をオーナーに見せ、**オーナーの OK のあと** CC が `npx supabase db push --remote --yes` する。`db push`・`migration repair` は settings.json の ask、`supabase db query`・`psql` は deny。`supabase login`・`link` はオーナーが行う。Supabase MCP は使わない。CLI は `npx supabase …` で使う（brew は不可）。`db push`・`migration repair`・`migration list` は既定でローカル（Docker）を見るので**必ず `--remote` を付ける**。本番を変える操作はエージェントからだと CLI が `--yes` を求めて止まる（`HostedMutationConsentRequiredError`、何も変わらない）。`--yes` はオーナーの直接の OK のあとだけ付ける。
 コード側を push する前に適用すること（逆順だと保存時にエラーになる）。適用の OK が出るまでコードは push しない。
 
@@ -213,7 +213,7 @@ CC がマイグレーションを書き、SQL をオーナーに見せ、**オ�
   - **定期実行（2026-06-23 cron で追加、2026-07-27 `--fetch-only` 追加、2026-11-02 launchd `jp.largogk.fi.fetch-indicators` に移行）**: 毎月 1・15 日 9:00 に自動実行（≒隔週）。旧 crontab 行は `cd <dir> && set -a && . ./.env && set +a && .venv/bin/python fetch_indicators.py --fetch-only >> cron.log 2>&1`。launchd はスリープ中に過ぎた実行を復帰後に1回走らせる（電源オフ中の分は走らない）。ログは `scripts/market/cron.log`
   - **gotcha**: プロジェクトを `~/semi-retire-app` → 現パスへ移動した影響で `.venv/bin/pip` の shebang が旧パス参照で壊れている。pip 操作は `.venv/bin/python -m pip ...` で回避（python 本体は動作する）
 - `public/robots.txt`, `public/sitemap.xml` — SEO 基盤
-- `supabase/migrations/` — DBマイグレーション（〜040。適用は `supabase db push`、#17。032〜035 は /ma 拡張）
+- `supabase/migrations/` — DBマイグレーション（〜041。適用は `supabase db push`、#17。032〜035 は /ma 拡張）
 
 ## 制約
 - Excel V4.2の計算ロジックを正確に再現すること

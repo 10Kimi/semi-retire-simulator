@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-11-05 — fund_master の BTI とセゾン・グローバルバランスファンドを修正（FI_project #25）
+
+- migration 041（本番に適用済み）。BTI を `us_equity` から `developed_equity` に戻した。英国の会社の ADR で、`developed_equity` は米・日除く
+- セゾン・グローバルバランスファンドの按分を、運用レポート（2026年4月末）の構成比の7行に合わせた。`cash` 1% を含む。この分は /rb の現金に足され、緊急資金の差し引きの対象になる
+
 ## 2026-11-05 — /rb の取り込みを MF の Excel から「資産」ページの貼り付けに（FI_project #24）
 
 - マネーフォワードの Excel がダウンロードできなくなったため、`parseMfExcel` を `parseMfText` に置き換え。区分の見出し・列の位置・合算の読み方は `src/lib/rb/mfParser.ts`。`xlsx` の依存を外した
