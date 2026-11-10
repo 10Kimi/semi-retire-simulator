@@ -23,6 +23,14 @@
  *   エラーのとき（/fail）だけ。送信日でない日・送信済み・dry-run・テスト送信では送らない（Mac は毎日起動するとは限らないため、
  *   監視は「毎月、月末ごろまでに送信の合図が来るか」で行う）。HEALTHCHECK_URL が未設定なら記録だけ書く。金額は送らない
  *
+ * 暴落ルールの通知（FI_project #34）: 送信日でない日は、S&P500 の高値と現在値だけを取得し（scripts/market/fetch_sp500_drawdown.py、
+ *   DB には書かない）、暴落ルールの段階にまだ知らせていない段階で新たに達していたら、短い通知メールを1通送る（判定は
+ *   src/lib/ma/mail/crashAlert.ts）。通知済みの段階は state.json の crashAlert。画面の「投資実行」で確定済みの段階は通知しない。
+ *   通知は知らせるだけで、待機資金・crash_state は書き換えない。結果（not_due など）と healthchecks.io の合図は変えず、
+ *   記録ファイルの alert に書く。通知の確認の失敗はエラーにしない（毎日 /fail が飛ぶため。月次の送信の監視を変えない）。
+ *   送信日に月次メールを送ったときは、そのメールで知らせた段階を通知済みにする（翌日に二度知らせない）。
+ *   --dry-run では送信日でない日も通知の HTML（out/alert-YYYY-MM-DD.html）を書き出すだけ（送信・状態更新なし）
+ *
  * 設定: scripts/ma-mail/config.local.json（gitignore。config.example.json を参照）
  * 秘密: scripts/market/.env の SUPABASE_URL / SUPABASE_SERVICE_KEY / RESEND_API_KEY / HEALTHCHECK_URL（任意）
  */
@@ -37,6 +45,7 @@ import { rowToSettings, type UserMaSettingsRow } from '../../src/lib/ma/settings
 import { decideSend } from '../../src/lib/ma/mail/schedule';
 import { checkFreshness, type Freshness } from '../../src/lib/ma/mail/freshness';
 import { buildMail } from '../../src/lib/ma/mail/buildMail';
+import { buildCrashAlert, decideCrashAlert, markNotified, type CrashAlertState } from '../../src/lib/ma/mail/crashAlert';
 import { runOnce, sendPing, type RunRecord, type RunResult } from './monitor';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -57,6 +66,8 @@ interface Config {
 
 interface State {
   sentMonths: string[];
+  /** 暴落ルールの通知済みの段階（#34）。無ければ未通知 */
+  crashAlert?: CrashAlertState | null;
 }
 
 const args = process.argv.slice(2);
@@ -86,6 +97,81 @@ async function rest<T>(env: Record<string, string>, path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/** S&P500 の高値と現在値だけを取得する（DB には書かない）。失敗したら null */
+function fetchSp500(env: Record<string, string>): { sp500_usd: PricePoint | null; sp500_jpy: PricePoint | null } | null {
+  const script = join(ROOT, 'scripts/market/fetch_sp500_drawdown.py');
+  const r = spawnSync(PYTHON, [script], { cwd: dirname(script), env: { ...process.env, ...env }, encoding: 'utf8', timeout: 180_000 });
+  process.stderr.write(r.stderr ?? '');
+  const last = (r.stdout ?? '').trim().split('\n').pop();
+  if (r.status !== 0 || !last) return null;
+  try {
+    return JSON.parse(last);
+  } catch {
+    return null;
+  }
+}
+
+function sendViaResend(env: Record<string, string>, config: Config, mail: { subject: string; html: string; text: string }) {
+  if (!env.RESEND_API_KEY) throw new Error('scripts/market/.env に RESEND_API_KEY がありません');
+  return fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: config.from, to: [config.to], subject: mail.subject, html: mail.html, text: mail.text }),
+  });
+}
+
+/**
+ * 送信日でない日の暴落ルールの通知（#34）。戻り値は記録ファイルの alert に書く文（結果と合図は変えない）。
+ * ここで起きた失敗は投げずに文で返す（月次の送信の監視＝エラーの合図を毎日鳴らさないため）
+ */
+async function checkCrashAlert(p: {
+  env: Record<string, string>; config: Config; state: State; statePath: string; today: string; dryRun: boolean;
+}): Promise<string> {
+  try {
+    const [indicators] = await rest<Indicators[]>(p.env, 'indicators?select=*&order=fetched_at.desc&limit=1');
+    let fetched: { sp500_usd: PricePoint | null; sp500_jpy: PricePoint | null } | null;
+    if (flag('no-fetch')) {
+      fetched = { sp500_usd: indicators.drawdown?.sp500_usd ?? null, sp500_jpy: indicators.drawdown?.sp500_jpy ?? null };
+    } else {
+      fetched = fetchSp500(p.env);
+    }
+    let sp500Usd = fetched?.sp500_usd ?? null;
+    if (!sp500Usd) return '確認できず（S&P500 の取得に失敗）';
+    const simDd = opt('simulate-drawdown');
+    if (simDd) sp500Usd = { ...sp500Usd, last: sp500Usd.ath * (1 + Number(simDd)), lastDate: p.today };
+
+    const [row] = await rest<UserMaSettingsRow[]>(p.env, `user_ma_settings?select=*&user_id=eq.${p.config.userId}`);
+    if (!row) return `確認できず（user_ma_settings に ${p.config.userId} がありません）`;
+    const settings = rowToSettings(row);
+    const decision = decideCrashAlert(sp500Usd, settings.crash_state?.current ?? null, p.state.crashAlert ?? null);
+    const dd = (Math.min(0, sp500Usd.last / sp500Usd.ath - 1) * 100).toFixed(1);
+    console.log(`  暴落ルールの通知: S&P500 ドル建て ${dd}%、通知する段階 ${decision.stages.length ? decision.stages.map((s) => `−${s}%`).join('・') : 'なし'}`);
+    if (decision.stages.length === 0) return `なし（${dd}%）`;
+
+    // 投入額の見込みは画面と同じ計算（evaluateCrash）。最新の indicators の高値データだけ今日の値に差し替える
+    const ind: Indicators = { ...indicators, drawdown: { ...(indicators.drawdown ?? { sp500_jpy: null, classes: {} }), sp500_usd: sp500Usd } };
+    const calc = calculateMonthlyFromIndicators(ind, settings, p.config.mode, new Date(`${p.today}T09:00:00`));
+    const mail = buildCrashAlert({ today: p.today, stages: decision.stages, sp500Usd, sp500Jpy: fetched?.sp500_jpy ?? null, crash: calc?.crash ?? null });
+    const outDir = join(HERE, 'out');
+    mkdirSync(outDir, { recursive: true });
+    const preview = join(outDir, `alert-${p.today}.html`);
+    writeFileSync(preview, `<!doctype html><meta charset="utf-8"><title>${mail.subject}</title>${mail.html}`);
+    console.log(`  通知の件名: ${mail.subject}`);
+    console.log(`  通知の HTML: ${preview}`);
+    if (p.dryRun) return `dry-run（${decision.stages.join('・')}）`;
+
+    const res = await sendViaResend(p.env, p.config, mail);
+    const body = await res.text();
+    if (!res.ok) return `送れず（Resend: ${res.status} ${body}）`;
+    console.log(`  通知を送信しました: ${body}`);
+    p.state.crashAlert = decision.next;
+    writeFileSync(p.statePath, JSON.stringify(p.state, null, 2));
+    return `送信（${decision.stages.map((s) => `−${s}%`).join('・')}）`;
+  } catch (e) {
+    return `確認できず（${e instanceof Error ? e.message : e}）`;
+  }
+}
+
 function runPython(script: string, env: Record<string, string>, extraArgs: string[] = []): boolean {
   const r = spawnSync(PYTHON, [script, ...extraArgs], { cwd: dirname(script), env: { ...process.env, ...env }, encoding: 'utf8' });
   process.stdout.write(r.stdout ?? '');
@@ -93,7 +179,7 @@ function runPython(script: string, env: Record<string, string>, extraArgs: strin
   return r.status === 0;
 }
 
-async function main(): Promise<{ result: RunResult; targetMonth: string; catchup: boolean }> {
+async function main(): Promise<{ result: RunResult; targetMonth: string; catchup: boolean; alert?: string | null }> {
   const dryRun = flag('dry-run');
   const forceSend = flag('force-send');
   const today = opt('today') ?? localToday();
@@ -109,8 +195,11 @@ async function main(): Promise<{ result: RunResult; targetMonth: string; catchup
   const decision = decideSend(today, config.sendDay, state.sentMonths);
   console.log(`  判定: ${decision.send ? '送る' : '送らない'}（${decision.reason}）`);
   const catchup = decision.send && today !== decision.scheduled;
+  // 送信日でない日は暴落ルールの通知を確かめる（#34）。テスト送信では確かめない
+  const alert = !decision.send && !forceSend ? await checkCrashAlert({ env, config, state, statePath, today, dryRun }) : null;
+  if (alert) console.log(`  暴落ルールの通知: ${alert}`);
   if (!decision.send && !dryRun && !forceSend) {
-    return { result: state.sentMonths.includes(decision.month) ? 'already_sent' : 'not_due', targetMonth: decision.month, catchup: false };
+    return { result: state.sentMonths.includes(decision.month) ? 'already_sent' : 'not_due', targetMonth: decision.month, catchup: false, alert };
   }
 
   // 1. 取得（送る日だけ。共有の indicators は通常の定期取得と同じく上書きされる）
@@ -172,15 +261,10 @@ async function main(): Promise<{ result: RunResult; targetMonth: string; catchup
   console.log(`  HTML: ${preview}`);
   const crash = calc?.crash;
   if (crash?.newlyTriggered.length) console.log(`  暴落ルール: 第${crash.newlyTriggered.map((s) => s / 10 - 1).join('・')}段階に該当（投入額の合計 ${crash.total}円）`);
-  if (dryRun) return { result: 'dry_run', targetMonth: decision.month, catchup };
+  if (dryRun) return { result: 'dry_run', targetMonth: decision.month, catchup, alert };
 
   // 5. 送信（Resend。Phase A はドメイン認証なしの onboarding@resend.dev から本人宛て）
-  if (!env.RESEND_API_KEY) throw new Error('scripts/market/.env に RESEND_API_KEY がありません');
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: config.from, to: [config.to], subject: mail.subject, html: mail.html, text: mail.text }),
-  });
+  const res = await sendViaResend(env, config, mail);
   const body = await res.text();
   if (!res.ok) throw new Error(`Resend: ${res.status} ${body}`);
   console.log(`  送信しました: ${body}`);
@@ -188,6 +272,8 @@ async function main(): Promise<{ result: RunResult; targetMonth: string; catchup
   // 6. 送信済みの記録（テスト送信では記録しない＝本番の送信を妨げない）。暴落段階は画面の「投資実行」で確定する
   if (!forceSend) {
     state.sentMonths = [...state.sentMonths, decision.month].slice(-24);
+    // 月次メールで知らせた段階は通知済みにする（#34。翌日に同じ段階を二度知らせない）
+    if (sp500Usd && crash?.newlyTriggered.length) state.crashAlert = markNotified(sp500Usd, crash.newlyTriggered, state.crashAlert ?? null);
     writeFileSync(statePath, JSON.stringify(state, null, 2));
   }
   return { result: forceSend ? 'force_sent' : 'sent', targetMonth: decision.month, catchup };

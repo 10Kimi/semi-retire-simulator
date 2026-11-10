@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-11-10 — /ma 暴落ルールの段階に達したら、月次メールを待たずに通知（FI_project #34）
+
+- 送信日でない日に S&P500（ドル建て）の高値比を確かめ、−20%／−30%／−40% の段階にまだ知らせていない段階で新たに達していたら、オーナー本人に短い通知メールを1通送る。判定は暴落ルールと同じで、`crash.ts`・`logic.ts` は変えていない。通知は知らせるだけで、待機資金・`crash_state` は書き換えない
+- 新規 `src/lib/ma/mail/crashAlert.ts`（判定 `decideCrashAlert`・本文 `buildCrashAlert`・テスト）、`scripts/market/fetch_sp500_drawdown.py`（S&P500 だけ取得、DB に書かない）
+- `scripts/ma-mail/run.ts`：送信日でない日の確認、`state.json` に `crashAlert`。送信日の判定・`sentMonths`・送信の経路・healthchecks.io の合図は変えていない（送信日の dry-run の HTML が変更前と同一）
+- DB の変更なし
+
 ## 2026-11-10 — /rb の暗号資産を配分の計算の対象外に（FI_project #33）
 
 - マネーフォワードの預金の区分（見出し「預金・現金」「預金・現金・暗号資産」）の行のうち、金融機関が暗号資産の交換業者か、名前が主な通貨名の行を暗号資産とし、cash に振り分けない。保存する残高（`rb_snapshots`）と緊急資金の差し引きにも入らない。見分け方のリストは `src/lib/rb/crypto.ts`（FI_project `personal-monitor/monitor/crypto.py` と同じ中身）

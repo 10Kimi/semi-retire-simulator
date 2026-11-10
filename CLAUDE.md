@@ -112,6 +112,7 @@ DB 層は `rowToSettings` / `settingsToRow` でフラットな行と入れ子の
   `fetch_indicators.py` は取得に失敗した値を null で上書きせず、前回の値と基準日を残す
 - **待機資金はメールでは書き換えない**（確定は /ma の画面）。市場モードは `config.local.json` の `mode`（初期値 neutral＝画面の「平常」）
 - **暴落ルール**は /ma 本体の機能（下の「待機資金の出口」）。メールは画面と同じ判定を表示するだけで、段階は書き換えない
+- **暴落ルールの通知**（FI_project #34）：送信日でない日は `scripts/market/fetch_sp500_drawdown.py` で S&P500 の高値と現在値だけを取り（DB には書かない）、まだ知らせていない段階に新たに達していたら短い通知メールを送る。判定と本文は `src/lib/ma/mail/crashAlert.ts`、通知済みの段階は `state.json` の `crashAlert`（`sentMonths` は変えない）。`crash_state` で確定済みの段階は送らない。月次メールで知らせた段階も通知済みにする。**結果（`result`）と healthchecks.io の合図は変えない**（通知の結果は記録ファイルの `alert`。失敗してもエラーにしない）。送信日でない日に `--dry-run` を付けると月次メールの下書きも作るので、`--no-fetch` を付けないと `fetch_indicators.py` が共有の `indicators` を書き換える
 - **本文の最後に「待機資金」の表**（現在の残高／今月の積み増し／暴落ルールによる投入／計算後の残高）。計算後の残高は「投資実行」をしたときの値と一致する
 - **使い方**：`npx tsx scripts/ma-mail/run.ts --dry-run`（HTML だけ書き出す）／`--force-send`（テスト送信。送信済みの記録は残さない）。
   テスト用に `--today=` `--no-fetch` `--simulate-drawdown=` `--simulate-fail=` `--state=`

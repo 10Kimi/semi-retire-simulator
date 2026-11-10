@@ -18,12 +18,14 @@ export interface RunRecord {
   catchup: boolean;
   mailSent: boolean;
   error: string | null;
+  /** 暴落ルールの通知（#34）の結果。送信日でない日だけ。結果（result）と合図には影響しない */
+  alert?: string | null;
   ping?: string;
 }
 
 export interface RunDeps {
   /** 判定・送信・state.json の更新まで。送らない日も結果を返す */
-  main: () => Promise<{ result: RunResult; targetMonth: string; catchup: boolean }>;
+  main: () => Promise<{ result: RunResult; targetMonth: string; catchup: boolean; alert?: string | null }>;
   ping: (record: RunRecord) => Promise<string>;
   write: (record: RunRecord) => void;
   now?: () => string;
@@ -41,6 +43,7 @@ export async function runOnce(today: string, deps: RunDeps): Promise<{ record: R
     record.result = r.result;
     record.targetMonth = r.targetMonth;
     record.catchup = r.catchup;
+    record.alert = r.alert ?? null;
     record.mailSent = r.result === 'sent' || r.result === 'force_sent';
   } catch (e) {
     record.error = e instanceof Error ? e.message : String(e);
