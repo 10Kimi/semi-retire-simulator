@@ -50,6 +50,9 @@ describe('暴落ルールの通知の判定（#34）', () => {
     expect(mail.subject).toContain('第1段階（高値比 −20%）・第2段階（高値比 −30%）');
     expect(mail.text).toContain('基準残高の1/3 ¥100,000');
     expect(mail.text).toContain('合計：¥200,000');
+    expect(mail.text).toContain('終値 4,690、最高値 7,000');
+    const odd = buildCrashAlert({ today: '2026-11-11', stages: [20], sp500Usd: { ...at(-0.21), last: 6176.955 }, sp500Jpy: null, crash: null });
+    expect(odd.text).toContain('終値 6,176.96');
   });
 
   it('月次メールで知らせた段階は通知済みになる', () => {

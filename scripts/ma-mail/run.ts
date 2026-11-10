@@ -151,7 +151,9 @@ async function checkCrashAlert(p: {
     // 投入額の見込みは画面と同じ計算（evaluateCrash）。最新の indicators の高値データだけ今日の値に差し替える
     const ind: Indicators = { ...indicators, drawdown: { ...(indicators.drawdown ?? { sp500_jpy: null, classes: {} }), sp500_usd: sp500Usd } };
     const calc = calculateMonthlyFromIndicators(ind, settings, p.config.mode, new Date(`${p.today}T09:00:00`));
-    const mail = buildCrashAlert({ today: p.today, stages: decision.stages, sp500Usd, sp500Jpy: fetched?.sp500_jpy ?? null, crash: calc?.crash ?? null });
+    // --simulate-drawdown はドル建てだけを差し替えるので、円建て（参考）は出さない（実際の値と食い違うため）
+    const sp500Jpy = simDd ? null : fetched?.sp500_jpy ?? null;
+    const mail = buildCrashAlert({ today: p.today, stages: decision.stages, sp500Usd, sp500Jpy, crash: calc?.crash ?? null });
     const outDir = join(HERE, 'out');
     mkdirSync(outDir, { recursive: true });
     const preview = join(outDir, `alert-${p.today}.html`);

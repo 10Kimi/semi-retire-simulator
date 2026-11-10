@@ -60,6 +60,7 @@ export function markNotified(sp500: PricePoint, stages: number[], prev: CrashAle
 }
 
 const pct = (x: number) => (x === 0 ? '0.0%' : `${x < 0 ? '−' : '+'}${Math.abs(x * 100).toFixed(1)}%`);
+const price = (x: number) => x.toLocaleString('en-US', { maximumFractionDigits: 2 });
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 export interface CrashAlertMail {
@@ -81,7 +82,7 @@ export function buildCrashAlert(i: {
   const ddUsd = Math.min(0, i.sp500Usd.last / i.sp500Usd.ath - 1);
   const lines: string[] = [
     `S&P500（ドル建て）が、暴落ルールの${i.stages.map(stageLabel).join('・')}の条件に該当しました。`,
-    `S&P500（ドル建て）の高値からの位置：${pct(ddUsd)}（${i.sp500Usd.lastDate} の終値 ${i.sp500Usd.last.toLocaleString('en-US')}、最高値 ${i.sp500Usd.ath.toLocaleString('en-US')}（${i.sp500Usd.athDate}））`,
+    `S&P500（ドル建て）の高値からの位置：${pct(ddUsd)}（${i.sp500Usd.lastDate} の終値 ${price(i.sp500Usd.last)}、最高値 ${price(i.sp500Usd.ath)}（${i.sp500Usd.athDate}））`,
   ];
   if (i.sp500Jpy) {
     lines.push(`参考：S&P500（円建て）の高値からの位置 ${pct(Math.min(0, i.sp500Jpy.last / i.sp500Jpy.ath - 1))}`);
