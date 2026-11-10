@@ -4,7 +4,7 @@ import { ASSET_CLASSES } from '../../lib/rb/types';
 import type { Holdings } from '../../lib/rb/types';
 import { parseMfText, clampNegativeHoldings } from '../../lib/rb/mfParser';
 import type { MfHolding } from '../../lib/rb/mfParser';
-import { allocateHoldings, summarizeAllocations, sumExcludedCrypto } from '../../lib/rb/allocator';
+import { allocateHoldings, summarizeAllocations, sumExcludedCrypto, excludedCryptoNames } from '../../lib/rb/allocator';
 import type { AllocatedHolding } from '../../lib/rb/allocator';
 import { fetchFundMaster, submitFundRequest, fetchSubmittedRequestTickers, saveSnapshot } from '../../lib/rb/db';
 import { formatCurrency } from '../../lib/rb/logic';
@@ -21,10 +21,13 @@ const ASSET_CLASS_OPTIONS = [
   { value: 'exclude', label: '保有資産に含めない' },
 ];
 
-function CryptoNote({ amount }: { amount: number }) {
+function CryptoNote({ amount, names }: { amount: number; names: string[] }) {
   return (
     <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4">
       <p className="text-xs text-slate-400 mb-1">計算の対象外：暗号資産 {formatCurrency(amount)}</p>
+      {names.length > 0 && (
+        <p className="text-xs text-slate-500 mb-1">対象外にした行：{names.join('、')}</p>
+      )}
       <p className="text-sm text-slate-300">
         暗号資産は値動きが大きいため、配分の計算の対象外です（保存する残高と緊急資金にも含めません）
       </p>
@@ -62,6 +65,7 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
   const classified = allocated.filter(a => a.matched && !a.excluded);
   const excludedCount = allocated.filter(a => a.excluded).length;
   const excludedCrypto = sumExcludedCrypto(allocated);
+  const excludedNames = excludedCryptoNames(allocated);
   const { holdings: summary, clamped } = clampNegativeHoldings(summarizeAllocations(allocated));
   const hasBalance = Object.values(summary).some(v => v > 0);
   const clampedLabels = ASSET_CLASSES.filter(ac => clamped.includes(ac.key)).map(ac => ac.label);
@@ -198,7 +202,7 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
 
             {excludedCrypto !== 0 && (
               <div className="mb-4">
-                <CryptoNote amount={excludedCrypto} />
+                <CryptoNote amount={excludedCrypto} names={excludedNames} />
               </div>
             )}
 
@@ -292,7 +296,7 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
             ))}
           </div>
 
-          {excludedCrypto !== 0 && <CryptoNote amount={excludedCrypto} />}
+          {excludedCrypto !== 0 && <CryptoNote amount={excludedCrypto} names={excludedNames} />}
 
           <div className="flex gap-3">
             <button

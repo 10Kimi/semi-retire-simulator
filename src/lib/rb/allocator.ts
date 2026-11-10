@@ -97,3 +97,8 @@ export function summarizeAllocations(allocated: AllocatedHolding[]): Holdings {
 export function sumExcludedCrypto(allocated: AllocatedHolding[]): number {
   return allocated.filter(a => a.excluded).reduce((s, a) => s + a.holding.amount, 0);
 }
+
+/** 暗号資産として対象外にした行の名前（同じ名前は1回だけ、出てきた順） */
+export function excludedCryptoNames(allocated: AllocatedHolding[]): string[] {
+  return [...new Set(allocated.filter(a => a.excluded).map(a => a.holding.name))];
+}

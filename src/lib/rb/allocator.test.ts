@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { allocateHoldings, summarizeAllocations, sumExcludedCrypto } from './allocator';
+import cryptoSample from './__fixtures__/mf_assets_crypto_sample.txt?raw';
+import { allocateHoldings, summarizeAllocations, sumExcludedCrypto, excludedCryptoNames } from './allocator';
 import type { FundMasterEntry } from './allocator';
+import { parseMfText } from './mfParser';
 import type { MfHolding } from './mfParser';
 
 const fundMaster: FundMasterEntry[] = [
@@ -129,5 +131,34 @@ describe('暗号資産（crypto=true）の行', () => {
 
   it('暗号資産が無ければ対象外の合計は 0', () => {
     expect(sumExcludedCrypto(allocated.slice(0, 1))).toBe(0);
+  });
+});
+
+describe('excludedCryptoNames', () => {
+  it('見本（mf_assets_crypto_sample.txt）から外した3行の名前が出てきた順に出る', () => {
+    const { holdings } = parseMfText(cryptoSample);
+    const allocated = allocateHoldings(holdings, fundMaster);
+    expect(excludedCryptoNames(allocated)).toEqual(['ビットコイン', 'イーサリアム', 'BTC']);
+    expect(sumExcludedCrypto(allocated)).toBe(450_000);
+  });
+
+  it('同じ名前の行が複数あっても名前は1回だけ', () => {
+    const holdings: MfHolding[] = [
+      { section: '預金・現金・暗号資産', name: 'ビットコイン', ticker: '', institution: 'bitFlyer', crypto: true, amount: 300_000 },
+      { section: '預金・現金・暗号資産', name: 'サンプル銀行 普通預金', ticker: '', institution: 'サンプル銀行', crypto: false, amount: 1_234_567 },
+      { section: '預金・現金・暗号資産', name: 'イーサリアム', ticker: '', institution: 'Coincheck', crypto: true, amount: 120_000 },
+      { section: '預金・現金・暗号資産', name: 'ビットコイン', ticker: '', institution: 'Coincheck', crypto: true, amount: 45_678 },
+    ];
+    const allocated = allocateHoldings(holdings, fundMaster);
+    expect(excludedCryptoNames(allocated)).toEqual(['ビットコイン', 'イーサリアム']);
+    expect(sumExcludedCrypto(allocated)).toBe(465_678);
+  });
+
+  it('暗号資産が無ければ空', () => {
+    const allocated = allocateHoldings(
+      [{ section: '預金・現金・暗号資産', name: 'サンプル銀行 普通預金', ticker: '', institution: 'サンプル銀行', crypto: false, amount: 1_234_567 }],
+      fundMaster,
+    );
+    expect(excludedCryptoNames(allocated)).toEqual([]);
   });
 });
