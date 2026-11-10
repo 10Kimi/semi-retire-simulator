@@ -16,6 +16,7 @@ export interface AllocatedHolding {
   allocations: { assetClass: string; amount: number }[];
   matched: boolean; // fund_masterにマッチしたか
   manualClass?: string; // 手動振り分け先（未分類→ユーザー選択後にセット）
+  excluded?: true; // 暗号資産として配分の計算の対象外（cash に入れない）
 }
 
 /**
@@ -26,6 +27,10 @@ export function allocateHoldings(
   fundMaster: FundMasterEntry[],
 ): AllocatedHolding[] {
   return holdings.map(h => {
+    // 暗号資産は値動きが大きいため配分の計算の対象外（未分類にも出さない）
+    if (h.crypto) {
+      return { holding: h, allocations: [], matched: true, excluded: true };
+    }
     // 預金・債券は fund_master を見ずに自動で振り分ける（年金は fund_master で照合）
     if (h.section === '預金・現金・暗号資産') {
       return {
@@ -69,6 +74,7 @@ export function summarizeAllocations(allocated: AllocatedHolding[]): Holdings {
   ASSET_CLASSES.forEach(ac => { result[ac.key] = 0; });
 
   for (const item of allocated) {
+    if (item.excluded) continue;
     if (item.matched && item.allocations.length > 0) {
       for (const alloc of item.allocations) {
         if (alloc.assetClass in result) {
@@ -85,4 +91,9 @@ export function summarizeAllocations(allocated: AllocatedHolding[]): Holdings {
   }
 
   return result;
+}
+
+/** 暗号資産として対象外にした行の合計（円） */
+export function sumExcludedCrypto(allocated: AllocatedHolding[]): number {
+  return allocated.filter(a => a.excluded).reduce((s, a) => s + a.holding.amount, 0);
 }

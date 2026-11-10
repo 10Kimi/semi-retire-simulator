@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { allocateHoldings, summarizeAllocations } from './allocator';
+import { allocateHoldings, summarizeAllocations, sumExcludedCrypto } from './allocator';
 import type { FundMasterEntry } from './allocator';
 import type { MfHolding } from './mfParser';
 
@@ -14,7 +14,7 @@ const fundMaster: FundMasterEntry[] = [
 describe('allocateHoldings', () => {
   it('銘柄名完全一致で按分する', () => {
     const holdings: MfHolding[] = [
-      { section: '投資信託', name: 'eMAXIS Slim 全世界株式(オール・カントリー)', ticker: '', amount: 1_000_000 },
+      { section: '投資信託', name: 'eMAXIS Slim 全世界株式(オール・カントリー)', ticker: '', institution: '', crypto: false, amount: 1_000_000 },
     ];
     const result = allocateHoldings(holdings, fundMaster);
     expect(result[0].matched).toBe(true);
@@ -26,7 +26,7 @@ describe('allocateHoldings', () => {
 
   it('ticker完全一致で振り分ける', () => {
     const holdings: MfHolding[] = [
-      { section: '株式（現物）', name: 'バンガード・トータル', ticker: 'VTI', amount: 500_000 },
+      { section: '株式（現物）', name: 'バンガード・トータル', ticker: 'VTI', institution: '', crypto: false, amount: 500_000 },
     ];
     const result = allocateHoldings(holdings, fundMaster);
     expect(result[0].matched).toBe(true);
@@ -35,7 +35,7 @@ describe('allocateHoldings', () => {
 
   it('未登録銘柄は未分類', () => {
     const holdings: MfHolding[] = [
-      { section: '株式（現物）', name: '未知の銘柄', ticker: 'XXXX', amount: 100_000 },
+      { section: '株式（現物）', name: '未知の銘柄', ticker: 'XXXX', institution: '', crypto: false, amount: 100_000 },
     ];
     const result = allocateHoldings(holdings, fundMaster);
     expect(result[0].matched).toBe(false);
@@ -44,7 +44,7 @@ describe('allocateHoldings', () => {
 
   it('預金は現金・預金に自動振り分け', () => {
     const holdings: MfHolding[] = [
-      { section: '預金・現金・暗号資産', name: '預金・現金・暗号資産', ticker: '', amount: 2_000_000 },
+      { section: '預金・現金・暗号資産', name: '預金・現金・暗号資産', ticker: '', institution: '', crypto: false, amount: 2_000_000 },
     ];
     const result = allocateHoldings(holdings, fundMaster);
     expect(result[0].matched).toBe(true);
@@ -53,7 +53,7 @@ describe('allocateHoldings', () => {
 
   it('債券は先進国債券に自動振り分け', () => {
     const holdings: MfHolding[] = [
-      { section: '債券', name: '債券', ticker: '', amount: 500_000 },
+      { section: '債券', name: '債券', ticker: '', institution: '', crypto: false, amount: 500_000 },
     ];
     const result = allocateHoldings(holdings, fundMaster);
     expect(result[0].allocations).toEqual([{ assetClass: 'developed_bond', amount: 500_000 }]);
@@ -63,9 +63,9 @@ describe('allocateHoldings', () => {
 describe('summarizeAllocations', () => {
   it('按分結果をアセットクラス別に合計する', () => {
     const allocated = allocateHoldings([
-      { section: '投資信託', name: 'eMAXIS Slim 全世界株式(オール・カントリー)', ticker: '', amount: 1_000_000 },
-      { section: '株式（現物）', name: 'JPモルガン', ticker: 'JEPI', amount: 300_000 },
-      { section: '預金・現金・暗号資産', name: '預金・現金・暗号資産', ticker: '', amount: 500_000 },
+      { section: '投資信託', name: 'eMAXIS Slim 全世界株式(オール・カントリー)', ticker: '', institution: '', crypto: false, amount: 1_000_000 },
+      { section: '株式（現物）', name: 'JPモルガン', ticker: 'JEPI', institution: '', crypto: false, amount: 300_000 },
+      { section: '預金・現金・暗号資産', name: '預金・現金・暗号資産', ticker: '', institution: '', crypto: false, amount: 500_000 },
     ], fundMaster);
 
     const summary = summarizeAllocations(allocated);
@@ -78,7 +78,7 @@ describe('summarizeAllocations', () => {
 
   it('手動振り分けを反映する', () => {
     const allocated = allocateHoldings([
-      { section: '年金', name: '年金', ticker: '', amount: 200_000 },
+      { section: '年金', name: '年金', ticker: '', institution: '', crypto: false, amount: 200_000 },
     ], fundMaster);
     allocated[0].manualClass = 'japan_bond';
 
@@ -88,12 +88,46 @@ describe('summarizeAllocations', () => {
 
   it('除外(exclude)は合計に含めない', () => {
     const allocated = allocateHoldings([
-      { section: '年金', name: '年金', ticker: '', amount: 200_000 },
+      { section: '年金', name: '年金', ticker: '', institution: '', crypto: false, amount: 200_000 },
     ], fundMaster);
     allocated[0].manualClass = 'exclude';
 
     const summary = summarizeAllocations(allocated);
     const total = Object.values(summary).reduce((s, v) => s + v, 0);
     expect(total).toBe(0);
+  });
+});
+
+describe('暗号資産（crypto=true）の行', () => {
+  const holdings: MfHolding[] = [
+    { section: '預金・現金・暗号資産', name: 'サンプル銀行 普通預金', ticker: '', institution: 'サンプル銀行', crypto: false, amount: 1_234_567 },
+    { section: '預金・現金・暗号資産', name: 'ビットコイン', ticker: '', institution: 'bitFlyer', crypto: true, amount: 300_000 },
+    { section: '預金・現金・暗号資産', name: 'イーサリアム', ticker: '', institution: 'Coincheck', crypto: true, amount: 120_000 },
+    { section: '預金・現金・暗号資産', name: 'BTC', ticker: '', institution: '架空ウォレット', crypto: true, amount: 30_000 },
+  ];
+  const allocated = allocateHoldings(holdings, fundMaster);
+
+  it('対象外の印が付き、振り分けなし・未分類にもならない', () => {
+    for (const a of allocated.slice(1)) {
+      expect(a.excluded).toBe(true);
+      expect(a.matched).toBe(true);
+      expect(a.allocations).toEqual([]);
+    }
+  });
+
+  it('預金の行は今までどおり cash', () => {
+    expect(allocated[0].excluded).toBeUndefined();
+    expect(allocated[0].allocations).toEqual([{ assetClass: 'cash', amount: 1_234_567 }]);
+  });
+
+  it('cash に入らず、対象外の合計は 450,000円', () => {
+    const summary = summarizeAllocations(allocated);
+    expect(summary.cash).toBe(1_234_567);
+    expect(Object.values(summary).reduce((s, v) => s + v, 0)).toBe(1_234_567);
+    expect(sumExcludedCrypto(allocated)).toBe(450_000);
+  });
+
+  it('暗号資産が無ければ対象外の合計は 0', () => {
+    expect(sumExcludedCrypto(allocated.slice(0, 1))).toBe(0);
   });
 });

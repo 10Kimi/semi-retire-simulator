@@ -1,10 +1,13 @@
 import type { Holdings } from './types';
+import { isCryptoHolding } from './crypto';
 
 /** マネーフォワードの「資産」ページのテキストから読んだ1銘柄の情報 */
 export interface MfHolding {
   section: string;       // 区分名（allocateHoldings が読む表記）
   name: string;          // 銘柄名
   ticker: string;        // 銘柄コード/ティッカー（ない場合は空）
+  institution: string;   // 保有金融機関（列がない区分は空。合算した銘柄は最初の行の値）
+  crypto: boolean;       // 暗号資産か（預金の区分だけで判定。/rb の配分の計算の対象外）
   amount: number;        // 評価額（円）
 }
 
@@ -13,17 +16,18 @@ interface SectionColumns {
   nameCol: number;
   amountCol: number;
   tickerCol: number | null;
+  instCol: number | null;  // 保有金融機関の列
   merge: boolean;          // 同じ銘柄の行を合算するか（預金は合算しない）
 }
 
 /** 区分ごとの列の位置（0 始まり）。キーは見出しを norm した表記 */
 const SECTIONS: Record<string, SectionColumns> = {
-  '預金・現金': { section: '預金・現金・暗号資産', nameCol: 0, amountCol: 1, tickerCol: null, merge: false },
-  '預金・現金・暗号資産': { section: '預金・現金・暗号資産', nameCol: 0, amountCol: 1, tickerCol: null, merge: false },
-  '株式(現物)': { section: '株式（現物）', nameCol: 1, amountCol: 5, tickerCol: 0, merge: true },
-  '投資信託': { section: '投資信託', nameCol: 0, amountCol: 4, tickerCol: null, merge: true },
-  '債券': { section: '債券', nameCol: 0, amountCol: 1, tickerCol: null, merge: true },
-  '年金': { section: '年金', nameCol: 0, amountCol: 2, tickerCol: null, merge: true },
+  '預金・現金': { section: '預金・現金・暗号資産', nameCol: 0, amountCol: 1, tickerCol: null, instCol: 2, merge: false },
+  '預金・現金・暗号資産': { section: '預金・現金・暗号資産', nameCol: 0, amountCol: 1, tickerCol: null, instCol: 2, merge: false },
+  '株式(現物)': { section: '株式（現物）', nameCol: 1, amountCol: 5, tickerCol: 0, instCol: 9, merge: true },
+  '投資信託': { section: '投資信託', nameCol: 0, amountCol: 4, tickerCol: null, instCol: 8, merge: true },
+  '債券': { section: '債券', nameCol: 0, amountCol: 1, tickerCol: null, instCol: 2, merge: true },
+  '年金': { section: '年金', nameCol: 0, amountCol: 2, tickerCol: null, instCol: null, merge: true },
 };
 
 /** 読まない区分 */
@@ -116,16 +120,18 @@ export function parseMfText(text: string): { holdings: MfHolding[]; warnings: st
     const amount = current.amountCol < cells.length ? parseAmount(cells[current.amountCol]) : null;
     if (amount === null) continue; // 列名の行・広告の行
 
-    currentTotal.read += amount;
+    currentTotal.read += amount; // 暗号資産の行も照合には含める
 
     const name = (cells[current.nameCol] ?? '').trim();
     const ticker = current.tickerCol === null ? '' : (cells[current.tickerCol] ?? '').trim();
+    const institution = current.instCol === null ? '' : (cells[current.instCol] ?? '').trim();
+    const crypto = current.section === '預金・現金・暗号資産' && isCryptoHolding(name, institution);
     const key = current.merge ? `${current.section}\t${norm(ticker || name)}` : null;
     const existing = key ? merged.get(key) : undefined;
     if (existing) {
       existing.amount += amount;
     } else {
-      const holding = { section: current.section, name, ticker, amount };
+      const holding: MfHolding = { section: current.section, name, ticker, institution, crypto, amount };
       rows.push(holding);
       if (key) merged.set(key, holding);
     }

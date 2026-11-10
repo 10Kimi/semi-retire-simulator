@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import sample from './__fixtures__/mf_assets_sample.txt?raw';
+import cryptoSample from './__fixtures__/mf_assets_crypto_sample.txt?raw';
 import { parseMfText, clampNegativeHoldings } from './mfParser';
 import { allocateHoldings, summarizeAllocations } from './allocator';
 import type { FundMasterEntry } from './allocator';
@@ -52,9 +53,9 @@ describe('parseMfText', () => {
 
   it('株式は銘柄コードで合算し、評価額が `-` の行は読まない', () => {
     expect(ofSection('株式（現物）')).toEqual([
-      { section: '株式（現物）', name: 'サンプル工業', ticker: 'Z901', amount: 703_500 },
-      { section: '株式（現物）', name: '架空商事', ticker: 'Z902', amount: 123_456 },
-      { section: '株式（現物）', name: 'デモ・インデックスETF', ticker: 'ZZFKE', amount: 1_234_789 },
+      { section: '株式（現物）', name: 'サンプル工業', ticker: 'Z901', institution: 'デモ証券 特定', crypto: false, amount: 703_500 },
+      { section: '株式（現物）', name: '架空商事', ticker: 'Z902', institution: 'デモ証券 特定', crypto: false, amount: 123_456 },
+      { section: '株式（現物）', name: 'デモ・インデックスETF', ticker: 'ZZFKE', institution: 'デモ証券 特定', crypto: false, amount: 1_234_789 },
     ]);
   });
 
@@ -96,7 +97,7 @@ describe('parseMfText', () => {
       'Z901\t架空\t1\t1円\t1円\t1,234円\t0円\t0円\t0%\tデモ証券',
     ].join('\r\n');
     expect(parseMfText(text)).toEqual({
-      holdings: [{ section: '株式（現物）', name: '架空', ticker: 'Z901', amount: 1_234 }],
+      holdings: [{ section: '株式（現物）', name: '架空', ticker: 'Z901', institution: 'デモ証券', crypto: false, amount: 1_234 }],
       warnings: [],
     });
   });
@@ -127,7 +128,7 @@ describe('parseMfText', () => {
       '架空ファンド\t1\t1円\t1円\t1,234円\t0円\t0円\t0%\tデモ証券',
     ].join('\n');
     expect(parseMfText(text)).toEqual({
-      holdings: [{ section: '投資信託', name: '架空ファンド', ticker: '', amount: 1_234 }],
+      holdings: [{ section: '投資信託', name: '架空ファンド', ticker: '', institution: 'デモ証券', crypto: false, amount: 1_234 }],
       warnings: [],
     });
   });
@@ -285,5 +286,35 @@ describe('内訳と本文で預金の見出しの表記が違うとき', () => {
   it('本文に区分があるので、欠落の警告は出ない', () => {
     const text = '資産の内訳\n 預金・現金\t1,500円\t100.00%\n預金・現金・暗号資産\n合計：1,500円\nサンプル口座\t1,500円\tサンプル銀行\n';
     expect(parseMfText(text).warnings).toEqual([]);
+  });
+});
+
+describe('見本に暗号資産の行があるとき（mf_assets_crypto_sample.txt）', () => {
+  const { holdings, warnings } = parseMfText(cryptoSample);
+  const deposits = holdings.filter(h => h.section === '預金・現金・暗号資産');
+
+  it('暗号資産の行も区分の照合に含めるので、警告は増えない', () => {
+    expect(warnings).toEqual([]);
+  });
+
+  it('暗号資産の3行は crypto=true、銀行預金・カードの行は false', () => {
+    expect(deposits.map(h => [h.name, h.institution, h.crypto, h.amount])).toEqual([
+      ['サンプル銀行 普通預金', 'サンプル銀行', false, 1_234_567],
+      ['架空信用金庫 普通預金', '架空信用金庫', false, 345_678],
+      ['サンプルカード 未払い分', 'サンプルカード', false, -12_345],
+      ['ビットコイン', 'bitFlyer', true, 300_000],
+      ['イーサリアム', 'Coincheck', true, 120_000],
+      ['BTC', '架空ウォレット', true, 30_000],
+    ]);
+  });
+
+  it('預金以外の区分は crypto=false', () => {
+    expect(holdings.filter(h => h.section !== '預金・現金・暗号資産').every(h => !h.crypto)).toBe(true);
+  });
+
+  it('暗号資産は cash に入らず、ほかのクラスの合計は暗号資産が無い見本と同じ', () => {
+    const summary = summarizeAllocations(allocateHoldings(holdings, fundMaster));
+    expect(summary).toEqual(summarizeAllocations(allocateHoldings(parseMfText(sample).holdings, fundMaster)));
+    expect(summary.cash).toBe(1_567_900);
   });
 });

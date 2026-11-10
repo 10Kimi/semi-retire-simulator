@@ -4,7 +4,7 @@ import { ASSET_CLASSES } from '../../lib/rb/types';
 import type { Holdings } from '../../lib/rb/types';
 import { parseMfText, clampNegativeHoldings } from '../../lib/rb/mfParser';
 import type { MfHolding } from '../../lib/rb/mfParser';
-import { allocateHoldings, summarizeAllocations } from '../../lib/rb/allocator';
+import { allocateHoldings, summarizeAllocations, sumExcludedCrypto } from '../../lib/rb/allocator';
 import type { AllocatedHolding } from '../../lib/rb/allocator';
 import { fetchFundMaster, submitFundRequest, fetchSubmittedRequestTickers, saveSnapshot } from '../../lib/rb/db';
 import { formatCurrency } from '../../lib/rb/logic';
@@ -20,6 +20,17 @@ const ASSET_CLASS_OPTIONS = [
   ...ASSET_CLASSES.map(ac => ({ value: ac.key, label: ac.label })),
   { value: 'exclude', label: '保有資産に含めない' },
 ];
+
+function CryptoNote({ amount }: { amount: number }) {
+  return (
+    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4">
+      <p className="text-xs text-slate-400 mb-1">計算の対象外：暗号資産 {formatCurrency(amount)}</p>
+      <p className="text-sm text-slate-300">
+        暗号資産は値動きが大きいため、配分の計算の対象外です（保存する残高と緊急資金にも含めません）
+      </p>
+    </div>
+  );
+}
 
 function WarningList({ items }: { items: string[] }) {
   if (items.length === 0) return null;
@@ -48,7 +59,9 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
   const [confirmTicker, setConfirmTicker] = useState<{ ticker: string; name: string; assetClass: string } | null>(null);
 
   const unclassified = allocated.filter(a => !a.matched);
-  const classified = allocated.filter(a => a.matched);
+  const classified = allocated.filter(a => a.matched && !a.excluded);
+  const excludedCount = allocated.filter(a => a.excluded).length;
+  const excludedCrypto = sumExcludedCrypto(allocated);
   const { holdings: summary, clamped } = clampNegativeHoldings(summarizeAllocations(allocated));
   const hasBalance = Object.values(summary).some(v => v > 0);
   const clampedLabels = ASSET_CLASSES.filter(ac => clamped.includes(ac.key)).map(ac => ac.label);
@@ -155,7 +168,7 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
 
           <div className="bg-slate-900 rounded-2xl p-4">
             <h3 className="text-sm text-slate-400 mb-3">
-              解析結果（{rawHoldings.length}件 / {classified.length}件自動振り分け / {unclassified.length}件未分類）
+              解析結果（{rawHoldings.length}件 / {classified.length}件自動振り分け / {unclassified.length}件未分類{excludedCount > 0 && ` / ${excludedCount}件対象外`}）
             </h3>
 
             {/* 自動振り分け済み */}
@@ -180,6 +193,12 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {excludedCrypto !== 0 && (
+              <div className="mb-4">
+                <CryptoNote amount={excludedCrypto} />
               </div>
             )}
 
@@ -272,6 +291,8 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
               </div>
             ))}
           </div>
+
+          {excludedCrypto !== 0 && <CryptoNote amount={excludedCrypto} />}
 
           <div className="flex gap-3">
             <button
