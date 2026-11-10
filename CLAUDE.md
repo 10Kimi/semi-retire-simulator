@@ -51,7 +51,7 @@ npm run legal-check            # 法的表現チェック（baseline 7 件）
 
 ### 有料ゲート
 `PremiumGate` が `profiles.is_premium` を見る（`/ma` `/rb` `/portfolio`）。
-付与は招待コード（`lib/inviteDb.ts` が `invite_codes` を使用済みにして `profiles` を upsert）。
+付与は招待コード。`lib/inviteDb.ts` はサーバー側の関数 `redeem_invite_code`（migration 042）を呼ぶだけで、照合・使用済み・`profiles` への付与は関数の中で行う。利用者は `invite_codes` を読めず、`profiles` は本人が読むだけ（FI_project #45）。
 **パスワードは `auth.users`、有料状態は `profiles` と別テーブル**なので、パスワード変更で有料状態は失われない。
 PF診断の `/portfolio` への CTA は、無料ユーザーには招待画面が出る**意図的なアップセル導線**。
 
@@ -156,7 +156,7 @@ scripts/market/.venv/bin/python scripts/optimize_portfolios.py --apply  # DB反�
   再最適化やしきい値の変更のあとも手で流して確認する（`python3 scripts/check_model_levels.py`、exit 1 なら不一致）
 
 ### マイグレーション
-`supabase/migrations/`（〜041）。**適用は Supabase CLI の `supabase db push`**（2026-11-04、#17。SQL Editor への貼り付けはやめた）。
+`supabase/migrations/`（〜043）。**適用は Supabase CLI の `supabase db push`**（2026-11-04、#17。SQL Editor への貼り付けはやめた）。
 CC がマイグレーションを書き、SQL をオーナーに見せ、**OK はオーナーが CC に直接伝える**（claude.ai 経由の回答は DB の変更の許可に使わない）。`db push`・`migration repair` は**オーナーが CC のプロンプトで `!` を付けて実行する**（自動の許可判定が本番 DB の変更を止めるため。2026-11-05、#26）。CC は実行するコマンドを1行で示し（アプリのディレクトリへの `cd` を含める）、適用の前後に `migration list --remote` で確かめる。`db push`・`migration repair` は settings.json の ask、`supabase db query`・`psql` は deny。`supabase login`・`link` はオーナーが行う。Supabase MCP は使わない。CLI は `npx supabase …` で使う（brew は不可）。`db push`・`migration repair`・`migration list` は既定でローカル（Docker）を見るので**必ず `--remote` を付ける**。本番を変える操作はエージェントからだと CLI が `--yes` を求めて止まる（`HostedMutationConsentRequiredError`、何も変わらない）。`--yes` はオーナーの直接の OK のあとだけ付ける（`--yes` 付きの1行を CC が実行せずオーナーに示す）。
 コード側を push する前に適用すること（逆順だと保存時にエラーになる）。適用を確かめるまでコードは push しない。
 
@@ -214,7 +214,7 @@ CC がマイグレーションを書き、SQL をオーナーに見せ、**OK �
   - **定期実行（2026-06-23 cron で追加、2026-07-27 `--fetch-only` 追加、2026-11-02 launchd `jp.largogk.fi.fetch-indicators` に移行）**: 毎月 1・15 日 9:00 に自動実行（≒隔週）。旧 crontab 行は `cd <dir> && set -a && . ./.env && set +a && .venv/bin/python fetch_indicators.py --fetch-only >> cron.log 2>&1`。launchd はスリープ中に過ぎた実行を復帰後に1回走らせる（電源オフ中の分は走らない）。ログは `scripts/market/cron.log`
   - **gotcha**: プロジェクトを `~/semi-retire-app` → 現パスへ移動した影響で `.venv/bin/pip` の shebang が旧パス参照で壊れている。pip 操作は `.venv/bin/python -m pip ...` で回避（python 本体は動作する）
 - `public/robots.txt`, `public/sitemap.xml` — SEO 基盤
-- `supabase/migrations/` — DBマイグレーション（〜041。適用は `supabase db push`、#17。032〜035 は /ma 拡張）
+- `supabase/migrations/` — DBマイグレーション（〜043。適用は `supabase db push`、#17。032〜035 は /ma 拡張）
 
 ## 制約
 - Excel V4.2の計算ロジックを正確に再現すること

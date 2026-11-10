@@ -19,7 +19,7 @@ export default function InviteCodeModal({ onSuccess, onClose }: Props) {
     setLoading(true);
     setMessage('');
 
-    const result = await redeemInviteCode(user.id, code);
+    const result = await redeemInviteCode(code);
     setMessage(result.message);
     setSuccess(result.success);
     setLoading(false);

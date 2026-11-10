@@ -1,47 +1,24 @@
 import { supabase } from './supabase';
 
+// 照合・使用済みにする・有料の付与はサーバー側の関数 redeem_invite_code（migration 042）が行う
+const MESSAGES: Record<string, string> = {
+  ok: '有料プランが有効になりました',
+  not_found: 'このコードは存在しません',
+  used: 'このコードは既に使用されています',
+};
+
 export async function redeemInviteCode(
-  userId: string,
   code: string,
 ): Promise<{ success: boolean; message: string }> {
-  // 1. コード照合
-  const { data: invite, error: findErr } = await supabase
-    .from('invite_codes')
-    .select('id, is_used')
-    .eq('code', code.trim())
-    .single();
+  const { data, error } = await supabase.rpc('redeem_invite_code', { p_code: code.trim() });
 
-  if (findErr || !invite) {
-    return { success: false, message: 'このコードは存在しません' };
-  }
-
-  if (invite.is_used) {
-    return { success: false, message: 'このコードは既に使用されています' };
-  }
-
-  // 2. コードを使用済みに更新
-  const { error: updateErr } = await supabase
-    .from('invite_codes')
-    .update({ is_used: true, used_by: userId, used_at: new Date().toISOString() })
-    .eq('id', invite.id);
-
-  if (updateErr) {
+  if (error) {
     return { success: false, message: 'コードの適用に失敗しました' };
   }
 
-  // 3. プロフィールにis_premium=trueをセット
-  const { error: profileErr } = await supabase
-    .from('profiles')
-    .upsert({
-      user_id: userId,
-      is_premium: true,
-      premium_source: 'invite',
-      premium_granted_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' });
-
-  if (profileErr) {
-    return { success: false, message: 'プランの有効化に失敗しました' };
-  }
-
-  return { success: true, message: '有料プランが有効になりました' };
+  const status = typeof data === 'string' ? data : '';
+  return {
+    success: status === 'ok',
+    message: MESSAGES[status] ?? 'コードの適用に失敗しました',
+  };
 }
