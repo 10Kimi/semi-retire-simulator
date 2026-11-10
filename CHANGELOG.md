@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-11-10 — 投信の登録リクエストが審査待ちのとき「登録済み」と見せない（FI_project #38）
+
+- Yahoo Finance で確かめられないまま送った登録リクエスト（`fund_master_requests` に `pending_review` で入り、`fund_master` には未登録）の返り値を `auto_approved` から `pending_review` に。審査待ちの銘柄を送り直したときも `pending_review` を返す
+- `MfImportFlow.tsx`：審査待ちは「送信しました（審査中）」と出し、「次の取り込みでも未分類のままになることがある」と添える。前回までに送った審査待ちも同じ表示（`fetchSubmittedRequestTickers` が審査待ちを分けて返す）
+- 承認の仕組み（`approve_all_pending_review()`、migration 022）は変えていない。DB の変更なし
+
 ## 2026-11-10 — /rb の暗号資産として外した行の名前も表示（FI_project #37）
 
 - 取り込みのプレビューと確認の画面で、「計算の対象外：暗号資産 ◯円」の下に「対象外にした行：ビットコイン、イーサリアム、BTC」のように外した行の名前を出す（同じ名前は1回だけ、出てきた順）。誤って外れた預金に気づけるようにするため

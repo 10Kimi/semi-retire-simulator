@@ -6,7 +6,7 @@ import { parseMfText, clampNegativeHoldings } from '../../lib/rb/mfParser';
 import type { MfHolding } from '../../lib/rb/mfParser';
 import { allocateHoldings, summarizeAllocations, sumExcludedCrypto, excludedCryptoNames } from '../../lib/rb/allocator';
 import type { AllocatedHolding } from '../../lib/rb/allocator';
-import { fetchFundMaster, submitFundRequest, fetchSubmittedRequestTickers, saveSnapshot } from '../../lib/rb/db';
+import { fetchFundMaster, submitFundRequest, fetchSubmittedRequestTickers, saveSnapshot, fundRequestBadge } from '../../lib/rb/db';
 import { formatCurrency } from '../../lib/rb/logic';
 
 type ImportStep = 'paste' | 'preview' | 'unclassified' | 'confirm';
@@ -56,8 +56,8 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
   const [rawHoldings, setRawHoldings] = useState<MfHolding[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [allocated, setAllocated] = useState<AllocatedHolding[]>([]);
-  const [submittedTickers, setSubmittedTickers] = useState<Set<string>>(new Set());
   const [requestedTickers, setRequestedTickers] = useState<Set<string>>(new Set());
+  const [pendingTickers, setPendingTickers] = useState<Set<string>>(new Set()); // 審査待ち（#38）
   const [verifyingTicker, setVerifyingTicker] = useState<string | null>(null);
   const [confirmTicker, setConfirmTicker] = useState<{ ticker: string; name: string; assetClass: string } | null>(null);
 
@@ -85,9 +85,10 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
     try {
       const [fundMaster, submitted] = await Promise.all([
         fetchFundMaster(),
-        user ? fetchSubmittedRequestTickers(user.id) : Promise.resolve(new Set<string>()),
+        user ? fetchSubmittedRequestTickers(user.id) : Promise.resolve({ all: new Set<string>(), pending: new Set<string>() }),
       ]);
-      setSubmittedTickers(submitted);
+      setRequestedTickers(submitted.all);
+      setPendingTickers(submitted.pending);
       setRawHoldings(holdings);
       setAllocated(allocateHoldings(holdings, fundMaster));
       setStep('preview');
@@ -114,6 +115,9 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
 
     if (result.status === 'auto_approved' || result.status === 'already_sent') {
       setRequestedTickers(prev => new Set([...prev, ticker]));
+    } else if (result.status === 'pending_review') {
+      setRequestedTickers(prev => new Set([...prev, ticker]));
+      setPendingTickers(prev => new Set([...prev, ticker]));
     } else if (result.status === 'needs_confirm') {
       setConfirmTicker({ ticker, name: item.holding.name, assetClass: item.manualClass });
     }
@@ -122,9 +126,12 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
   const handleForceSubmit = useCallback(async () => {
     if (!user || !confirmTicker) return;
     setVerifyingTicker(confirmTicker.ticker);
-    await submitFundRequest(user.id, confirmTicker.ticker, confirmTicker.name, confirmTicker.assetClass, true);
+    const result = await submitFundRequest(user.id, confirmTicker.ticker, confirmTicker.name, confirmTicker.assetClass, true);
     setVerifyingTicker(null);
-    setRequestedTickers(prev => new Set([...prev, confirmTicker.ticker]));
+    if (result.status !== 'error') {
+      setRequestedTickers(prev => new Set([...prev, confirmTicker.ticker]));
+      if (result.status === 'pending_review') setPendingTickers(prev => new Set([...prev, confirmTicker.ticker]));
+    }
     setConfirmTicker(null);
   }, [user, confirmTicker]);
 
@@ -210,10 +217,15 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
             {unclassified.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-xs text-orange-400 font-medium">未分類（手動でアセットクラスを選択してください）</h4>
+                {unclassified.some(a => pendingTickers.has(a.holding.ticker || a.holding.name)) && (
+                  <p className="text-xs text-slate-500">
+                    「審査中」の銘柄は、審査が終わるまで次の取り込みでも未分類のままになることがあります。
+                  </p>
+                )}
                 {unclassified.map((item, idx) => {
                   const globalIdx = allocated.indexOf(item);
                   const ticker = item.holding.ticker || item.holding.name;
-                  const alreadyRequested = submittedTickers.has(ticker) || requestedTickers.has(ticker);
+                  const badge = fundRequestBadge(ticker, requestedTickers, pendingTickers);
 
                   return (
                     <div key={idx} className="bg-orange-900/20 border border-orange-500/30 rounded-lg p-3">
@@ -238,8 +250,8 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
                           ))}
                         </select>
                         {item.manualClass && item.manualClass !== 'exclude' && (
-                          alreadyRequested ? (
-                            <span className="text-xs text-slate-500 shrink-0">登録済み</span>
+                          badge ? (
+                            <span className="text-xs text-slate-500 shrink-0">{badge}</span>
                           ) : verifyingTicker === ticker ? (
                             <span className="text-xs text-blue-400 shrink-0">検証中...</span>
                           ) : (

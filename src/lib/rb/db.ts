@@ -164,6 +164,7 @@ async function verifyTicker(ticker: string): Promise<boolean> {
 
 export type FundRequestResult =
   | { status: 'auto_approved' }    // Yahoo OK → fund_masterに即登録
+  | { status: 'pending_review' }   // Yahoo NG のまま送信 → 審査待ち（fund_master には未登録。FI_project #38）
   | { status: 'needs_confirm' }    // Yahoo NG → ユーザーに確認を促す
   | { status: 'already_sent' }     // 重複リクエスト
   | { status: 'error'; message: string };
@@ -179,12 +180,14 @@ export async function submitFundRequest(
   // 重複チェック
   const { data: existing } = await supabase
     .from('fund_master_requests')
-    .select('id')
+    .select('id, status')
     .eq('user_id', userId)
     .eq('ticker', ticker)
     .limit(1);
 
-  if (existing && existing.length > 0) return { status: 'already_sent' };
+  if (existing && existing.length > 0) {
+    return existing[0].status === 'pending_review' ? { status: 'pending_review' } : { status: 'already_sent' };
+  }
 
   // fund_masterに既存なら不要
   const { data: masterExisting } = await supabase
@@ -220,21 +223,31 @@ export async function submitFundRequest(
   });
 
   if (error) return { status: 'error', message: error.message };
-  return { status: 'auto_approved' }; // UIとしては送信完了扱い
+  return { status: 'pending_review' }; // 承認（approve_all_pending_review）までは fund_master に入らない
 }
 
-/** ユーザーの送信済みリクエストのtickerセットを取得 */
-export async function fetchSubmittedRequestTickers(userId: string): Promise<Set<string>> {
+/** ユーザーの送信済みリクエストの ticker。pending は審査待ち（fund_master には未登録）のもの */
+export async function fetchSubmittedRequestTickers(userId: string): Promise<{ all: Set<string>; pending: Set<string> }> {
   const { data, error } = await supabase
     .from('fund_master_requests')
-    .select('ticker')
+    .select('ticker, status')
     .eq('user_id', userId);
 
   if (error) {
     console.error('fund requests fetch error:', error);
-    return new Set();
+    return { all: new Set(), pending: new Set() };
   }
-  return new Set(data.map(r => r.ticker));
+  return {
+    all: new Set(data.map(r => r.ticker)),
+    pending: new Set(data.filter(r => r.status === 'pending_review').map(r => r.ticker)),
+  };
+}
+
+/** 未分類の行に出す登録リクエストの状態の表示（審査待ちを「登録済み」と見せない。#38）。送っていなければ null */
+export function fundRequestBadge(ticker: string, requested: Set<string>, pending: Set<string>): string | null {
+  if (pending.has(ticker)) return '送信しました（審査中）';
+  if (requested.has(ticker)) return '登録済み';
+  return null;
 }
 
 /** 緊急資金プロフィール */
