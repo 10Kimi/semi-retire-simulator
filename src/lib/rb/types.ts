@@ -71,20 +71,21 @@ export interface AdjustmentItem {
 /** 期間指定リバランスの計算結果（N か月後の総資産 E = T + M×N の目標配分に、毎月同じ額で近づける） */
 export interface PeriodRebalanceResult {
   sellItems: AdjustmentItem[];       // 現金以外の売却総額（負の値・大きい順）
-  monthlyItems: AdjustmentItem[];    // 現金以外の毎月の買い（正の値・大きい順）
+  monthlyItems: AdjustmentItem[];    // 現金以外の毎月の買い（正の値・大きい順・1,000円単位。今多いクラス・目標0%には買わない。#79）
   totalDeficit: number;              // 現金以外の買い総額の合計
   totalSurplus: number;              // 売却総額 + 現金の取り崩し総額
   requiredSellAmount: number;        // 現金以外の売却総額の合計
   cashSurplus: number;               // 現金の取り崩し総額
   months: number;                    // 完了期間 N（売り買い・取り崩し・残す額がすべて0なら0）
   monthlyAmount: number;             // 毎月の積立額 M
-  monthlySellContribution: number;   // 毎月の売却充当額（requiredSellAmount / N）
-  monthlyCashContribution: number;   // 毎月の現金取り崩し額（cashSurplus / N）
+  monthlySellContribution: number;   // 毎月の売却充当額（monthlySells の合計）
+  monthlyCashContribution: number;   // 毎月の現金取り崩し額（cashSurplus / N を1,000円単位に）
   monthlyTotal: number;              // 毎月の操作合計（売却充当 + 現金取り崩し + M）
   endTotal: number;                  // N か月後の総資産 E
   cashDeposit: number;               // 現金に残す総額（積立のうち現金のまま置く分）
-  monthlyCashDeposit: number;        // 毎月の現金に残す額
+  monthlyCashDeposit: number;        // 毎月の現金に残す額（cashDeposit / N を1,000円単位に）
   sellTotals: Partial<Record<AssetClassKey, number>>; // 現金以外の売却の総額（丸める前、正の値。#76）
+  monthlySells: Partial<Record<AssetClassKey, number>>; // 現金以外の毎月の売却（sellTotals / N を1,000円単位に、正の値。#79）
 }
 
 /** 月次推移の1ヶ月分 */

@@ -126,7 +126,37 @@ export function estimateMonthsToRebalance(
   return months;
 }
 
-/** 調整計算 — 積立追加モード（仕様書 §4-2） */
+/** 1,000円単位に四捨五入 */
+const round1000 = (x: number) => Math.round(x / 1000) * 1000;
+
+/**
+ * 合計 total を不足額の比で配る（各額を1,000円単位に四捨五入し、合計との差はいちばん多い額で調整。#79）。
+ * total が1,000円の倍数なら全部1,000円の倍数になる。大きい順で返す（0は除く）
+ */
+function allocateByDeficit(total: number, deficits: Record<string, number>): AdjustmentItem[] {
+  const entries = Object.entries(deficits).filter(([, d]) => d > 0);
+  const sumD = entries.reduce((s, [, d]) => s + d, 0);
+  if (total <= 0 || sumD <= 0) return [];
+  const items = entries.map(([k, d]) => ({
+    key: k as AssetClassKey,
+    label: ASSET_CLASSES.find(a => a.key === k)!.label,
+    amount: round1000(total * d / sumD),
+  }));
+  let maxIdx = 0;
+  items.forEach((it, i) => { if (it.amount > items[maxIdx].amount) maxIdx = i; });
+  items[maxIdx].amount += total - items.reduce((s, it) => s + it.amount, 0);
+  return items.filter(it => it.amount > 0).sort((a, b) => b.amount - a.amount);
+}
+
+/** 買いの対象か：目標>0% かつ 今の割合が目標以下（h ≤ w×T）。今多いクラス・目標0%には買わない（#79） */
+function isBuyTarget(holding: number, targetPct: number, total: number): boolean {
+  return targetPct > 0 && holding <= total * targetPct / 100 + 1e-9;
+}
+
+/**
+ * 調整計算 — 積立のみの「今月の積立先」（目標どおり、または積立だけでは戻らないとき）。
+ * 新しい総資産 T＋M に対する不足額の比で M を配る。今多いクラス・目標0%は対象外（#79）。対象の不足額が0なら不足のあるクラスすべて
+ */
 export function calculateAddAdjustment(
   holdings: Holdings,
   target: TargetAllocation,
@@ -134,38 +164,16 @@ export function calculateAddAdjustment(
 ): AdjustmentItem[] {
   const total = getTotalAssets(holdings);
   const newTotal = total + monthlyAmount;
-
-  // 各クラスの不足額（0以上）を算出
-  const raw = ASSET_CLASSES.map(ac => {
-    const targetAmount = newTotal * (target[ac.key] || 0) / 100;
-    const current = holdings[ac.key] || 0;
-    const deficit = Math.max(0, targetAmount - current);
-    return { key: ac.key, label: ac.label, deficit };
-  });
-
-  const totalDeficit = raw.reduce((sum, r) => sum + r.deficit, 0);
-
-  // 不足額合計が積立額以下ならそのまま、超えるなら比例縮小
-  const scale = totalDeficit > 0 && totalDeficit > monthlyAmount
-    ? monthlyAmount / totalDeficit
-    : 1;
-
-  const items = raw
-    .map(r => ({
-      key: r.key as AssetClassKey,
-      label: r.label,
-      amount: Math.floor(r.deficit * scale),
-    }))
-    .filter(r => r.amount > 0);
-
-  // 丸め誤差で合計が積立額を超えないよう調整
-  const allocated = items.reduce((s, r) => s + r.amount, 0);
-  const remainder = monthlyAmount - allocated;
-  if (remainder > 0 && items.length > 0) {
-    items[0].amount += remainder;
+  const eligible: Record<string, number> = {};
+  const all: Record<string, number> = {};
+  for (const ac of ASSET_CLASSES) {
+    const w = target[ac.key] || 0;
+    const h = holdings[ac.key] || 0;
+    const d = Math.max(0, newTotal * w / 100 - h);
+    all[ac.key] = d;
+    if (isBuyTarget(h, w, total)) eligible[ac.key] = d;
   }
-
-  return items;
+  return allocateByDeficit(monthlyAmount, sumValues(eligible) > 0 ? eligible : all);
 }
 
 /** 調整計算 — 売却ありモード（仕様書 §4-3） */
@@ -239,7 +247,9 @@ const sumValues = (m: Record<string, number>) => Object.values(m).reduce((s, v) 
 
 /**
  * 期間指定リバランス — 完了期間 N か月と毎月の積立額 M から、毎月の売り買いを計算。
- * いつもの積立を先に不足の資産クラスへ回し、足りない分だけを売る（E = T + M×N の目標額に N か月で着く）。
+ * いつもの積立を先に不足の資産クラスへ回し、足りない分だけを売る（売却総額は E = T + M×N の目標額との差）。
+ * 毎月の売却・取り崩し・残す額は総額÷N を1,000円単位に。買いは 買いの合計 B = M＋取り崩し＋売却−残す額 を、
+ * 買いの対象（目標>0% かつ今の割合が目標以下）の不足額 max(0, w×E − h) の比で配る（#79）
  */
 export function calculatePeriod(
   holdings: Holdings,
@@ -250,6 +260,7 @@ export function calculatePeriod(
   if (months <= 0) return null;
   const M = Math.max(0, monthly);
   const plan = buildPeriodPlan(holdings, target, months, M);
+  const total = getTotalAssets(holdings);
 
   const requiredSellAmount = sumValues(plan.sell);
   const totalDeficit = sumValues(plan.buy);
@@ -257,12 +268,36 @@ export function calculatePeriod(
     && plan.cashWithdraw === 0 && plan.cashDeposit === 0;
   const N = nothingToDo ? 0 : months;
 
-  const monthlySellContribution = N > 0 ? Math.round(requiredSellAmount / N) : 0;
-  const monthlyCashContribution = N > 0 ? Math.round(plan.cashWithdraw / N) : 0;
+  const monthlySells: Partial<Record<AssetClassKey, number>> = {};
+  if (N > 0) {
+    for (const [k, v] of Object.entries(plan.sell)) {
+      const s = round1000(v / N);
+      if (s > 0) monthlySells[k as AssetClassKey] = s;
+    }
+  }
+  const monthlySellContribution = sumValues(monthlySells as Record<string, number>);
+  const monthlyCashContribution = N > 0 ? round1000(plan.cashWithdraw / N) : 0;
+  // 丸めのずれで、現金に残す額が使えるお金（積立＋取り崩し＋売却）を超えないように（#79 レビュー）
+  const monthlyCashDeposit = N > 0
+    ? Math.min(round1000(plan.cashDeposit / N), M + monthlyCashContribution + monthlySellContribution)
+    : 0;
+
+  // 買いの対象の不足額（対象が無ければ従来どおり、目標額−今の額が正のクラスすべて）
+  const eligible: Record<string, number> = {};
+  for (const ac of ASSET_CLASSES) {
+    if (ac.key === 'cash') continue;
+    const w = target[ac.key] || 0;
+    const h = holdings[ac.key] || 0;
+    if (isBuyTarget(h, w, total)) eligible[ac.key] = Math.max(0, plan.endTotal * w / 100 - h);
+  }
+  const buyTotal = M + monthlyCashContribution + monthlySellContribution - monthlyCashDeposit;
+  const monthlyItems = N > 0
+    ? allocateByDeficit(buyTotal, sumValues(eligible) > 0 ? eligible : plan.buy)
+    : [];
 
   return {
     sellItems: toItems(plan.sell, -1, 1),
-    monthlyItems: N > 0 ? toItems(plan.buy, 1, N) : [],
+    monthlyItems,
     totalDeficit,
     totalSurplus: requiredSellAmount + plan.cashWithdraw,
     requiredSellAmount,
@@ -274,8 +309,9 @@ export function calculatePeriod(
     monthlyTotal: monthlySellContribution + monthlyCashContribution + M,
     endTotal: plan.endTotal,
     cashDeposit: plan.cashDeposit,
-    monthlyCashDeposit: N > 0 ? Math.round(plan.cashDeposit / N) : 0,
+    monthlyCashDeposit,
     sellTotals: plan.sell,
+    monthlySells,
   };
 }
 
@@ -288,24 +324,20 @@ export function calculatePeriodByMonths(
   return calculatePeriod(holdings, target, months, 0);
 }
 
-/** 月次リバランスシミュレーション（毎月同じ額を売り買いし、N か月目の末に E×目標配分 に着く） */
+/** 月次リバランスシミュレーション（calculatePeriod の毎月の買い・売り・取り崩し・残す額を N か月続けた推移。#79） */
 export function simulateMonthly(
   holdings: Holdings,
   target: TargetAllocation,
   periodResult: PeriodRebalanceResult,
 ): MonthlySnapshot[] {
   const months = Math.max(periodResult.months, 1);
-  const plan = buildPeriodPlan(holdings, target, months, Math.max(0, periodResult.monthlyAmount));
 
-  // 毎月の増減（丸めない値）
+  // 毎月の増減（画面の「今月の操作」と同じ額）
   const monthlyDelta: Record<string, number> = {};
-  for (const ac of ASSET_CLASSES) {
-    if (ac.key === 'cash') {
-      monthlyDelta[ac.key] = (plan.cashDeposit - plan.cashWithdraw) / months;
-    } else {
-      monthlyDelta[ac.key] = ((plan.buy[ac.key] || 0) - (plan.sell[ac.key] || 0)) / months;
-    }
-  }
+  for (const ac of ASSET_CLASSES) monthlyDelta[ac.key] = 0;
+  for (const it of periodResult.monthlyItems) monthlyDelta[it.key] += it.amount;
+  for (const [k, v] of Object.entries(periodResult.monthlySells)) monthlyDelta[k] -= v!;
+  monthlyDelta['cash'] = periodResult.monthlyCashDeposit - periodResult.monthlyCashContribution;
 
   const snapshots: MonthlySnapshot[] = [];
   for (let month = 1; month <= months; month++) {
@@ -372,15 +404,16 @@ export function formatUnreachable(items: { label: string; amount: number }[]): s
   return items.map(i => `${i.label} ${Math.round(i.amount).toLocaleString('ja-JP')}円`).join('、');
 }
 
-/** 期間指定：売却の各行（毎月の額と、期間全体の総額。総額は丸める前の売却総額が正） */
+/** 期間指定：売却の各行（毎月の額は1,000円単位の monthlySells、総額は丸める前の売却総額。#79） */
 export function periodSellRows(result: PeriodRebalanceResult): { key: AssetClassKey; label: string; monthly: number; total: number }[] {
   const N = result.months;
   if (N <= 0) return [];
   return ASSET_CLASSES
-    .filter(ac => (result.sellTotals[ac.key] || 0) > 0)
+    // 毎月の売却が1,000円単位で0になる行は、実際には売らないので出さない（#79 レビュー）
+    .filter(ac => (result.sellTotals[ac.key] || 0) > 0 && (result.monthlySells[ac.key] || 0) > 0)
     .map(ac => {
       const total = result.sellTotals[ac.key]!;
-      return { key: ac.key, label: ac.label, monthly: -total / N, total: -total };
+      return { key: ac.key, label: ac.label, monthly: -(result.monthlySells[ac.key] || 0), total: -total };
     })
     .sort((a, b) => a.total - b.total);
 }

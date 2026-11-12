@@ -1,0 +1,451 @@
+{
+ "5-1_積立のみ_M200000": {
+  "n": 21,
+  "M": 200000,
+  "N": 21,
+  "T": 7900000,
+  "E": 12100000,
+  "sell_total": {},
+  "cash_out_total": 1200000.0,
+  "cash_keep_total": 0.0,
+  "C_monthly_cash_out": 57000,
+  "D_monthly_cash_keep": 0,
+  "S_monthly_sell": {},
+  "S": 0,
+  "B": 257000,
+  "buy_targets": [
+   "em",
+   "jb",
+   "db"
+  ],
+  "deficit": {
+   "em": 815000.0,
+   "jb": 1215000.0,
+   "db": 3240000.0
+  },
+  "fallback": false,
+  "b_monthly_buy": {
+   "em": 40000,
+   "jb": 59000,
+   "db": 158000
+  },
+  "round_adjust_to_largest": 0,
+  "monthly_ops": {
+   "sell": 0,
+   "buy": 257000,
+   "cash_out": 57000,
+   "cash_keep": 0,
+   "sell+buy": 257000
+  },
+  "after": {
+   "cash": 3000,
+   "us": 3000000,
+   "em": 1840000,
+   "jb": 1839000,
+   "db": 4918000,
+   "gold": 500000,
+   "other": 0
+  },
+  "after_total": 12100000,
+  "after_ratio_pct": {
+   "cash": 0.025,
+   "us": 24.793,
+   "em": 15.207,
+   "jb": 15.198,
+   "db": 40.645,
+   "gold": 4.132,
+   "other": 0.0
+  },
+  "gap_pt": {
+   "cash": 0.025,
+   "us": -0.207,
+   "em": 0.207,
+   "jb": 0.198,
+   "db": 0.645,
+   "gold": -0.868,
+   "other": 0.0
+  },
+  "all_within_2pt": true,
+  "今月の積立先(項目4)": {
+   "deficit": {
+    "em": 215000.0,
+    "jb": 615000.0,
+    "db": 1640000.0
+   },
+   "buy": {
+    "em": 17000,
+    "jb": 50000,
+    "db": 133000
+   },
+   "adjust": 0
+  }
+ },
+ "5-3_期間指定_N6_M200000": {
+  "M": 200000,
+  "N": 6,
+  "T": 7900000,
+  "E": 9100000,
+  "sell_total": {
+   "us": 725000.0,
+   "gold": 45000.0
+  },
+  "cash_out_total": 1200000.0,
+  "cash_keep_total": 0.0,
+  "C_monthly_cash_out": 200000,
+  "D_monthly_cash_keep": 0,
+  "S_monthly_sell": {
+   "us": 121000,
+   "gold": 8000
+  },
+  "S": 129000,
+  "B": 529000,
+  "buy_targets": [
+   "em",
+   "jb",
+   "db"
+  ],
+  "deficit": {
+   "em": 365000.0,
+   "jb": 765000.0,
+   "db": 2040000.0
+  },
+  "fallback": false,
+  "b_monthly_buy": {
+   "em": 61000,
+   "jb": 128000,
+   "db": 340000
+  },
+  "round_adjust_to_largest": 0,
+  "monthly_ops": {
+   "sell": 129000,
+   "buy": 529000,
+   "cash_out": 200000,
+   "cash_keep": 0,
+   "sell+buy": 658000
+  },
+  "after": {
+   "cash": 0,
+   "us": 2274000,
+   "em": 1366000,
+   "jb": 1368000,
+   "db": 3640000,
+   "gold": 452000,
+   "other": 0
+  },
+  "after_total": 9100000,
+  "after_ratio_pct": {
+   "cash": 0.0,
+   "us": 24.989,
+   "em": 15.011,
+   "jb": 15.033,
+   "db": 40.0,
+   "gold": 4.967,
+   "other": 0.0
+  },
+  "gap_pt": {
+   "cash": 0.0,
+   "us": -0.011,
+   "em": 0.011,
+   "jb": 0.033,
+   "db": 0.0,
+   "gold": -0.033,
+   "other": 0.0
+  },
+  "all_within_2pt": true
+ },
+ "5-1_積立のみ_M123000": {
+  "n": 34,
+  "M": 123000,
+  "N": 34,
+  "T": 7900000,
+  "E": 12082000,
+  "sell_total": {},
+  "cash_out_total": 1200000.0,
+  "cash_keep_total": 0.0,
+  "C_monthly_cash_out": 35000,
+  "D_monthly_cash_keep": 0,
+  "S_monthly_sell": {},
+  "S": 0,
+  "B": 158000,
+  "buy_targets": [
+   "em",
+   "jb",
+   "db"
+  ],
+  "deficit": {
+   "em": 812300.0,
+   "jb": 1212300.0,
+   "db": 3232800.0
+  },
+  "fallback": false,
+  "b_monthly_buy": {
+   "em": 24000,
+   "jb": 36000,
+   "db": 98000
+  },
+  "round_adjust_to_largest": 1000,
+  "monthly_ops": {
+   "sell": 0,
+   "buy": 158000,
+   "cash_out": 35000,
+   "cash_keep": 0,
+   "sell+buy": 158000
+  },
+  "after": {
+   "cash": 10000,
+   "us": 3000000,
+   "em": 1816000,
+   "jb": 1824000,
+   "db": 4932000,
+   "gold": 500000,
+   "other": 0
+  },
+  "after_total": 12082000,
+  "after_ratio_pct": {
+   "cash": 0.083,
+   "us": 24.83,
+   "em": 15.031,
+   "jb": 15.097,
+   "db": 40.821,
+   "gold": 4.138,
+   "other": 0.0
+  },
+  "gap_pt": {
+   "cash": 0.083,
+   "us": -0.17,
+   "em": 0.031,
+   "jb": 0.097,
+   "db": 0.821,
+   "gold": -0.862,
+   "other": 0.0
+  },
+  "all_within_2pt": true,
+  "今月の積立先(項目4)": {
+   "deficit": {
+    "em": 203450.0,
+    "jb": 603450.0,
+    "db": 1609200.0
+   },
+   "buy": {
+    "em": 10000,
+    "jb": 31000,
+    "db": 82000
+   },
+   "adjust": 0
+  }
+ },
+ "5-3_期間指定_N6_M123000": {
+  "M": 123000,
+  "N": 6,
+  "T": 7900000,
+  "E": 8638000,
+  "sell_total": {
+   "us": 840500.0,
+   "gold": 68100.0
+  },
+  "cash_out_total": 1200000.0,
+  "cash_keep_total": 0.0,
+  "C_monthly_cash_out": 200000,
+  "D_monthly_cash_keep": 0,
+  "S_monthly_sell": {
+   "us": 140000,
+   "gold": 11000
+  },
+  "S": 151000,
+  "B": 474000,
+  "buy_targets": [
+   "em",
+   "jb",
+   "db"
+  ],
+  "deficit": {
+   "em": 295700.0,
+   "jb": 695700.0,
+   "db": 1855200.0
+  },
+  "fallback": false,
+  "b_monthly_buy": {
+   "em": 49000,
+   "jb": 116000,
+   "db": 309000
+  },
+  "round_adjust_to_largest": 0,
+  "monthly_ops": {
+   "sell": 151000,
+   "buy": 474000,
+   "cash_out": 200000,
+   "cash_keep": 0,
+   "sell+buy": 625000
+  },
+  "after": {
+   "cash": 0,
+   "us": 2160000,
+   "em": 1294000,
+   "jb": 1296000,
+   "db": 3454000,
+   "gold": 434000,
+   "other": 0
+  },
+  "after_total": 8638000,
+  "after_ratio_pct": {
+   "cash": 0.0,
+   "us": 25.006,
+   "em": 14.98,
+   "jb": 15.003,
+   "db": 39.986,
+   "gold": 5.024,
+   "other": 0.0
+  },
+  "gap_pt": {
+   "cash": 0.0,
+   "us": 0.006,
+   "em": -0.02,
+   "jb": 0.003,
+   "db": -0.014,
+   "gold": 0.024,
+   "other": 0.0
+  },
+  "all_within_2pt": true
+ },
+ "追加_現金5%目標_期間指定_N6_M123000": {
+  "M": 123000,
+  "N": 6,
+  "T": 7900000,
+  "E": 8638000,
+  "sell_total": {
+   "us": 840500.0,
+   "gold": 68100.0
+  },
+  "cash_out_total": 768100.0,
+  "cash_keep_total": 0.0,
+  "C_monthly_cash_out": 128000,
+  "D_monthly_cash_keep": 0,
+  "S_monthly_sell": {
+   "us": 140000,
+   "gold": 11000
+  },
+  "S": 151000,
+  "B": 402000,
+  "buy_targets": [
+   "em",
+   "jb",
+   "db"
+  ],
+  "deficit": {
+   "em": 295700.0,
+   "jb": 695700.0,
+   "db": 1423300.0
+  },
+  "fallback": false,
+  "b_monthly_buy": {
+   "em": 49000,
+   "jb": 116000,
+   "db": 237000
+  },
+  "round_adjust_to_largest": 0,
+  "monthly_ops": {
+   "sell": 151000,
+   "buy": 402000,
+   "cash_out": 128000,
+   "cash_keep": 0,
+   "sell+buy": 553000
+  },
+  "after": {
+   "cash": 432000,
+   "us": 2160000,
+   "em": 1294000,
+   "jb": 1296000,
+   "db": 3022000,
+   "gold": 434000,
+   "other": 0
+  },
+  "after_total": 8638000,
+  "after_ratio_pct": {
+   "cash": 5.001,
+   "us": 25.006,
+   "em": 14.98,
+   "jb": 15.003,
+   "db": 34.985,
+   "gold": 5.024,
+   "other": 0.0
+  },
+  "gap_pt": {
+   "cash": 0.001,
+   "us": 0.006,
+   "em": -0.02,
+   "jb": 0.003,
+   "db": -0.015,
+   "gold": 0.024,
+   "other": 0.0
+  },
+  "all_within_2pt": true
+ },
+ "追加_現金5%目標_積立のみ_M123000": {
+  "n": 34,
+  "M": 123000,
+  "N": 34,
+  "T": 7900000,
+  "E": 12082000,
+  "sell_total": {},
+  "cash_out_total": 595900.0,
+  "cash_keep_total": 0.0,
+  "C_monthly_cash_out": 18000,
+  "D_monthly_cash_keep": 0,
+  "S_monthly_sell": {},
+  "S": 0,
+  "B": 141000,
+  "buy_targets": [
+   "em",
+   "jb",
+   "db"
+  ],
+  "deficit": {
+   "em": 812300.0,
+   "jb": 1212300.0,
+   "db": 2628700.0
+  },
+  "fallback": false,
+  "b_monthly_buy": {
+   "em": 25000,
+   "jb": 37000,
+   "db": 79000
+  },
+  "round_adjust_to_largest": -1000,
+  "monthly_ops": {
+   "sell": 0,
+   "buy": 141000,
+   "cash_out": 18000,
+   "cash_keep": 0,
+   "sell+buy": 141000
+  },
+  "after": {
+   "cash": 588000,
+   "us": 3000000,
+   "em": 1850000,
+   "jb": 1858000,
+   "db": 4286000,
+   "gold": 500000,
+   "other": 0
+  },
+  "after_total": 12082000,
+  "after_ratio_pct": {
+   "cash": 4.867,
+   "us": 24.83,
+   "em": 15.312,
+   "jb": 15.378,
+   "db": 35.474,
+   "gold": 4.138,
+   "other": 0.0
+  },
+  "gap_pt": {
+   "cash": -0.133,
+   "us": -0.17,
+   "em": 0.312,
+   "jb": 0.378,
+   "db": 0.474,
+   "gold": -0.862,
+   "other": 0.0
+  },
+  "all_within_2pt": true
+ }
+}

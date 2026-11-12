@@ -817,7 +817,7 @@ export default function RebalancePage() {
                             <p>積立：{periodResult.monthlyAmount > 0 ? formatThousands(periodResult.monthlyAmount) : 'なし'}</p>
                           </div>
                         </div>
-                        {periodResult.sellItems.length === 0 && (
+                        {periodResult.monthlySellContribution === 0 && (
                           <p className="text-xs text-emerald-400">→ {periodResult.monthlyCashContribution > 0 ? 'いつもの積立と現金の取り崩しで足ります' : 'いつもの積立で足ります'}（売却なし）</p>
                         )}
                       </div>
