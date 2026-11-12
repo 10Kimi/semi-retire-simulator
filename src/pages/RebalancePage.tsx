@@ -672,21 +672,53 @@ export default function RebalancePage() {
                     />
                   </div>
 
-                  {adjustmentItems.length > 0 && (
-                    <AdjustmentList items={adjustmentItems} />
-                  )}
-
                   {monthlyAmount && (() => {
-                    const months = estimateMonthsToRebalance(investableHoldings, target, parseInt(monthlyAmount.replace(/[^0-9]/g, '')) || 0);
-                    if (months === 0) return <p className="text-xs text-emerald-400 text-center py-3">目標配分に到達しています</p>;
-                    if (months != null) return (
-                      <div className="bg-slate-800/50 rounded-lg px-4 py-3 mt-3 text-center">
-                        <p className="text-sm text-slate-300">
-                          このペースで約 <span className="text-emerald-400 font-bold text-lg">{months}</span> ヶ月後にリバランス完了（計算上の目安）
-                        </p>
+                    const M = parseInt(monthlyAmount.replace(/[^0-9]/g, '')) || 0;
+                    const months = estimateMonthsToRebalance(investableHoldings, target, M);
+                    if (months === 0) return (
+                      <div className="space-y-4">
+                        <p className="text-xs text-emerald-400 text-center py-3">目標配分に到達しています</p>
+                        {adjustmentItems.length > 0 && (
+                          <div>
+                            <h4 className="text-sm text-slate-300 font-medium mb-2">今月の積立先</h4>
+                            <AdjustmentList items={adjustmentItems} />
+                          </div>
+                        )}
                       </div>
                     );
-                    return null;
+                    if (months == null) return null;
+                    if (typeof months === 'object') return (
+                      <div className="space-y-4">
+                        <p className="text-xs text-amber-300">目標が0%の資産クラス（{months.unreachable.join('、')}）があるため、積立だけでは戻りません。「売却あり」か「期間指定」を使ってください</p>
+                        {adjustmentItems.length > 0 && (
+                          <div>
+                            <h4 className="text-sm text-slate-300 font-medium mb-2">今月の積立先</h4>
+                            <AdjustmentList items={adjustmentItems} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                    const plan = calculatePeriod(investableHoldings, target, months, M);
+                    if (!plan) return null;
+                    return (
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="text-sm text-slate-300 font-medium mb-2">毎月の積立先（{months}ヶ月、計算上の目安）</h4>
+                          <AdjustmentList items={plan.monthlyItems} />
+                        </div>
+                        {plan.monthlyCashContribution > 0 && (
+                          <p className="text-xs text-slate-400">現金の取り崩し（毎月）：{formatThousands(plan.monthlyCashContribution)}　目標より多い現金も、不足の資産クラスへ回します</p>
+                        )}
+                        {plan.monthlyCashDeposit > 0 && (
+                          <p className="text-xs text-slate-400">現金のまま置く（毎月）：{formatThousands(plan.monthlyCashDeposit)}</p>
+                        )}
+                        <div className="bg-slate-800/50 rounded-lg px-4 py-3 text-center">
+                          <p className="text-sm text-slate-300">
+                            このペースで約 <span className="text-emerald-400 font-bold text-lg">{months}</span> ヶ月後にリバランス完了（計算上の目安）
+                          </p>
+                        </div>
+                      </div>
+                    );
                   })()}
 
                   {!monthlyAmount && (

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, getTotalAssets, calculateEmergencyFund, applyEmergencyFund, calculatePeriodByMonths, calculatePeriod, simulateMonthly, isOverThreshold, countOverThreshold } from './logic';
+import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, getTotalAssets, calculateEmergencyFund, applyEmergencyFund, calculatePeriodByMonths, calculatePeriod, simulateMonthly, isOverThreshold, countOverThreshold, estimateMonthsToRebalance } from './logic';
 import type { DeviationItem } from './types';
 import type { Holdings, TargetAllocation } from './types';
 
@@ -318,5 +318,109 @@ describe('calculatePeriod（期間指定・積立あり）', () => {
     expect(r.monthlyCashContribution).toBe(15_165);
     expect(r.monthlyItems).toEqual([{ key: 'emerging_equity', label: 'エマージング株', amount: 133_828 }]);
     expect(r.monthlyTotal).toBe(31_009 + 15_165 + 87_654);
+  });
+});
+
+describe('estimateMonthsToRebalance（積立のみ・売らずに戻る月数、#76）', () => {
+  it('保有0なら1ヶ月（今月の積立を目標配分どおりに買う）', () => {
+    const t: TargetAllocation = { us_equity: 70, developed_bond: 30 };
+    expect(estimateMonthsToRebalance({}, t, 123_457)).toBe(1);
+    const r = calculatePeriod({}, t, 1, 123_457)!;
+    expect(r.requiredSellAmount).toBe(0);
+    const buy = r.monthlyItems.reduce((a, i) => a + i.amount, 0);
+    expect(Math.abs(buy - 123_457)).toBeLessThanOrEqual(2);
+  });
+
+  const sumBuys = (items: { amount: number }[]) => items.reduce((s, i) => s + i.amount, 0);
+
+  it('例：米国株100万、目標 米国株50・先進国債券50、M=10万 → 10ヶ月、売却0、毎月 先進国債券に10万', () => {
+    const h: Holdings = { us_equity: 1_000_000 };
+    const t: TargetAllocation = { us_equity: 50, developed_bond: 50 };
+    expect(estimateMonthsToRebalance(h, t, 100_000)).toBe(10);
+    const r = calculatePeriod(h, t, 10, 100_000)!;
+    expect(r.requiredSellAmount).toBe(0);
+    expect(r.sellItems).toHaveLength(0);
+    expect(r.monthlyItems).toEqual([{ key: 'developed_bond', label: '先進国債券', amount: 100_000 }]);
+    // 9ヶ月なら米国株を売ることになる
+    expect(calculatePeriod(h, t, 9, 100_000)!.requiredSellAmount).toBeGreaterThan(0);
+  });
+
+  it('M≤0 なら出さない', () => {
+    expect(estimateMonthsToRebalance({ us_equity: 1_000_000 }, { developed_bond: 100 }, 0)).toBeNull();
+  });
+
+  it('現金以外で目標0%なのに保有がある → 積立だけでは戻らない（名前を返す）', () => {
+    const h: Holdings = { us_equity: 500_000, gold: 123_456, japan_reit: 1 };
+    const t: TargetAllocation = { us_equity: 100 };
+    expect(estimateMonthsToRebalance(h, t, 100_000)).toEqual({ unreachable: ['日本REIT', '金'] });
+  });
+
+  it('現金だけが目標0%で保有あり → 月数が出る（現金は縛らない）', () => {
+    const h: Holdings = { cash: 200_000, us_equity: 800_000 };
+    const t: TargetAllocation = { us_equity: 100 };
+    expect(estimateMonthsToRebalance(h, t, 50_000)).toBe(1);
+    const r = calculatePeriod(h, t, 1, 50_000)!;
+    expect(r.requiredSellAmount).toBe(0);
+    expect(r.monthlyCashContribution).toBe(200_000);
+    expect(r.monthlyItems).toEqual([{ key: 'us_equity', label: '米国株', amount: 250_000 }]);
+  });
+
+  it('すでに目標どおり → 0', () => {
+    const h: Holdings = { us_equity: 600_000, developed_bond: 400_000 };
+    expect(estimateMonthsToRebalance(h, { us_equity: 60, developed_bond: 40 }, 100_000)).toBe(0);
+  });
+
+  it('最小性（架空の例）：超過2クラス・現金の余りあり → 32ヶ月。31ヶ月では売却>0、32ヶ月では0', () => {
+    // T = 6,000,097、M = 87,654
+    // 米国株：3,456,789/0.4 − T = 2,641,875.5 → ÷M = 30.14 → 31
+    // 日本株：  876,543/0.1 − T = 2,765,333   → ÷M = 31.55 → 32
+    const h: Holdings = { cash: 1_234_567, us_equity: 3_456_789, japan_equity: 876_543, developed_bond: 432_198 };
+    const t: TargetAllocation = { cash: 5, us_equity: 40, japan_equity: 10, developed_bond: 45 };
+    const M = 87_654;
+    expect(estimateMonthsToRebalance(h, t, M)).toBe(32);
+
+    const before = calculatePeriod(h, t, 31, M)!;
+    expect(before.requiredSellAmount).toBeGreaterThan(0);
+    expect(before.sellItems.map(i => i.key)).toEqual(['japan_equity']);
+
+    const r = calculatePeriod(h, t, 32, M)!;
+    expect(r.endTotal).toBe(8_805_025);
+    expect(r.requiredSellAmount).toBe(0);
+    expect(r.sellItems).toHaveLength(0);
+    // 目標：現金 440,251.25、米国株 3,522,010、日本株 880,502.5、先進国債券 3,962,261.25
+    // 取り崩し 794,315.75 ÷32 = 24,822.4、買い 先進国債券 3,530,063.25 ÷32 = 110,314.5、米国株 65,221 ÷32 = 2,038.2、日本株 3,959.5 ÷32 = 123.7
+    expect(r.monthlyCashContribution).toBe(24_822);
+    expect(r.monthlyCashDeposit).toBe(0);
+    expect(r.monthlyItems).toEqual([
+      { key: 'developed_bond', label: '先進国債券', amount: 110_314 },
+      { key: 'us_equity', label: '米国株', amount: 2_038 },
+      { key: 'japan_equity', label: '日本株', amount: 124 },
+    ]);
+    expect(Math.abs(sumBuys(r.monthlyItems) + r.monthlyCashDeposit - (M + r.monthlyCashContribution))).toBeLessThanOrEqual(3);
+  });
+
+  it('超過クラスが無く現金の余りだけ → 1', () => {
+    // T = 1,012,345、E = 1,066,666。米国株の目標 959,999.4 → 買い 259,999.4、現金の目標 106,666.6 → 取り崩し 205,678.4
+    const h: Holdings = { cash: 312_345, us_equity: 700_000 };
+    const t: TargetAllocation = { cash: 10, us_equity: 90 };
+    expect(estimateMonthsToRebalance(h, t, 54_321)).toBe(1);
+    const r = calculatePeriod(h, t, 1, 54_321)!;
+    expect(r.requiredSellAmount).toBe(0);
+    expect(r.monthlyCashContribution).toBe(205_678);
+    expect(r.monthlyItems).toEqual([{ key: 'us_equity', label: '米国株', amount: 259_999 }]);
+  });
+
+  it('毎月の恒等式：買いの合計＋現金のまま置く＝M＋取り崩し（現金のまま置くがある例）', () => {
+    // 1,000,000/0.8 − 1,000,000 = 250,000 → ÷123,457 = 2.03 → 3。E = 1,370,371
+    // 現金の目標 274,074.2 → 毎月 91,358.1 置く、米国株の目標 1,096,296.8 → 毎月 32,098.9 買う
+    const h: Holdings = { us_equity: 1_000_000 };
+    const t: TargetAllocation = { cash: 20, us_equity: 80 };
+    const M = 123_457;
+    expect(estimateMonthsToRebalance(h, t, M)).toBe(3);
+    const r = calculatePeriod(h, t, 3, M)!;
+    expect(r.requiredSellAmount).toBe(0);
+    expect(r.monthlyCashDeposit).toBe(91_358);
+    expect(r.monthlyItems).toEqual([{ key: 'us_equity', label: '米国株', amount: 32_099 }]);
+    expect(Math.abs(sumBuys(r.monthlyItems) + r.monthlyCashDeposit - (M + r.monthlyCashContribution))).toBeLessThanOrEqual(3);
   });
 });

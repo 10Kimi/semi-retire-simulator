@@ -91,22 +91,39 @@ export function calculateDeviation(
   });
 }
 
-/** 積立追加モードでリバランス完了までの推定月数を計算 */
+/**
+ * 積立のみモード — 売らずに目標配分に着くまでの月数（FI_project #76）。
+ * n か月後の総資産 T＋M×n の目標額が、目標より多い現金以外の資産クラスの今の額に追いつく最小の n。
+ * 現金は取り崩して不足の資産クラスへ回せるので月数を縛らない。毎月の配分は calculatePeriod(holdings, target, n, M)。
+ * 返り値：月数（目標どおりなら0）／M≤0 なら null／現金以外で目標0%なのに保有があれば { unreachable: 資産クラス名 }
+ */
 export function estimateMonthsToRebalance(
   holdings: Holdings,
   target: TargetAllocation,
   monthlyAmount: number,
-): number | null {
+): number | null | { unreachable: string[] } {
   if (monthlyAmount <= 0) return null;
   const total = getTotalAssets(holdings);
-  // 不足額の合計（目標比率に対して足りない分）
-  const totalDeficit = ASSET_CLASSES.reduce((sum, ac) => {
-    const targetAmount = total * (target[ac.key] || 0) / 100;
+  if (total <= 0) return 1;  // 保有0：今月の積立を目標配分どおりに買えば終わる（#76 レビュー）
+  const onTarget = ASSET_CLASSES.every(ac =>
+    Math.abs((holdings[ac.key] || 0) - total * (target[ac.key] || 0) / 100) < 1);
+  if (onTarget) return 0;
+
+  const unreachable = ASSET_CLASSES
+    .filter(ac => ac.key !== 'cash' && (target[ac.key] || 0) <= 0 && (holdings[ac.key] || 0) > 0)
+    .map(ac => ac.label);
+  if (unreachable.length > 0) return { unreachable };
+
+  let months = 1;
+  for (const ac of ASSET_CLASSES) {
+    if (ac.key === 'cash') continue;
+    const w = (target[ac.key] || 0) / 100;
     const current = holdings[ac.key] || 0;
-    return sum + Math.max(0, targetAmount - current);
-  }, 0);
-  if (totalDeficit <= 0) return 0;
-  return Math.ceil(totalDeficit / monthlyAmount);
+    if (w <= 0) continue;
+    // current ≤ w×(T＋M×n) ⇔ n ≥ (current/w − T)/M
+    months = Math.max(months, Math.ceil((current / w - total) / monthlyAmount - 1e-9));
+  }
+  return months;
 }
 
 /** 調整計算 — 積立追加モード（仕様書 §4-2） */
