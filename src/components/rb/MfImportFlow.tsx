@@ -147,9 +147,11 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
       {/* STEP 1: テキストの貼り付け */}
       {step === 'paste' && (
         <div className="bg-slate-900 rounded-2xl p-4 space-y-3">
-          <p className="text-slate-300 text-sm">
-            MoneyForwardの「資産」ページを開き、ページ全体をコピーして貼り付けてください。
-          </p>
+          <ol className="text-slate-300 text-sm space-y-1">
+            <li>① マネーフォワード ME で「資産」→「資産内訳」を開く</li>
+            <li>② ⌘A（Windows は Ctrl＋A）でページ全体を選び、⌘C（Ctrl＋C）でコピー</li>
+            <li>③ 下の欄に ⌘V（Ctrl＋V）で貼り付け。範囲を選ぶ必要はありません</li>
+          </ol>
           <textarea
             value={pastedText}
             onChange={e => setPastedText(e.target.value)}
