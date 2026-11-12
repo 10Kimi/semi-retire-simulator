@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, getTotalAssets, calculateEmergencyFund, applyEmergencyFund, calculatePeriodByAmount, calculatePeriodByMonths, simulateMonthly } from './logic';
+import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, getTotalAssets, calculateEmergencyFund, applyEmergencyFund, calculatePeriodByMonths, calculatePeriod, simulateMonthly, isOverThreshold, countOverThreshold } from './logic';
+import type { DeviationItem } from './types';
 import type { Holdings, TargetAllocation } from './types';
 
 const holdings: Holdings = {
@@ -141,20 +142,6 @@ const realTarget: TargetAllocation = {
   developed_bond: 10, gold: 10,
 };
 
-describe('calculatePeriodByAmount', () => {
-  it('現金は売却リストに表示されない', () => {
-    const result = calculatePeriodByAmount(realHoldings, realTarget, 1_000_000);
-    expect(result).not.toBeNull();
-    expect(result!.sellItems.find(i => i.key === 'cash')).toBeUndefined();
-  });
-
-  it('超過クラス（現金除く）が売却リストに含まれる', () => {
-    const result = calculatePeriodByAmount(realHoldings, realTarget, 1_000_000);
-    expect(result!.sellItems.length).toBeGreaterThan(0);
-    expect(result!.sellItems.every(i => i.amount < 0)).toBe(true);
-  });
-});
-
 describe('calculatePeriodByMonths', () => {
   it('現金は売却リストに出ない（余剰は内部計算のみ）', () => {
     const result = calculatePeriodByMonths(realHoldings, realTarget, 12);
@@ -228,5 +215,108 @@ describe('simulateMonthly', () => {
       expect(totalRatio).toBeGreaterThanOrEqual(0);
       expect(totalRatio).toBeLessThanOrEqual(100.1);
     }
+  });
+});
+
+describe('isOverThreshold / countOverThreshold', () => {
+  it('目安「以上」を判定する（誤差で少し下回る値も含む）', () => {
+    expect(isOverThreshold(4.99, 5)).toBe(false);
+    expect(isOverThreshold(5, 5)).toBe(true);
+    expect(isOverThreshold(-5, 5)).toBe(true);
+    expect(isOverThreshold(5.0000000001, 5)).toBe(true);
+    expect(isOverThreshold(4.99999999999, 5)).toBe(true);
+    expect(isOverThreshold(9.99, 10)).toBe(false);
+    expect(isOverThreshold(10, 10)).toBe(true);
+  });
+
+  it('目安以上の資産クラスを数える', () => {
+    const items = [1.2, -4.99, 5, -7.3, 10.4].map(d => ({ deviationRatio: d }) as DeviationItem);
+    expect(countOverThreshold(items, 5)).toBe(3);
+    expect(countOverThreshold(items, 10)).toBe(1);
+    expect(countOverThreshold([], 5)).toBe(0);
+  });
+});
+
+describe('calculatePeriod（期間指定・積立あり）', () => {
+  const h: Holdings = { cash: 3_456_789, japan_equity: 2_100_000, us_equity: 7_350_000, developed_bond: 1_234_567, japan_bond: 980_000, gold: 50_000 };
+  const t: TargetAllocation = { cash: 10, us_equity: 40, emerging_equity: 15, developed_bond: 25, gold: 10 };
+  const T = 15_171_356;
+
+  it('months<=0 なら null、M が負なら0扱い', () => {
+    expect(calculatePeriod(h, t, 0, 100_000)).toBeNull();
+    const r = calculatePeriod(h, t, 12, -50_000)!;
+    expect(r.monthlyAmount).toBe(0);
+    expect(r.endTotal).toBe(T);
+  });
+
+  it('回帰：M＝0 は変更前の calculatePeriodByMonths と同じ', () => {
+    const r = calculatePeriod(h, t, 12, 0)!;
+    expect(r.sellItems.map(i => i.key)).toEqual(['japan_equity', 'us_equity', 'japan_bond']);
+    expect(r.sellItems[0].amount).toBe(-2_100_000);
+    expect(Math.abs(r.sellItems[1].amount - -1_281_458)).toBeLessThanOrEqual(1);
+    expect(r.sellItems[2].amount).toBe(-980_000);
+    expect(r.requiredSellAmount).toBeCloseTo(4_361_457.6, 0);
+    expect(r.cashSurplus).toBeCloseTo(1_939_653.4, 0);
+    expect(Math.abs(r.totalDeficit - 6_301_111)).toBeLessThanOrEqual(1);
+    // 薄い呼び出しも同じ
+    expect(calculatePeriodByMonths(h, t, 12)).toEqual(r);
+  });
+
+  it.each([0, 123_457, 5_000_000])('毎月の恒等式 M=%i：買い＋現金に残す ≒ 売却充当＋取り崩し＋M', M => {
+    const r = calculatePeriod(h, t, 12, M)!;
+    const buys = r.monthlyItems.reduce((s, i) => s + i.amount, 0);
+    const lhs = buys + r.monthlyCashDeposit;
+    const rhs = r.monthlySellContribution + r.monthlyCashContribution + M;
+    expect(Math.abs(lhs - rhs)).toBeLessThanOrEqual(5);
+    expect(r.monthlyTotal).toBe(rhs);
+    expect(r.endTotal).toBe(T + M * 12);
+  });
+
+  it.each([0, 123_457])('N か月で (T+M×N)×目標配分 に着く M=%i', M => {
+    const r = calculatePeriod(h, t, 12, M)!;
+    const snaps = simulateMonthly(h, t, r);
+    expect(snaps).toHaveLength(12);
+    const last = snaps[11];
+    expect(Math.abs(last.totalAssets - (T + M * 12))).toBeLessThanOrEqual(1);
+    for (const op of last.operations) {
+      expect(Math.abs(op.ratio - (t[op.key] || 0))).toBeLessThanOrEqual(0.1);
+    }
+    // 毎月の総資産は T + k×M
+    expect(Math.abs(snaps[0].totalAssets - (T + M))).toBeLessThanOrEqual(1);
+  });
+
+  it('M を増やすと売却総額は増えない', () => {
+    const sells = [0, 100_000, 500_000, 2_000_000].map(M => calculatePeriod(h, t, 12, M)!.requiredSellAmount);
+    for (let i = 1; i < sells.length; i++) {
+      expect(sells[i]).toBeLessThanOrEqual(sells[i - 1] + 1e-6);
+    }
+    expect(sells[3]).toBeLessThan(sells[0]);
+  });
+
+  it('M が十分大きいと売却なし（目標0%の保有がない場合）', () => {
+    // 上の h は日本株・日本債券が目標0%なので、M をいくら増やしても売却は残る。目標>0% の保有だけで確かめる
+    const h2: Holdings = { cash: 3_456_789, us_equity: 7_350_000, developed_bond: 1_234_567, gold: 50_000 };
+    const r = calculatePeriod(h2, t, 12, 50_000_000)!;
+    expect(r.requiredSellAmount).toBe(0);
+    expect(r.sellItems).toHaveLength(0);
+    expect(r.cashSurplus).toBe(0);
+  });
+
+  it('架空の例：積立を不足へ回し、足りない分だけ売る', () => {
+    // T = 4,567,890、M = 87,654、N = 6 → E = 5,093,814
+    const h3: Holdings = { cash: 345_678, us_equity: 2_987_654, emerging_equity: 1_234_558 };
+    const t3: TargetAllocation = { cash: 5, us_equity: 55, emerging_equity: 40 };
+    const r = calculatePeriod(h3, t3, 6, 87_654)!;
+    expect(r.endTotal).toBe(5_093_814);
+    // 米国株の目標 2,801,597.7 → 売却 186,056.3、新興国株の目標 2,037,525.6 → 買い 802,967.6
+    // 現金の目標 254,690.7 → 取り崩し 90,987.3
+    expect(r.requiredSellAmount).toBeCloseTo(186_056.3, 1);
+    expect(r.totalDeficit).toBeCloseTo(802_967.6, 1);
+    expect(r.cashSurplus).toBeCloseTo(90_987.3, 1);
+    expect(r.cashDeposit).toBe(0);
+    expect(r.monthlySellContribution).toBe(31_009);
+    expect(r.monthlyCashContribution).toBe(15_165);
+    expect(r.monthlyItems).toEqual([{ key: 'emerging_equity', label: 'エマージング株', amount: 133_828 }]);
+    expect(r.monthlyTotal).toBe(31_009 + 15_165 + 87_654);
   });
 });

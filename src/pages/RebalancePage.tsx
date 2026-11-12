@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import UserStatusBar from '../components/UserStatusBar';
 import { ASSET_CLASSES, MODEL_ALLOCATIONS, MODEL_META } from '../lib/rb/types';
 import type { Holdings, TargetAllocation, DeviationItem, AdjustmentItem, AdjustmentMode } from '../lib/rb/types';
-import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, estimateMonthsToRebalance, calculateEmergencyFund, applyEmergencyFund, calculatePeriodByAmount, calculatePeriodByMonths, simulateMonthly, getTotalAssets, formatCurrency, formatThousands } from '../lib/rb/logic';
+import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, estimateMonthsToRebalance, calculateEmergencyFund, applyEmergencyFund, calculatePeriod, isOverThreshold, countOverThreshold, REBALANCE_THRESHOLDS, DEFAULT_REBALANCE_THRESHOLD, getTotalAssets, formatCurrency, formatThousands } from '../lib/rb/logic';
 import { fetchTargetAllocation, saveTargetAllocation, fetchLatestSnapshot, saveSnapshot, fetchRbProfile, saveRbProfile } from '../lib/rb/db';
 import { loadLatestRisk } from '../lib/riskDb';
 import MfImportFlow from '../components/rb/MfImportFlow';
@@ -64,16 +64,34 @@ function SellAccountNote() {
 const SEVERITY_COLORS: Record<DeviationItem['severity'], string> = {
   ok: 'text-slate-400',
   minor: 'text-blue-400',
-  warning: 'text-orange-400',
+  warning: 'text-yellow-300',
   danger: 'text-red-400',
 };
 
 const SEVERITY_BG: Record<DeviationItem['severity'], string> = {
   ok: 'bg-slate-800',
   minor: 'bg-blue-900/30 border border-blue-500/30',
-  warning: 'bg-orange-900/30 border border-orange-500/30',
+  warning: 'bg-yellow-900/30 border border-yellow-500/40',
   danger: 'bg-red-900/30 border border-red-500/30',
 };
+
+const SEVERITY_LABELS: Record<DeviationItem['severity'], string> = {
+  ok: '',
+  minor: '軽微',
+  warning: '要注意',
+  danger: '大きなズレ',
+};
+
+const THRESHOLD_STORAGE_KEY = 'rb.rebalanceThreshold';
+
+function loadThreshold(): number {
+  try {
+    const v = Number(localStorage.getItem(THRESHOLD_STORAGE_KEY));
+    return (REBALANCE_THRESHOLDS as readonly number[]).includes(v) ? v : DEFAULT_REBALANCE_THRESHOLD;
+  } catch {
+    return DEFAULT_REBALANCE_THRESHOLD;
+  }
+}
 
 export default function RebalancePage() {
   const { user } = useAuth();
@@ -104,7 +122,7 @@ export default function RebalancePage() {
   const [monthlyAmount, setMonthlyAmount] = useState('');
   const [periodMonthlyAmount, setPeriodMonthlyAmount] = useState('');
   const [periodMonths, setPeriodMonths] = useState('');
-  const [periodLastChanged, setPeriodLastChanged] = useState<'amount' | 'months'>('amount');
+  const [threshold, setThreshold] = useState<number>(loadThreshold);
   const [expandedHint, setExpandedHint] = useState<string | null>(null);
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
   const [showTargetUpdateBanner, setShowTargetUpdateBanner] = useState(false);
@@ -112,6 +130,11 @@ export default function RebalancePage() {
   // 緊急資金設定
   const [monthlyLivingCost, setMonthlyLivingCost] = useState<string>('');
   const [emergencyMonths, setEmergencyMonths] = useState<number>(6);
+
+  const changeThreshold = (v: number) => {
+    setThreshold(v);
+    try { localStorage.setItem(THRESHOLD_STORAGE_KEY, String(v)); } catch { /* 保存できなくても表示は続ける */ }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -537,12 +560,51 @@ export default function RebalancePage() {
               <h2 className="text-sm text-slate-400 mb-1">総資産</h2>
               <p className="text-2xl font-bold text-emerald-400 mb-4">{formatCurrency(totalAssets)}</p>
 
+              {/* 戻す目安 */}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm text-slate-400">戻す目安</span>
+                {REBALANCE_THRESHOLDS.map(v => (
+                  <button
+                    key={v}
+                    onClick={() => changeThreshold(v)}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                      threshold === v
+                        ? 'bg-emerald-600 text-white border border-emerald-500'
+                        : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
+                    }`}
+                  >
+                    {v === DEFAULT_REBALANCE_THRESHOLD ? `${v}%（標準）` : `${v}%`}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs mb-0.5">
+                <span className={SEVERITY_COLORS.ok}>2%未満 そのまま</span>
+                <span className="text-slate-600"> ／ </span>
+                <span className={SEVERITY_COLORS.minor}>2〜5% 軽微</span>
+                <span className="text-slate-600"> ／ </span>
+                <span className={SEVERITY_COLORS.warning}>5〜10% 要注意</span>
+                <span className="text-slate-600"> ／ </span>
+                <span className={SEVERITY_COLORS.danger}>10%以上 大きなズレ</span>
+              </p>
+              <p className="text-xs text-slate-400 mb-3">戻す目安：{threshold}%以上</p>
+              {(() => {
+                const n = countOverThreshold(deviation, threshold);
+                return n === 0
+                  ? <p className="text-sm text-emerald-400 mb-4">戻す目安を超えた資産クラスはありません。今回は何もしなくて大丈夫です</p>
+                  : <p className="text-sm text-slate-200 mb-4">{n}つの資産クラスが戻す目安を超えています</p>;
+              })()}
+
               <h2 className="text-sm text-slate-400 mb-3">アセットクラス別 乖離</h2>
               <div className="space-y-2">
                 {deviation.map(d => (
                   <div key={d.key} className={`rounded-lg px-4 py-3 ${SEVERITY_BG[d.severity]}`}>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium">{d.label}</span>
+                      <span className="text-sm font-medium flex items-center gap-2">
+                        {d.label}
+                        {isOverThreshold(d.deviationRatio, threshold) && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-200 border border-slate-500">戻す目安</span>
+                        )}
+                      </span>
                       <span className="text-sm">{formatCurrency(d.amount)}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
@@ -552,6 +614,7 @@ export default function RebalancePage() {
                       </div>
                       <span className={`font-medium ${SEVERITY_COLORS[d.severity]}`}>
                         {d.deviationRatio >= 0 ? '+' : ''}{d.deviationRatio.toFixed(1)}%
+                        {SEVERITY_LABELS[d.severity] && `（${SEVERITY_LABELS[d.severity]}）`}
                       </span>
                     </div>
                     {/* バー表示 */}
@@ -649,11 +712,9 @@ export default function RebalancePage() {
               {adjustMode === 'period' && (() => {
                 const pMonthly = parseInt(periodMonthlyAmount.replace(/[^0-9]/g, '')) || 0;
                 const pMonths = parseInt(periodMonths.replace(/[^0-9]/g, '')) || 0;
-                const periodResult = periodLastChanged === 'amount' && pMonthly > 0
-                  ? calculatePeriodByAmount(investableHoldings, target, pMonthly)
-                  : periodLastChanged === 'months' && pMonths > 0
-                    ? calculatePeriodByMonths(investableHoldings, target, pMonths)
-                    : null;
+                const periodResult = pMonths > 0
+                  ? calculatePeriod(investableHoldings, target, pMonths, pMonthly)
+                  : null;
 
                 const completionDate = periodResult && periodResult.months > 0
                   ? (() => {
@@ -667,72 +728,60 @@ export default function RebalancePage() {
                   <>
                     <div className="space-y-3 mb-4">
                       <div>
-                        <label className="text-sm text-slate-400 mb-1 block">毎月の積立予定額（円）</label>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={periodMonthlyAmount}
-                          onChange={e => {
-                            setPeriodMonthlyAmount(e.target.value.replace(/[^0-9]/g, ''));
-                            setPeriodLastChanged('amount');
-                          }}
-                          placeholder="例: 500,000"
-                          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-lg focus:border-emerald-500 focus:outline-none"
-                        />
-                        {periodLastChanged === 'amount' && periodResult && periodResult.months > 0 && (
-                          <p className="text-xs text-slate-400 mt-1">→ 完了まで約 {periodResult.months} ヶ月</p>
-                        )}
-                      </div>
-                      <div className="text-center text-slate-600 text-xs">または</div>
-                      <div>
                         <label className="text-sm text-slate-400 mb-1 block">完了希望期間（ヶ月）</label>
                         <input
                           type="text"
                           inputMode="numeric"
                           value={periodMonths}
-                          onChange={e => {
-                            setPeriodMonths(e.target.value.replace(/[^0-9]/g, ''));
-                            setPeriodLastChanged('months');
-                          }}
+                          onChange={e => setPeriodMonths(e.target.value.replace(/[^0-9]/g, ''))}
                           placeholder="例: 12"
                           className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-lg focus:border-emerald-500 focus:outline-none"
                         />
-                        {periodLastChanged === 'months' && periodResult && periodResult.months > 0 && (
-                          <div className="mt-2 space-y-1">
-                            {periodResult.monthlyAmount > 0
-                              ? <p className="text-xs text-slate-300">→ 毎月 {formatThousands(periodResult.monthlyAmount)} の追加積立が必要です</p>
-                              : <p className="text-xs text-emerald-400">→ 売却資金と現金の取り崩しでリバランス完了できます（追加積立不要）</p>
-                            }
-                            <div className="text-xs text-slate-500 space-y-0.5 pl-2">
-                              <p>毎月の操作合計：{formatThousands(periodResult.monthlyTotal)}</p>
-                              {periodResult.monthlySellContribution > 0 && (
-                                <p>  売却資金の充当：{formatThousands(periodResult.monthlySellContribution)}</p>
-                              )}
-                              {periodResult.monthlyCashContribution > 0 && (
-                                <p>  現金の取り崩し：{formatThousands(periodResult.monthlyCashContribution)}</p>
-                              )}
-                              <p>  追加積立：{periodResult.monthlyAmount > 0 ? formatThousands(periodResult.monthlyAmount) : '不要'}</p>
-                            </div>
+                      </div>
+                      <div>
+                        <label className="text-sm text-slate-400 mb-1 block">毎月の積立額（円・任意）</label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={periodMonthlyAmount}
+                          onChange={e => setPeriodMonthlyAmount(e.target.value.replace(/[^0-9]/g, ''))}
+                          placeholder="例: 300,000"
+                          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-lg focus:border-emerald-500 focus:outline-none"
+                        />
+                      </div>
+                      <p className="text-xs text-slate-400">いつもの積立を先に不足の資産クラスへ回し、足りない分だけを売ります。</p>
+                    </div>
+
+                    {periodResult && periodResult.months > 0 && (
+                      <div className="mb-4 space-y-1">
+                        <div className="text-xs text-slate-300 space-y-0.5">
+                          <p>毎月の操作合計：{formatThousands(periodResult.monthlyTotal)}</p>
+                          <div className="text-slate-500 pl-2 space-y-0.5">
+                            {periodResult.monthlySellContribution > 0 && (
+                              <p>売却資金の充当：{formatThousands(periodResult.monthlySellContribution)}</p>
+                            )}
+                            {periodResult.monthlyCashContribution > 0 && (
+                              <p>現金の取り崩し：{formatThousands(periodResult.monthlyCashContribution)}</p>
+                            )}
+                            <p>積立：{periodResult.monthlyAmount > 0 ? formatThousands(periodResult.monthlyAmount) : 'なし'}</p>
                           </div>
+                        </div>
+                        {periodResult.sellItems.length === 0 && (
+                          <p className="text-xs text-emerald-400">→ {periodResult.monthlyCashContribution > 0 ? 'いつもの積立と現金の取り崩しで足ります' : 'いつもの積立で足ります'}（売却なし）</p>
                         )}
                       </div>
-                    </div>
+                    )}
 
                     {periodResult && periodResult.months === 0 && (
                       <p className="text-xs text-emerald-400 text-center py-3">目標配分に到達しています</p>
                     )}
 
                     {periodResult && periodResult.months > 0 && (() => {
-                      const snapshots = simulateMonthly(investableHoldings, target, periodResult);
-                      const month1 = snapshots[0];
-                      const sellOps: AdjustmentItem[] = month1.operations
-                        .filter(o => o.operationAmount < 0)
-                        .sort((a, b) => a.operationAmount - b.operationAmount)
-                        .map(o => ({ key: o.key, label: o.label, amount: o.operationAmount }));
-                      const buyOps: AdjustmentItem[] = month1.operations
-                        .filter(o => o.operationAmount > 0)
-                        .sort((a, b) => b.operationAmount - a.operationAmount)
-                        .map(o => ({ key: o.key, label: o.label, amount: o.operationAmount }));
+                      const N = periodResult.months;
+                      const sellOps: AdjustmentItem[] = periodResult.sellItems
+                        .map(i => ({ ...i, amount: Math.round(i.amount / N) }))
+                        .filter(i => i.amount < 0);
+                      const buyOps: AdjustmentItem[] = periodResult.monthlyItems;
 
                       return (
                         <div className="space-y-4">
@@ -751,6 +800,10 @@ export default function RebalancePage() {
                               <p className="text-xs text-emerald-400 mb-2">積立（毎月）</p>
                               <AdjustmentList items={buyOps} />
                             </div>
+                          )}
+
+                          {periodResult.monthlyCashDeposit > 0 && (
+                            <p className="text-xs text-slate-400">現金のまま置く：{formatThousands(periodResult.monthlyCashDeposit)}</p>
                           )}
 
                           <div className="bg-slate-800/50 rounded-lg px-4 py-3 text-center">
@@ -779,7 +832,7 @@ export default function RebalancePage() {
                     )}
 
                     {!periodResult && (
-                      <p className="text-xs text-slate-500 text-center py-4">積立額または完了期間を入力すると計算結果を表示します</p>
+                      <p className="text-xs text-slate-500 text-center py-4">完了希望期間を入力すると計算結果を表示します</p>
                     )}
                   </>
                 );

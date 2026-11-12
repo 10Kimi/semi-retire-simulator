@@ -68,19 +68,22 @@ export interface AdjustmentItem {
   amount: number; // 正=追加購入、負=売却
 }
 
-/** 期間指定リバランスの計算結果 */
+/** 期間指定リバランスの計算結果（N か月後の総資産 E = T + M×N の目標配分に、毎月同じ額で近づける） */
 export interface PeriodRebalanceResult {
-  sellItems: AdjustmentItem[];       // 売却クラス（期間で分散）
-  monthlyItems: AdjustmentItem[];    // 毎月の積立配分
-  totalDeficit: number;              // 不足額合計
-  totalSurplus: number;              // 超過額合計
-  requiredSellAmount: number;        // 売却総額（現金除く）
-  cashSurplus: number;               // 現金余剰額
-  months: number;                    // 完了期間
-  monthlyAmount: number;             // 毎月の追加積立額（売却・現金取り崩し後に必要な分）
-  monthlySellContribution: number;   // 毎月の売却充当額（requiredSellAmount / months）
-  monthlyCashContribution: number;   // 毎月の現金取り崩し額（cashSurplus / months）
-  monthlyTotal: number;              // 毎月の操作合計（売却充当 + 現金取り崩し + 追加積立）
+  sellItems: AdjustmentItem[];       // 現金以外の売却総額（負の値・大きい順）
+  monthlyItems: AdjustmentItem[];    // 現金以外の毎月の買い（正の値・大きい順）
+  totalDeficit: number;              // 現金以外の買い総額の合計
+  totalSurplus: number;              // 売却総額 + 現金の取り崩し総額
+  requiredSellAmount: number;        // 現金以外の売却総額の合計
+  cashSurplus: number;               // 現金の取り崩し総額
+  months: number;                    // 完了期間 N（売り買い・取り崩し・残す額がすべて0なら0）
+  monthlyAmount: number;             // 毎月の積立額 M
+  monthlySellContribution: number;   // 毎月の売却充当額（requiredSellAmount / N）
+  monthlyCashContribution: number;   // 毎月の現金取り崩し額（cashSurplus / N）
+  monthlyTotal: number;              // 毎月の操作合計（売却充当 + 現金取り崩し + M）
+  endTotal: number;                  // N か月後の総資産 E
+  cashDeposit: number;               // 現金に残す総額（積立のうち現金のまま置く分）
+  monthlyCashDeposit: number;        // 毎月の現金に残す額
 }
 
 /** 月次推移の1ヶ月分 */

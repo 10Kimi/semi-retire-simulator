@@ -1,0 +1,1498 @@
+{
+  "spec": "spec74.md",
+  "money_rounding": "なし(厳密分数)。exactは分数文字列",
+  "cases": [
+    {
+      "name": "例1 M=0",
+      "N": 12,
+      "M": 0,
+      "T": {
+        "exact": "15171356",
+        "value": 15171356.0
+      },
+      "E": {
+        "exact": "15171356",
+        "value": 15171356.0
+      },
+      "target_amount": {
+        "cash": {
+          "exact": "7585678/5",
+          "value": 1517135.6
+        },
+        "japan_equity": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "us_equity": {
+          "exact": "30342712/5",
+          "value": 6068542.4
+        },
+        "emerging_equity": {
+          "exact": "11378517/5",
+          "value": 2275703.4
+        },
+        "japan_bond": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "developed_bond": {
+          "exact": "3792839",
+          "value": 3792839.0
+        },
+        "gold": {
+          "exact": "7585678/5",
+          "value": 1517135.6
+        }
+      },
+      "sell_total_by_class": {
+        "japan_equity": {
+          "exact": "2100000",
+          "value": 2100000.0
+        },
+        "us_equity": {
+          "exact": "6407288/5",
+          "value": 1281457.6
+        },
+        "emerging_equity": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "japan_bond": {
+          "exact": "980000",
+          "value": 980000.0
+        },
+        "developed_bond": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "gold": {
+          "exact": "0",
+          "value": 0.0
+        }
+      },
+      "sell_total": {
+        "exact": "21807288/5",
+        "value": 4361457.6
+      },
+      "cash_draw_total": {
+        "exact": "9698267/5",
+        "value": 1939653.4
+      },
+      "cash_keep_total": {
+        "exact": "0",
+        "value": 0.0
+      },
+      "buy_total_by_class": {
+        "japan_equity": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "us_equity": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "emerging_equity": {
+          "exact": "11378517/5",
+          "value": 2275703.4
+        },
+        "japan_bond": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "developed_bond": {
+          "exact": "2558272",
+          "value": 2558272.0
+        },
+        "gold": {
+          "exact": "7335678/5",
+          "value": 1467135.6
+        }
+      },
+      "buy_total": {
+        "exact": "6301111",
+        "value": 6301111.0
+      },
+      "monthly": {
+        "sell_by_class": {
+          "japan_equity": {
+            "exact": "175000",
+            "value": 175000.0
+          },
+          "us_equity": {
+            "exact": "1601822/15",
+            "value": 106788.13333333333
+          },
+          "emerging_equity": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "japan_bond": {
+            "exact": "245000/3",
+            "value": 81666.66666666667
+          },
+          "developed_bond": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "gold": {
+            "exact": "0",
+            "value": 0.0
+          }
+        },
+        "sell": {
+          "exact": "1817274/5",
+          "value": 363454.8
+        },
+        "cash_draw": {
+          "exact": "9698267/60",
+          "value": 161637.78333333333
+        },
+        "cash_keep": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "M": 0,
+        "buy_by_class": {
+          "japan_equity": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "us_equity": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "emerging_equity": {
+            "exact": "3792839/20",
+            "value": 189641.95
+          },
+          "japan_bond": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "developed_bond": {
+            "exact": "639568/3",
+            "value": 213189.33333333334
+          },
+          "gold": {
+            "exact": "1222613/10",
+            "value": 122261.3
+          }
+        },
+        "buy": {
+          "exact": "6301111/12",
+          "value": 525092.5833333334
+        },
+        "operation_total(sell+draw+M)": {
+          "exact": "6301111/12",
+          "value": 525092.5833333334
+        }
+      },
+      "identity": {
+        "lhs(buy+keep)": {
+          "exact": "6301111/12",
+          "value": 525092.5833333334
+        },
+        "rhs(sell+draw+M)": {
+          "exact": "6301111/12",
+          "value": 525092.5833333334
+        },
+        "holds": true
+      },
+      "message_reached": false,
+      "month_end_1": {
+        "total": {
+          "exact": "15171356",
+          "value": 15171356.0
+        },
+        "amount": {
+          "cash": {
+            "exact": "197709073/60",
+            "value": 3295151.216666667
+          },
+          "japan_equity": {
+            "exact": "1925000",
+            "value": 1925000.0
+          },
+          "us_equity": {
+            "exact": "108648178/15",
+            "value": 7243211.866666666
+          },
+          "emerging_equity": {
+            "exact": "3792839/20",
+            "value": 189641.95
+          },
+          "japan_bond": {
+            "exact": "2695000/3",
+            "value": 898333.3333333334
+          },
+          "developed_bond": {
+            "exact": "4343269/3",
+            "value": 1447756.3333333333
+          },
+          "gold": {
+            "exact": "1722613/10",
+            "value": 172261.3
+          }
+        },
+        "ratio_pct": {
+          "cash": 21.71955635782765,
+          "japan_equity": 12.688384611105295,
+          "us_equity": 47.74267947220187,
+          "emerging_equity": 1.25,
+          "japan_bond": 5.921246151849138,
+          "developed_bond": 9.542695678180205,
+          "gold": 1.1354377288358404
+        }
+      },
+      "month_end_N": {
+        "total": {
+          "exact": "15171356",
+          "value": 15171356.0
+        },
+        "amount": {
+          "cash": {
+            "exact": "7585678/5",
+            "value": 1517135.6
+          },
+          "japan_equity": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "us_equity": {
+            "exact": "30342712/5",
+            "value": 6068542.4
+          },
+          "emerging_equity": {
+            "exact": "11378517/5",
+            "value": 2275703.4
+          },
+          "japan_bond": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "developed_bond": {
+            "exact": "3792839",
+            "value": 3792839.0
+          },
+          "gold": {
+            "exact": "7585678/5",
+            "value": 1517135.6
+          }
+        },
+        "ratio_pct": {
+          "cash": 10.0,
+          "japan_equity": 0.0,
+          "us_equity": 40.0,
+          "emerging_equity": 15.0,
+          "japan_bond": 0.0,
+          "developed_bond": 25.0,
+          "gold": 10.0
+        }
+      }
+    },
+    {
+      "name": "例1 M=123457",
+      "N": 12,
+      "M": 123457,
+      "T": {
+        "exact": "15171356",
+        "value": 15171356.0
+      },
+      "E": {
+        "exact": "16652840",
+        "value": 16652840.0
+      },
+      "target_amount": {
+        "cash": {
+          "exact": "1665284",
+          "value": 1665284.0
+        },
+        "japan_equity": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "us_equity": {
+          "exact": "6661136",
+          "value": 6661136.0
+        },
+        "emerging_equity": {
+          "exact": "2497926",
+          "value": 2497926.0
+        },
+        "japan_bond": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "developed_bond": {
+          "exact": "4163210",
+          "value": 4163210.0
+        },
+        "gold": {
+          "exact": "1665284",
+          "value": 1665284.0
+        }
+      },
+      "sell_total_by_class": {
+        "japan_equity": {
+          "exact": "2100000",
+          "value": 2100000.0
+        },
+        "us_equity": {
+          "exact": "688864",
+          "value": 688864.0
+        },
+        "emerging_equity": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "japan_bond": {
+          "exact": "980000",
+          "value": 980000.0
+        },
+        "developed_bond": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "gold": {
+          "exact": "0",
+          "value": 0.0
+        }
+      },
+      "sell_total": {
+        "exact": "3768864",
+        "value": 3768864.0
+      },
+      "cash_draw_total": {
+        "exact": "1791505",
+        "value": 1791505.0
+      },
+      "cash_keep_total": {
+        "exact": "0",
+        "value": 0.0
+      },
+      "buy_total_by_class": {
+        "japan_equity": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "us_equity": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "emerging_equity": {
+          "exact": "2497926",
+          "value": 2497926.0
+        },
+        "japan_bond": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "developed_bond": {
+          "exact": "2928643",
+          "value": 2928643.0
+        },
+        "gold": {
+          "exact": "1615284",
+          "value": 1615284.0
+        }
+      },
+      "buy_total": {
+        "exact": "7041853",
+        "value": 7041853.0
+      },
+      "monthly": {
+        "sell_by_class": {
+          "japan_equity": {
+            "exact": "175000",
+            "value": 175000.0
+          },
+          "us_equity": {
+            "exact": "172216/3",
+            "value": 57405.333333333336
+          },
+          "emerging_equity": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "japan_bond": {
+            "exact": "245000/3",
+            "value": 81666.66666666667
+          },
+          "developed_bond": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "gold": {
+            "exact": "0",
+            "value": 0.0
+          }
+        },
+        "sell": {
+          "exact": "314072",
+          "value": 314072.0
+        },
+        "cash_draw": {
+          "exact": "1791505/12",
+          "value": 149292.08333333334
+        },
+        "cash_keep": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "M": 123457,
+        "buy_by_class": {
+          "japan_equity": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "us_equity": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "emerging_equity": {
+            "exact": "416321/2",
+            "value": 208160.5
+          },
+          "japan_bond": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "developed_bond": {
+            "exact": "2928643/12",
+            "value": 244053.58333333334
+          },
+          "gold": {
+            "exact": "134607",
+            "value": 134607.0
+          }
+        },
+        "buy": {
+          "exact": "7041853/12",
+          "value": 586821.0833333334
+        },
+        "operation_total(sell+draw+M)": {
+          "exact": "7041853/12",
+          "value": 586821.0833333334
+        }
+      },
+      "identity": {
+        "lhs(buy+keep)": {
+          "exact": "7041853/12",
+          "value": 586821.0833333334
+        },
+        "rhs(sell+draw+M)": {
+          "exact": "7041853/12",
+          "value": 586821.0833333334
+        },
+        "holds": true
+      },
+      "message_reached": false,
+      "month_end_1": {
+        "total": {
+          "exact": "15294813",
+          "value": 15294813.0
+        },
+        "amount": {
+          "cash": {
+            "exact": "39689963/12",
+            "value": 3307496.9166666665
+          },
+          "japan_equity": {
+            "exact": "1925000",
+            "value": 1925000.0
+          },
+          "us_equity": {
+            "exact": "21877784/3",
+            "value": 7292594.666666667
+          },
+          "emerging_equity": {
+            "exact": "416321/2",
+            "value": 208160.5
+          },
+          "japan_bond": {
+            "exact": "2695000/3",
+            "value": 898333.3333333334
+          },
+          "developed_bond": {
+            "exact": "17743447/12",
+            "value": 1478620.5833333333
+          },
+          "gold": {
+            "exact": "184607",
+            "value": 184607.0
+          }
+        },
+        "ratio_pct": {
+          "cash": 21.624958191163675,
+          "japan_equity": 12.585966235742797,
+          "us_equity": 47.68018194577905,
+          "emerging_equity": 1.3609875452547213,
+          "japan_bond": 5.873450910013306,
+          "developed_bond": 9.667464279120859,
+          "gold": 1.206990892925595
+        }
+      },
+      "month_end_N": {
+        "total": {
+          "exact": "16652840",
+          "value": 16652840.0
+        },
+        "amount": {
+          "cash": {
+            "exact": "1665284",
+            "value": 1665284.0
+          },
+          "japan_equity": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "us_equity": {
+            "exact": "6661136",
+            "value": 6661136.0
+          },
+          "emerging_equity": {
+            "exact": "2497926",
+            "value": 2497926.0
+          },
+          "japan_bond": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "developed_bond": {
+            "exact": "4163210",
+            "value": 4163210.0
+          },
+          "gold": {
+            "exact": "1665284",
+            "value": 1665284.0
+          }
+        },
+        "ratio_pct": {
+          "cash": 10.0,
+          "japan_equity": 0.0,
+          "us_equity": 40.0,
+          "emerging_equity": 15.0,
+          "japan_bond": 0.0,
+          "developed_bond": 25.0,
+          "gold": 10.0
+        }
+      }
+    },
+    {
+      "name": "例2 M=0",
+      "N": 7,
+      "M": 0,
+      "T": {
+        "exact": "10345676",
+        "value": 10345676.0
+      },
+      "E": {
+        "exact": "10345676",
+        "value": 10345676.0
+      },
+      "target_amount": {
+        "cash": {
+          "exact": "2586419/5",
+          "value": 517283.8
+        },
+        "japan_equity": {
+          "exact": "7759257/5",
+          "value": 1551851.4
+        },
+        "us_equity": {
+          "exact": "18104933/5",
+          "value": 3620986.6
+        },
+        "developed_equity": {
+          "exact": "2586419",
+          "value": 2586419.0
+        },
+        "emerging_bond": {
+          "exact": "5172838/5",
+          "value": 1034567.6
+        },
+        "gold": {
+          "exact": "5172838/5",
+          "value": 1034567.6
+        }
+      },
+      "sell_total_by_class": {
+        "japan_equity": {
+          "exact": "8907408/5",
+          "value": 1781481.6
+        },
+        "us_equity": {
+          "exact": "6277782/5",
+          "value": 1255556.4
+        },
+        "developed_equity": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "emerging_bond": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "gold": {
+          "exact": "0",
+          "value": 0.0
+        }
+      },
+      "sell_total": {
+        "exact": "3037038",
+        "value": 3037038.0
+      },
+      "cash_draw_total": {
+        "exact": "3586416/5",
+        "value": 717283.2
+      },
+      "cash_keep_total": {
+        "exact": "0",
+        "value": 0.0
+      },
+      "buy_total_by_class": {
+        "japan_equity": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "us_equity": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "developed_equity": {
+          "exact": "1808642",
+          "value": 1808642.0
+        },
+        "emerging_bond": {
+          "exact": "5172838/5",
+          "value": 1034567.6
+        },
+        "gold": {
+          "exact": "4555558/5",
+          "value": 911111.6
+        }
+      },
+      "buy_total": {
+        "exact": "18771606/5",
+        "value": 3754321.2
+      },
+      "monthly": {
+        "sell_by_class": {
+          "japan_equity": {
+            "exact": "8907408/35",
+            "value": 254497.37142857144
+          },
+          "us_equity": {
+            "exact": "896826/5",
+            "value": 179365.2
+          },
+          "developed_equity": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "emerging_bond": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "gold": {
+            "exact": "0",
+            "value": 0.0
+          }
+        },
+        "sell": {
+          "exact": "3037038/7",
+          "value": 433862.5714285714
+        },
+        "cash_draw": {
+          "exact": "3586416/35",
+          "value": 102469.02857142857
+        },
+        "cash_keep": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "M": 0,
+        "buy_by_class": {
+          "japan_equity": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "us_equity": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "developed_equity": {
+            "exact": "1808642/7",
+            "value": 258377.42857142858
+          },
+          "emerging_bond": {
+            "exact": "5172838/35",
+            "value": 147795.37142857144
+          },
+          "gold": {
+            "exact": "650794/5",
+            "value": 130158.8
+          }
+        },
+        "buy": {
+          "exact": "2681658/5",
+          "value": 536331.6
+        },
+        "operation_total(sell+draw+M)": {
+          "exact": "2681658/5",
+          "value": 536331.6
+        }
+      },
+      "identity": {
+        "lhs(buy+keep)": {
+          "exact": "2681658/5",
+          "value": 536331.6
+        },
+        "rhs(sell+draw+M)": {
+          "exact": "2681658/5",
+          "value": 536331.6
+        },
+        "holds": true
+      },
+      "message_reached": false,
+      "month_end_1": {
+        "total": {
+          "exact": "10345676",
+          "value": 10345676.0
+        },
+        "amount": {
+          "cash": {
+            "exact": "39623429/35",
+            "value": 1132097.9714285715
+          },
+          "japan_equity": {
+            "exact": "107759247/35",
+            "value": 3078835.6285714284
+          },
+          "us_equity": {
+            "exact": "23485889/5",
+            "value": 4697177.8
+          },
+          "developed_equity": {
+            "exact": "7253081/7",
+            "value": 1036154.4285714285
+          },
+          "emerging_bond": {
+            "exact": "5172838/35",
+            "value": 147795.37142857144
+          },
+          "gold": {
+            "exact": "1268074/5",
+            "value": 253614.8
+          }
+        },
+        "ratio_pct": {
+          "cash": 10.942716275172076,
+          "japan_equity": 29.759637055823404,
+          "us_equity": 45.40232847036771,
+          "developed_equity": 10.01533808492967,
+          "emerging_bond": 1.4285714285714286,
+          "gold": 2.451408685135703
+        }
+      },
+      "month_end_N": {
+        "total": {
+          "exact": "10345676",
+          "value": 10345676.0
+        },
+        "amount": {
+          "cash": {
+            "exact": "2586419/5",
+            "value": 517283.8
+          },
+          "japan_equity": {
+            "exact": "7759257/5",
+            "value": 1551851.4
+          },
+          "us_equity": {
+            "exact": "18104933/5",
+            "value": 3620986.6
+          },
+          "developed_equity": {
+            "exact": "2586419",
+            "value": 2586419.0
+          },
+          "emerging_bond": {
+            "exact": "5172838/5",
+            "value": 1034567.6
+          },
+          "gold": {
+            "exact": "5172838/5",
+            "value": 1034567.6
+          }
+        },
+        "ratio_pct": {
+          "cash": 5.0,
+          "japan_equity": 15.0,
+          "us_equity": 35.0,
+          "developed_equity": 25.0,
+          "emerging_bond": 10.0,
+          "gold": 10.0
+        }
+      }
+    },
+    {
+      "name": "例2 M=300000(売却一部残る)",
+      "N": 7,
+      "M": 300000,
+      "T": {
+        "exact": "10345676",
+        "value": 10345676.0
+      },
+      "E": {
+        "exact": "12445676",
+        "value": 12445676.0
+      },
+      "target_amount": {
+        "cash": {
+          "exact": "3111419/5",
+          "value": 622283.8
+        },
+        "japan_equity": {
+          "exact": "9334257/5",
+          "value": 1866851.4
+        },
+        "us_equity": {
+          "exact": "21779933/5",
+          "value": 4355986.6
+        },
+        "developed_equity": {
+          "exact": "3111419",
+          "value": 3111419.0
+        },
+        "emerging_bond": {
+          "exact": "6222838/5",
+          "value": 1244567.6
+        },
+        "gold": {
+          "exact": "6222838/5",
+          "value": 1244567.6
+        }
+      },
+      "sell_total_by_class": {
+        "japan_equity": {
+          "exact": "7332408/5",
+          "value": 1466481.6
+        },
+        "us_equity": {
+          "exact": "2602782/5",
+          "value": 520556.4
+        },
+        "developed_equity": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "emerging_bond": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "gold": {
+          "exact": "0",
+          "value": 0.0
+        }
+      },
+      "sell_total": {
+        "exact": "1987038",
+        "value": 1987038.0
+      },
+      "cash_draw_total": {
+        "exact": "3061416/5",
+        "value": 612283.2
+      },
+      "cash_keep_total": {
+        "exact": "0",
+        "value": 0.0
+      },
+      "buy_total_by_class": {
+        "japan_equity": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "us_equity": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "developed_equity": {
+          "exact": "2333642",
+          "value": 2333642.0
+        },
+        "emerging_bond": {
+          "exact": "6222838/5",
+          "value": 1244567.6
+        },
+        "gold": {
+          "exact": "5605558/5",
+          "value": 1121111.6
+        }
+      },
+      "buy_total": {
+        "exact": "23496606/5",
+        "value": 4699321.2
+      },
+      "monthly": {
+        "sell_by_class": {
+          "japan_equity": {
+            "exact": "7332408/35",
+            "value": 209497.37142857144
+          },
+          "us_equity": {
+            "exact": "371826/5",
+            "value": 74365.2
+          },
+          "developed_equity": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "emerging_bond": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "gold": {
+            "exact": "0",
+            "value": 0.0
+          }
+        },
+        "sell": {
+          "exact": "1987038/7",
+          "value": 283862.5714285714
+        },
+        "cash_draw": {
+          "exact": "3061416/35",
+          "value": 87469.02857142857
+        },
+        "cash_keep": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "M": 300000,
+        "buy_by_class": {
+          "japan_equity": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "us_equity": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "developed_equity": {
+            "exact": "2333642/7",
+            "value": 333377.4285714286
+          },
+          "emerging_bond": {
+            "exact": "6222838/35",
+            "value": 177795.37142857144
+          },
+          "gold": {
+            "exact": "800794/5",
+            "value": 160158.8
+          }
+        },
+        "buy": {
+          "exact": "3356658/5",
+          "value": 671331.6
+        },
+        "operation_total(sell+draw+M)": {
+          "exact": "3356658/5",
+          "value": 671331.6
+        }
+      },
+      "identity": {
+        "lhs(buy+keep)": {
+          "exact": "3356658/5",
+          "value": 671331.6
+        },
+        "rhs(sell+draw+M)": {
+          "exact": "3356658/5",
+          "value": 671331.6
+        },
+        "holds": true
+      },
+      "message_reached": false,
+      "month_end_1": {
+        "total": {
+          "exact": "10645676",
+          "value": 10645676.0
+        },
+        "amount": {
+          "cash": {
+            "exact": "40148429/35",
+            "value": 1147097.9714285715
+          },
+          "japan_equity": {
+            "exact": "109334247/35",
+            "value": 3123835.6285714284
+          },
+          "us_equity": {
+            "exact": "24010889/5",
+            "value": 4802177.8
+          },
+          "developed_equity": {
+            "exact": "7778081/7",
+            "value": 1111154.4285714286
+          },
+          "emerging_bond": {
+            "exact": "6222838/35",
+            "value": 177795.37142857144
+          },
+          "gold": {
+            "exact": "1418074/5",
+            "value": 283614.8
+          }
+        },
+        "ratio_pct": {
+          "cash": 10.77524782295245,
+          "japan_equity": 29.34370375889167,
+          "us_equity": 45.10918611462532,
+          "developed_equity": 10.437612684919479,
+          "emerging_bond": 1.670118190977928,
+          "gold": 2.6641314276331536
+        }
+      },
+      "month_end_N": {
+        "total": {
+          "exact": "12445676",
+          "value": 12445676.0
+        },
+        "amount": {
+          "cash": {
+            "exact": "3111419/5",
+            "value": 622283.8
+          },
+          "japan_equity": {
+            "exact": "9334257/5",
+            "value": 1866851.4
+          },
+          "us_equity": {
+            "exact": "21779933/5",
+            "value": 4355986.6
+          },
+          "developed_equity": {
+            "exact": "3111419",
+            "value": 3111419.0
+          },
+          "emerging_bond": {
+            "exact": "6222838/5",
+            "value": 1244567.6
+          },
+          "gold": {
+            "exact": "6222838/5",
+            "value": 1244567.6
+          }
+        },
+        "ratio_pct": {
+          "cash": 5.0,
+          "japan_equity": 15.0,
+          "us_equity": 35.0,
+          "developed_equity": 25.0,
+          "emerging_bond": 10.0,
+          "gold": 10.0
+        }
+      }
+    },
+    {
+      "name": "例2 M=1696650(売却0, 最小整数円)",
+      "N": 7,
+      "M": 1696650,
+      "T": {
+        "exact": "10345676",
+        "value": 10345676.0
+      },
+      "E": {
+        "exact": "22222226",
+        "value": 22222226.0
+      },
+      "target_amount": {
+        "cash": {
+          "exact": "11111113/10",
+          "value": 1111111.3
+        },
+        "japan_equity": {
+          "exact": "33333339/10",
+          "value": 3333333.9
+        },
+        "us_equity": {
+          "exact": "77777791/10",
+          "value": 7777779.1
+        },
+        "developed_equity": {
+          "exact": "11111113/2",
+          "value": 5555556.5
+        },
+        "emerging_bond": {
+          "exact": "11111113/5",
+          "value": 2222222.6
+        },
+        "gold": {
+          "exact": "11111113/5",
+          "value": 2222222.6
+        }
+      },
+      "sell_total_by_class": {
+        "japan_equity": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "us_equity": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "developed_equity": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "emerging_bond": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "gold": {
+          "exact": "0",
+          "value": 0.0
+        }
+      },
+      "sell_total": {
+        "exact": "0",
+        "value": 0.0
+      },
+      "cash_draw_total": {
+        "exact": "1234557/10",
+        "value": 123455.7
+      },
+      "cash_keep_total": {
+        "exact": "0",
+        "value": 0.0
+      },
+      "buy_total_by_class": {
+        "japan_equity": {
+          "exact": "9/10",
+          "value": 0.9
+        },
+        "us_equity": {
+          "exact": "29012361/10",
+          "value": 2901236.1
+        },
+        "developed_equity": {
+          "exact": "9555559/2",
+          "value": 4777779.5
+        },
+        "emerging_bond": {
+          "exact": "11111113/5",
+          "value": 2222222.6
+        },
+        "gold": {
+          "exact": "10493833/5",
+          "value": 2098766.6
+        }
+      },
+      "buy_total": {
+        "exact": "120000057/10",
+        "value": 12000005.7
+      },
+      "monthly": {
+        "sell_by_class": {
+          "japan_equity": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "us_equity": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "developed_equity": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "emerging_bond": {
+            "exact": "0",
+            "value": 0.0
+          },
+          "gold": {
+            "exact": "0",
+            "value": 0.0
+          }
+        },
+        "sell": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "cash_draw": {
+          "exact": "1234557/70",
+          "value": 17636.52857142857
+        },
+        "cash_keep": {
+          "exact": "0",
+          "value": 0.0
+        },
+        "M": 1696650,
+        "buy_by_class": {
+          "japan_equity": {
+            "exact": "9/70",
+            "value": 0.12857142857142856
+          },
+          "us_equity": {
+            "exact": "4144623/10",
+            "value": 414462.3
+          },
+          "developed_equity": {
+            "exact": "9555559/14",
+            "value": 682539.9285714285
+          },
+          "emerging_bond": {
+            "exact": "11111113/35",
+            "value": 317460.3714285714
+          },
+          "gold": {
+            "exact": "1499119/5",
+            "value": 299823.8
+          }
+        },
+        "buy": {
+          "exact": "120000057/70",
+          "value": 1714286.5285714285
+        },
+        "operation_total(sell+draw+M)": {
+          "exact": "120000057/70",
+          "value": 1714286.5285714285
+        }
+      },
+      "identity": {
+        "lhs(buy+keep)": {
+          "exact": "120000057/70",
+          "value": 1714286.5285714285
+        },
+        "rhs(sell+draw+M)": {
+          "exact": "120000057/70",
+          "value": 1714286.5285714285
+        },
+        "holds": true
+      },
+      "message_reached": false,
+      "month_end_1": {
+        "total": {
+          "exact": "12042326",
+          "value": 12042326.0
+        },
+        "amount": {
+          "cash": {
+            "exact": "85185133/70",
+            "value": 1216930.4714285715
+          },
+          "japan_equity": {
+            "exact": "233333319/70",
+            "value": 3333333.1285714284
+          },
+          "us_equity": {
+            "exact": "52910053/10",
+            "value": 5291005.3
+          },
+          "developed_equity": {
+            "exact": "20444437/14",
+            "value": 1460316.9285714286
+          },
+          "emerging_bond": {
+            "exact": "11111113/35",
+            "value": 317460.3714285714
+          },
+          "gold": {
+            "exact": "2116399/5",
+            "value": 423279.8
+          }
+        },
+        "ratio_pct": {
+          "cash": 10.105443677812504,
+          "japan_equity": 27.68014359162365,
+          "us_equity": 43.93673863338362,
+          "developed_equity": 12.126535426556535,
+          "emerging_bond": 2.636204761676203,
+          "gold": 3.5149339089474907
+        }
+      },
+      "month_end_N": {
+        "total": {
+          "exact": "22222226",
+          "value": 22222226.0
+        },
+        "amount": {
+          "cash": {
+            "exact": "11111113/10",
+            "value": 1111111.3
+          },
+          "japan_equity": {
+            "exact": "33333339/10",
+            "value": 3333333.9
+          },
+          "us_equity": {
+            "exact": "77777791/10",
+            "value": 7777779.1
+          },
+          "developed_equity": {
+            "exact": "11111113/2",
+            "value": 5555556.5
+          },
+          "emerging_bond": {
+            "exact": "11111113/5",
+            "value": 2222222.6
+          },
+          "gold": {
+            "exact": "11111113/5",
+            "value": 2222222.6
+          }
+        },
+        "ratio_pct": {
+          "cash": 5.0,
+          "japan_equity": 15.0,
+          "us_equity": 35.0,
+          "developed_equity": 25.0,
+          "emerging_bond": 10.0,
+          "gold": 10.0
+        }
+      }
+    }
+  ],
+  "example2_min_M_zero_sell": {
+    "formula": "M_min = max_k (H_k*100/p_k - T)/N  over 非現金 k (H_k>0)。p_k=0 かつ H_k>0 なら到達不可",
+    "binding_class": "japan_equity",
+    "M_min": {
+      "exact": "11876544/7",
+      "value": 1696649.142857143
+    },
+    "M_min_integer_yen(ceil)": 1696650
+  },
+  "example1_min_M_zero_sell": {
+    "M_min": null,
+    "reason_class": "japan_equity"
+  },
+  "threshold_table": [
+    {
+      "deviation": 4.99,
+      "stage(strict)": "軽微",
+      "flag5_strict": false,
+      "flag5_eps": false,
+      "flag10_strict": false,
+      "flag10_eps": false
+    },
+    {
+      "deviation": 5,
+      "stage(strict)": "要注意",
+      "flag5_strict": true,
+      "flag5_eps": true,
+      "flag10_strict": false,
+      "flag10_eps": false
+    },
+    {
+      "deviation": -5,
+      "stage(strict)": "要注意",
+      "flag5_strict": true,
+      "flag5_eps": true,
+      "flag10_strict": false,
+      "flag10_eps": false
+    },
+    {
+      "deviation": 4.9999999999,
+      "stage(strict)": "軽微",
+      "flag5_strict": false,
+      "flag5_eps": true,
+      "flag10_strict": false,
+      "flag10_eps": false
+    },
+    {
+      "deviation": 9.99,
+      "stage(strict)": "要注意",
+      "flag5_strict": true,
+      "flag5_eps": true,
+      "flag10_strict": false,
+      "flag10_eps": false
+    },
+    {
+      "deviation": 10,
+      "stage(strict)": "大きなズレ",
+      "flag5_strict": true,
+      "flag5_eps": true,
+      "flag10_strict": true,
+      "flag10_eps": true
+    },
+    {
+      "deviation": -12.3,
+      "stage(strict)": "大きなズレ",
+      "flag5_strict": true,
+      "flag5_eps": true,
+      "flag10_strict": true,
+      "flag10_eps": true
+    }
+  ],
+  "threshold_note": "eps版は |d| >= 目安 - 1e-09。段階は仕様どおり厳密比較(eps無し)",
+  "example1_deviation": {
+    "T": 15171356,
+    "rows": [
+      {
+        "class": "cash",
+        "now_pct": 22.78497057217562,
+        "target_pct": 10,
+        "deviation_pt": 12.78497057217562,
+        "stage": "大きなズレ",
+        "flag5": true,
+        "flag10": true
+      },
+      {
+        "class": "japan_equity",
+        "now_pct": 13.841874121205777,
+        "target_pct": 0,
+        "deviation_pt": 13.841874121205777,
+        "stage": "大きなズレ",
+        "flag5": true,
+        "flag10": true
+      },
+      {
+        "class": "us_equity",
+        "now_pct": 48.44655942422022,
+        "target_pct": 40,
+        "deviation_pt": 8.446559424220219,
+        "stage": "要注意",
+        "flag5": true,
+        "flag10": false
+      },
+      {
+        "class": "emerging_equity",
+        "now_pct": 0.0,
+        "target_pct": 15,
+        "deviation_pt": -15.0,
+        "stage": "大きなズレ",
+        "flag5": true,
+        "flag10": true
+      },
+      {
+        "class": "japan_bond",
+        "now_pct": 6.459541256562697,
+        "target_pct": 0,
+        "deviation_pt": 6.459541256562697,
+        "stage": "要注意",
+        "flag5": true,
+        "flag10": false
+      },
+      {
+        "class": "developed_bond",
+        "now_pct": 8.137486194378406,
+        "target_pct": 25,
+        "deviation_pt": -16.862513805621596,
+        "stage": "大きなズレ",
+        "flag5": true,
+        "flag10": true
+      },
+      {
+        "class": "gold",
+        "now_pct": 0.32956843145728043,
+        "target_pct": 10,
+        "deviation_pt": -9.67043156854272,
+        "stage": "要注意",
+        "flag5": true,
+        "flag10": false
+      }
+    ],
+    "count_flag5": 7,
+    "count_flag10": 4
+  }
+}
