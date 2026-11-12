@@ -95,13 +95,13 @@ export function calculateDeviation(
  * 積立のみモード — 売らずに目標配分に着くまでの月数（FI_project #76）。
  * n か月後の総資産 T＋M×n の目標額が、目標より多い現金以外の資産クラスの今の額に追いつく最小の n。
  * 現金は取り崩して不足の資産クラスへ回せるので月数を縛らない。毎月の配分は calculatePeriod(holdings, target, n, M)。
- * 返り値：月数（目標どおりなら0）／M≤0 なら null／現金以外で目標0%なのに保有があれば { unreachable: 資産クラス名 }
+ * 返り値：月数（目標どおりなら0）／M≤0 なら null／現金以外で目標0%なのに保有があれば { unreachable: 資産クラス名と保有額 }
  */
 export function estimateMonthsToRebalance(
   holdings: Holdings,
   target: TargetAllocation,
   monthlyAmount: number,
-): number | null | { unreachable: string[] } {
+): number | null | { unreachable: { label: string; amount: number }[] } {
   if (monthlyAmount <= 0) return null;
   const total = getTotalAssets(holdings);
   if (total <= 0) return 1;  // 保有0：今月の積立を目標配分どおりに買えば終わる（#76 レビュー）
@@ -111,7 +111,7 @@ export function estimateMonthsToRebalance(
 
   const unreachable = ASSET_CLASSES
     .filter(ac => ac.key !== 'cash' && (target[ac.key] || 0) <= 0 && (holdings[ac.key] || 0) > 0)
-    .map(ac => ac.label);
+    .map(ac => ({ label: ac.label, amount: holdings[ac.key] || 0 }));
   if (unreachable.length > 0) return { unreachable };
 
   let months = 1;
@@ -275,6 +275,7 @@ export function calculatePeriod(
     endTotal: plan.endTotal,
     cashDeposit: plan.cashDeposit,
     monthlyCashDeposit: N > 0 ? Math.round(plan.cashDeposit / N) : 0,
+    sellTotals: plan.sell,
   };
 }
 
@@ -349,4 +350,42 @@ export function formatCurrency(amount: number): string {
   const abs = Math.abs(amount);
   const formatted = '¥' + abs.toLocaleString('ja-JP');
   return amount < 0 ? '-' + formatted : formatted;
+}
+
+// ---- 表示用（#76 の差し戻し）----
+
+/** 積立のみ：完了まで1年を超えたら注意を出す（12ヶ月ちょうどでは出さない） */
+export const ADD_ONLY_NOTICE_MONTHS = 12;
+/** 積立のみ：これを超えたら月数を出さず「10年を超えます」 */
+export const ADD_ONLY_MAX_SHOWN_MONTHS = 120;
+
+export function isOverOneYear(months: number): boolean {
+  return months > ADD_ONLY_NOTICE_MONTHS;
+}
+
+export function isOverTenYears(months: number): boolean {
+  return months > ADD_ONLY_MAX_SHOWN_MONTHS;
+}
+
+/** 積立だけでは戻らないクラスの表示（例：「金 123円、日本REIT 1円」） */
+export function formatUnreachable(items: { label: string; amount: number }[]): string {
+  return items.map(i => `${i.label} ${Math.round(i.amount).toLocaleString('ja-JP')}円`).join('、');
+}
+
+/** 期間指定：売却の各行（毎月の額と、期間全体の総額。総額は丸める前の売却総額が正） */
+export function periodSellRows(result: PeriodRebalanceResult): { key: AssetClassKey; label: string; monthly: number; total: number }[] {
+  const N = result.months;
+  if (N <= 0) return [];
+  return ASSET_CLASSES
+    .filter(ac => (result.sellTotals[ac.key] || 0) > 0)
+    .map(ac => {
+      const total = result.sellTotals[ac.key]!;
+      return { key: ac.key, label: ac.label, monthly: -total / N, total: -total };
+    })
+    .sort((a, b) => a.total - b.total);
+}
+
+/** 期間指定：売却の行の文言（例：「毎月 -¥342,000（3ヶ月で計 -¥1,025,000）」） */
+export function formatPeriodSellRow(row: { monthly: number; total: number }, months: number): string {
+  return `毎月 ${formatThousands(row.monthly)}（${months}ヶ月で計 ${formatThousands(row.total)}）`;
 }

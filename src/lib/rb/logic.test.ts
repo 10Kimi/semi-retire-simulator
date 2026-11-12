@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, getTotalAssets, calculateEmergencyFund, applyEmergencyFund, calculatePeriodByMonths, calculatePeriod, simulateMonthly, isOverThreshold, countOverThreshold, estimateMonthsToRebalance } from './logic';
+import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, getTotalAssets, calculateEmergencyFund, applyEmergencyFund, calculatePeriodByMonths, calculatePeriod, simulateMonthly, isOverThreshold, countOverThreshold, estimateMonthsToRebalance, isOverOneYear, isOverTenYears, formatUnreachable, periodSellRows, formatPeriodSellRow } from './logic';
 import type { DeviationItem } from './types';
 import type { Holdings, TargetAllocation } from './types';
 
@@ -352,7 +352,7 @@ describe('estimateMonthsToRebalance（積立のみ・売らずに戻る月数、
   it('現金以外で目標0%なのに保有がある → 積立だけでは戻らない（名前を返す）', () => {
     const h: Holdings = { us_equity: 500_000, gold: 123_456, japan_reit: 1 };
     const t: TargetAllocation = { us_equity: 100 };
-    expect(estimateMonthsToRebalance(h, t, 100_000)).toEqual({ unreachable: ['日本REIT', '金'] });
+    expect(estimateMonthsToRebalance(h, t, 100_000)).toEqual({ unreachable: [{ label: '日本REIT', amount: 1 }, { label: '金', amount: 123_456 }] });
   });
 
   it('現金だけが目標0%で保有あり → 月数が出る（現金は縛らない）', () => {
@@ -422,5 +422,38 @@ describe('estimateMonthsToRebalance（積立のみ・売らずに戻る月数、
     expect(r.monthlyCashDeposit).toBe(91_358);
     expect(r.monthlyItems).toEqual([{ key: 'us_equity', label: '米国株', amount: 32_099 }]);
     expect(Math.abs(sumBuys(r.monthlyItems) + r.monthlyCashDeposit - (M + r.monthlyCashContribution))).toBeLessThanOrEqual(3);
+  });
+});
+
+describe('表示（#76 の差し戻し）', () => {
+  it('期間指定：売却の行の総額は calculatePeriod の売却総額（丸める前）と一致', () => {
+    const h: Holdings = { cash: 3_456_789, japan_equity: 2_100_000, us_equity: 7_350_000, developed_bond: 1_234_567, japan_bond: 980_000, gold: 50_000 };
+    const t: TargetAllocation = { cash: 10, us_equity: 40, emerging_equity: 15, developed_bond: 25, gold: 10 };
+    const r = calculatePeriod(h, t, 3, 123_457)!;
+    const rows = periodSellRows(r);
+    expect(rows.map(x => x.key).sort()).toEqual(Object.keys(r.sellTotals).sort());
+    for (const row of rows) {
+      expect(row.total).toBe(-r.sellTotals[row.key]!);
+      expect(row.monthly * 3).toBeCloseTo(row.total, 6);
+      expect(Math.abs(row.total + Math.abs(r.sellItems.find(i => i.key === row.key)!.amount))).toBeLessThanOrEqual(0.5);
+    }
+    const sum = rows.reduce((a, x) => a - x.total, 0);
+    expect(sum).toBeCloseTo(r.requiredSellAmount, 6);
+    expect(formatPeriodSellRow({ monthly: -341_712.4, total: -1_025_137.2 }, 3)).toBe('毎月 -¥342,000（3ヶ月で計 -¥1,025,000）');
+  });
+
+  it('積立のみ：1年超の注意は12ヶ月では出ず13ヶ月で出る、120ヶ月を超えたら10年超', () => {
+    expect(isOverOneYear(12)).toBe(false);
+    expect(isOverOneYear(13)).toBe(true);
+    expect(isOverTenYears(120)).toBe(false);
+    expect(isOverTenYears(121)).toBe(true);
+  });
+
+  it('積立のみ：戻らないときの文言に金額が入る', () => {
+    const h: Holdings = { us_equity: 500_000, gold: 123, japan_reit: 1 };
+    const t: TargetAllocation = { us_equity: 100 };
+    const m = estimateMonthsToRebalance(h, t, 100_000);
+    expect(typeof m).toBe('object');
+    expect(formatUnreachable((m as { unreachable: { label: string; amount: number }[] }).unreachable)).toBe('日本REIT 1円、金 123円');
   });
 });

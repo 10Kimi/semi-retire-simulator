@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import UserStatusBar from '../components/UserStatusBar';
 import { ASSET_CLASSES, MODEL_ALLOCATIONS, MODEL_META } from '../lib/rb/types';
 import type { Holdings, TargetAllocation, DeviationItem, AdjustmentItem, AdjustmentMode } from '../lib/rb/types';
-import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, estimateMonthsToRebalance, calculateEmergencyFund, applyEmergencyFund, calculatePeriod, isOverThreshold, countOverThreshold, REBALANCE_THRESHOLDS, DEFAULT_REBALANCE_THRESHOLD, getTotalAssets, formatCurrency, formatThousands } from '../lib/rb/logic';
+import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, estimateMonthsToRebalance, calculateEmergencyFund, applyEmergencyFund, calculatePeriod, isOverThreshold, isOverOneYear, isOverTenYears, formatUnreachable, periodSellRows, formatPeriodSellRow, countOverThreshold, REBALANCE_THRESHOLDS, DEFAULT_REBALANCE_THRESHOLD, getTotalAssets, formatCurrency, formatThousands } from '../lib/rb/logic';
 import { fetchTargetAllocation, saveTargetAllocation, fetchLatestSnapshot, saveSnapshot, fetchRbProfile, saveRbProfile } from '../lib/rb/db';
 import { loadLatestRisk } from '../lib/riskDb';
 import MfImportFlow from '../components/rb/MfImportFlow';
@@ -96,6 +96,7 @@ function loadThreshold(): number {
 export default function RebalancePage() {
   const { user } = useAuth();
   const [step, setStep] = useState<Step>('input');
+  const [overYearOpen, setOverYearOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [optimalLoading, setOptimalLoading] = useState(false);
   const [userRiskLevel, setUserRiskLevel] = useState<number>(4);
@@ -661,7 +662,7 @@ export default function RebalancePage() {
               {adjustMode === 'add' && (
                 <>
                   <div className="mb-4">
-                    <label className="text-sm text-slate-400 mb-2 block">今月の積立予定額（円）</label>
+                    <label className="text-sm text-slate-400 mb-2 block">毎月の積立額（円）</label>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -689,7 +690,7 @@ export default function RebalancePage() {
                     if (months == null) return null;
                     if (typeof months === 'object') return (
                       <div className="space-y-4">
-                        <p className="text-xs text-amber-300">目標が0%の資産クラス（{months.unreachable.join('、')}）があるため、積立だけでは戻りません。「売却あり」か「期間指定」を使ってください</p>
+                        <p className="text-xs text-amber-300">目標が0%の資産クラス（{formatUnreachable(months.unreachable)}）があるため、積立だけでは戻りません。「売却あり」か「期間指定」を使ってください</p>
                         {adjustmentItems.length > 0 && (
                           <div>
                             <h4 className="text-sm text-slate-300 font-medium mb-2">今月の積立先</h4>
@@ -703,7 +704,7 @@ export default function RebalancePage() {
                     return (
                       <div className="space-y-4">
                         <div>
-                          <h4 className="text-sm text-slate-300 font-medium mb-2">毎月の積立先（{months}ヶ月、計算上の目安）</h4>
+                          <h4 className="text-sm text-slate-300 font-medium mb-2">毎月の積立先（{isOverTenYears(months) ? '10年超' : `${months}ヶ月`}、計算上の目安）</h4>
                           <AdjustmentList items={plan.monthlyItems} />
                         </div>
                         {plan.monthlyCashContribution > 0 && (
@@ -713,16 +714,34 @@ export default function RebalancePage() {
                           <p className="text-xs text-slate-400">現金のまま置く（毎月）：{formatThousands(plan.monthlyCashDeposit)}</p>
                         )}
                         <div className="bg-slate-800/50 rounded-lg px-4 py-3 text-center">
-                          <p className="text-sm text-slate-300">
-                            このペースで約 <span className="text-emerald-400 font-bold text-lg">{months}</span> ヶ月後にリバランス完了（計算上の目安）
-                          </p>
+                          {isOverTenYears(months)
+                            ? <p className="text-sm text-slate-300">このペースでは、完了まで<span className="text-amber-300 font-bold">10年を超えます</span>（計算上の目安）</p>
+                            : <p className="text-sm text-slate-300">
+                                このペースで約 <span className="text-emerald-400 font-bold text-lg">{months}</span> ヶ月後にリバランス完了（計算上の目安）
+                              </p>}
                         </div>
+                        {isOverOneYear(months) && (
+                          <div className="bg-amber-900/20 border border-amber-500/30 rounded-lg">
+                            <button
+                              type="button"
+                              onClick={() => setOverYearOpen(o => !o)}
+                              aria-expanded={overYearOpen}
+                              className="w-full flex justify-between items-center px-4 py-2 text-sm text-amber-300"
+                            >
+                              <span>⚠ 完了まで1年超</span>
+                              <span aria-hidden="true">{overYearOpen ? '−' : '＋'}</span>
+                            </button>
+                            {overYearOpen && (
+                              <p className="px-4 pb-3 text-xs text-amber-200/80 leading-relaxed">完了まで1年を超えます。期間が長いほど、その間に相場が大きく動いたときの影響を受けやすくなります。「期間指定」で短くすることも考えてください（売らずに戻すことを優先するなら、このままでもかまいません）</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
 
                   {!monthlyAmount && (
-                    <p className="text-xs text-slate-500 text-center py-4">積立予定額を入力すると計算結果を表示します</p>
+                    <p className="text-xs text-slate-500 text-center py-4">毎月の積立額を入力すると計算結果を表示します</p>
                   )}
                 </>
               )}
@@ -810,19 +829,24 @@ export default function RebalancePage() {
 
                     {periodResult && periodResult.months > 0 && (() => {
                       const N = periodResult.months;
-                      const sellOps: AdjustmentItem[] = periodResult.sellItems
-                        .map(i => ({ ...i, amount: Math.round(i.amount / N) }))
-                        .filter(i => i.amount < 0);
+                      const sellRows = periodSellRows(periodResult);
                       const buyOps: AdjustmentItem[] = periodResult.monthlyItems;
 
                       return (
                         <div className="space-y-4">
                           <h4 className="text-sm text-slate-300 font-medium">今月の操作（計算上の目安）</h4>
 
-                          {sellOps.length > 0 && (
+                          {sellRows.length > 0 && (
                             <div className="space-y-3">
                               <p className="text-xs text-red-400 mb-2">売却（毎月・分散）</p>
-                              <AdjustmentList items={sellOps} />
+                              <div className="space-y-2">
+                                {sellRows.map(r => (
+                                  <div key={r.key} className="bg-slate-800 rounded-lg px-4 py-3 flex justify-between items-center gap-3">
+                                    <span className="text-sm">{r.label}</span>
+                                    <span className="text-sm font-medium text-red-400 text-right">{formatPeriodSellRow(r, N)}</span>
+                                  </div>
+                                ))}
+                              </div>
                               <SellAccountNote />
                             </div>
                           )}

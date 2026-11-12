@@ -84,6 +84,7 @@ export interface PeriodRebalanceResult {
   endTotal: number;                  // N か月後の総資産 E
   cashDeposit: number;               // 現金に残す総額（積立のうち現金のまま置く分）
   monthlyCashDeposit: number;        // 毎月の現金に残す額
+  sellTotals: Partial<Record<AssetClassKey, number>>; // 現金以外の売却の総額（丸める前、正の値。#76）
 }
 
 /** 月次推移の1ヶ月分 */
