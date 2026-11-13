@@ -53,7 +53,7 @@ export default function RiskResultDisplay({ result, onRetry }: Props) {
           </span>
         </div>
         <p className="text-xs text-gray-500 mt-2">
-          ボラティリティ目安: {levelDef.volatility}
+          1年の値動きのめやす: {levelDef.volatility}
         </p>
       </div>
 
