@@ -42,7 +42,7 @@
     "puppeteer-core": "^25.17.0",
     "serve-handler": "^6.1.6",
     "tailwindcss": "^4.2.0",
-    "tsx": "^4.21.0",
+    "tsx": "^4.23.15",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",
     "vite": "^7.3.1",
