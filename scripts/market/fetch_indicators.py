@@ -28,6 +28,14 @@ import yfinance as yf
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_FILE = os.path.join(SCRIPT_DIR, "indicators.json")
 
+# launchd の zsh は com.apple.macl 付きの .env を開けないため、Python 側で読む（FI_project #70）。
+# GitHub Actions は Secrets で渡し、python-dotenv も入れていないので、無ければ何もしない。
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(SCRIPT_DIR, ".env"))
+except ImportError:
+    pass
+
 # Supabase設定（環境変数から取得）
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
