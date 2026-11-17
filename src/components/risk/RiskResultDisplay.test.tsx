@@ -5,9 +5,9 @@ import type { RiskResult } from '../../types/risk';
 import { getRiskLevelDef } from '../../logic/riskScoring';
 
 // 無料は3段階、有料（is_premium）は7段階とモデル配分（FI_project #101、D-062）
-const premium = { value: false };
+const premium = { value: false, loading: false };
 vi.mock('../../hooks/useIsPremium', () => ({
-  useIsPremium: () => ({ isPremium: premium.value, loading: false, refresh: () => {} }),
+  useIsPremium: () => ({ isPremium: premium.value, loading: premium.loading, refresh: () => {} }),
 }));
 vi.mock('../../contexts/AuthContext', () => ({
   useAuth: () => ({ user: { id: 'u1' } }),
@@ -38,7 +38,16 @@ function render(r: RiskResult): string {
 }
 
 describe('RiskResultDisplay', () => {
-  beforeEach(() => { premium.value = false; });
+  beforeEach(() => { premium.value = false; premium.loading = false; });
+
+  it('有料かどうかを読み込んでいる間は、3段階も7段階も出さない', () => {
+    premium.value = true;
+    premium.loading = true;
+    const html = render(result(5, 6, 5));
+    expect(html).toContain('読み込み中');
+    expect(html).not.toContain('バランス');
+    expect(html).not.toContain('レベル 5');
+  });
 
   it('無料：3段階の名前を出し、レベル番号・モデル配分・採用ボタンは出さない', () => {
     const html = render(result(5, 6, 5));

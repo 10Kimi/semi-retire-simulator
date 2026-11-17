@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { adoptModelAllocation } from '../../lib/rb/db';
 import AllocationDisclaimer from '../AllocationDisclaimer';
 import { useIsPremium } from '../../hooks/useIsPremium';
-import { RISK_TIER_DEFS, levelToTier, limitingAxisText } from '../../logic/riskTiers';
+import { RISK_TIER_DEFS, levelToTier, limitingAxisText, tierView } from '../../logic/riskTiers';
 
 interface Props {
   result: RiskResult;
@@ -31,11 +31,16 @@ function LevelBar({ level, label }: { level: number; label: string }) {
 
 /**
  * 無料の利用者は3段階、有料の利用者（is_premium）は7段階とモデル配分（FI_project #101、D-062）。
- * 計算・保存（final_level 1〜7）はどちらも同じ。読み込み中は無料の画面を出す。
+ * 計算・保存（final_level 1〜7）はどちらも同じ。
+ * 有料かどうかを読み込んでいる間はどちらも出さない（有料の人に3段階が一瞬出ないように、/pf と同じ）。
  */
 export default function RiskResultDisplay({ result, onRetry }: Props) {
-  const { isPremium } = useIsPremium();
-  return isPremium
+  const { isPremium, loading } = useIsPremium();
+  const view = tierView(loading, isPremium);
+  if (view === 'loading') {
+    return <p className="text-sm text-gray-500 text-center py-10">結果を読み込み中...</p>;
+  }
+  return view === 'levels7'
     ? <PremiumRiskResult result={result} onRetry={onRetry} />
     : <FreeRiskResult result={result} onRetry={onRetry} />;
 }
