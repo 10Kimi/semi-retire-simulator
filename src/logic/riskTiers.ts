@@ -27,6 +27,17 @@ export const RISK_TIER_DEFS: RiskTierDef[] = [
   { key: 'growth',  order: 3, name: '成長重視', levels: 'Lv6〜7', volatility: '±15%超',  color: 'bg-orange-100', textColor: 'text-orange-800' },
 ];
 
+export type TierView = 'loading' | 'tiers3' | 'levels7';
+
+/**
+ * 3段階（無料）と7段階（有料）のどちらを見せるか。
+ * 有料かどうかを読み込んでいる間はどちらも出さない（有料の人に3段階が一瞬出ないように、FI_project #101）。
+ */
+export function tierView(premiumLoading: boolean, isPremium: boolean): TierView {
+  if (premiumLoading) return 'loading';
+  return isPremium ? 'levels7' : 'tiers3';
+}
+
 /** 7段階のレベル（1〜7）→ 3段階。範囲外は端に寄せる（getRiskLevelDef と同じ扱い） */
 export function levelToTier(level: number): RiskTierDef {
   const lv = Math.max(1, Math.min(7, Math.round(level)));

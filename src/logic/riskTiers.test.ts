@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RISK_TIER_DEFS, levelToTier, analyzePfTierGap, limitingAxisText } from './riskTiers';
+import { RISK_TIER_DEFS, levelToTier, analyzePfTierGap, limitingAxisText, tierView } from './riskTiers';
 import { classifyRiskLevel7 } from './pfSimple';
 
 describe('levelToTier（7段階 → 3段階、FI_project #101）', () => {
@@ -45,6 +45,17 @@ describe('analyzePfTierGap（無料の /pf のズレは3段階どうし）', () 
     const r = analyzePfTierGap(6, 2);
     expect(r.pfTier.name).toBe('成長重視');
     expect(r.assessmentTier.name).toBe('安定重視');
+  });
+});
+
+describe('tierView（有料かどうかを読み込んでいる間はどちらも出さない）', () => {
+  it('読み込み中は loading（isPremium の値によらない）', () => {
+    expect(tierView(true, false)).toBe('loading');
+    expect(tierView(true, true)).toBe('loading');
+  });
+  it('読み終えたら無料は3段階、有料は7段階', () => {
+    expect(tierView(false, false)).toBe('tiers3');
+    expect(tierView(false, true)).toBe('levels7');
   });
 });
 
