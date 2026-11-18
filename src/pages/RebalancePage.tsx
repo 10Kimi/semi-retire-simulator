@@ -4,7 +4,8 @@ import UserStatusBar from '../components/UserStatusBar';
 import { ASSET_CLASSES, MODEL_ALLOCATIONS, MODEL_META } from '../lib/rb/types';
 import type { Holdings, TargetAllocation, DeviationItem, AdjustmentItem, AdjustmentMode } from '../lib/rb/types';
 import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, estimateMonthsToRebalance, calculateEmergencyFund, applyEmergencyFund, calculatePeriod, isOverThreshold, isOverOneYear, isOverTenYears, formatUnreachable, periodSellRows, formatPeriodSellRow, countOverThreshold, REBALANCE_THRESHOLDS, DEFAULT_REBALANCE_THRESHOLD, getTotalAssets, formatCurrency, formatThousands } from '../lib/rb/logic';
-import { fetchTargetAllocation, saveTargetAllocation, fetchLatestSnapshot, saveSnapshot, fetchRbProfile, saveRbProfile } from '../lib/rb/db';
+import { fetchTargetAllocation, saveTargetAllocation, fetchRbProfile, saveRbProfile, clearServerLivingCost, todayInJapan } from '../lib/rb/db';
+import { browserStorage, loadRbAmounts, saveLocalHoldings, saveLocalLivingCost, planLivingCostMove } from '../lib/rb/localAmounts';
 import { loadLatestRisk } from '../lib/riskDb';
 import MfImportFlow from '../components/rb/MfImportFlow';
 import AllocationDisclaimer from '../components/AllocationDisclaimer';
@@ -141,12 +142,14 @@ export default function RebalancePage() {
     const load = async () => {
       if (!user) { setLoading(false); return; }
 
-      const [savedTarget, snapshot, profile, riskData] = await Promise.all([
+      const [savedTarget, profile, riskData] = await Promise.all([
         fetchTargetAllocation(user.id),
-        fetchLatestSnapshot(user.id),
         fetchRbProfile(user.id),
         loadLatestRisk(user.id),
       ]);
+      // 残高と生活費はブラウザから（サーバーには置かない、D-065・#109）
+      const storage = browserStorage();
+      const local = storage ? loadRbAmounts(storage, user.id) : null;
       if (riskData?.final_level) setUserRiskLevel(riskData.final_level);
 
       if (savedTarget) {
@@ -163,11 +166,15 @@ export default function RebalancePage() {
           setShowTargetUpdateBanner(true);
         }
       }
-      if (snapshot) {
-        setHoldings(snapshot.holdings);
+      if (local?.holdings) {
+        setHoldings(local.holdings);
       }
-      if (profile.monthly_living_cost != null) {
-        setMonthlyLivingCost(String(profile.monthly_living_cost));
+      // #109 より前にサーバーに保存した生活費が残っていれば、ブラウザへ移してからサーバー側を消す（保存できなければ消さない）
+      const move = planLivingCostMove(profile.legacy_monthly_living_cost,local?.monthlyLivingCost ?? null);
+      const movedOk = move.saveToLocal == null || (storage != null && saveLocalLivingCost(storage, user.id, move.saveToLocal));
+      if (move.clearServer && movedOk) await clearServerLivingCost(user.id);
+      if (move.use != null) {
+        setMonthlyLivingCost(String(move.use));
       }
       setEmergencyMonths(profile.emergency_months);
       setLoading(false);
@@ -231,9 +238,15 @@ export default function RebalancePage() {
   // 指定した項目を保存し、失敗した項目を failedSaves に残す
   const runSaves = async (kinds: SaveKind[]) => {
     if (!user) return;
+    // 残高と生活費はブラウザだけに保存し、サーバーには送らない（D-065・#109）。サーバーに送るのは月数と目標配分（割合）だけ
+    const storage = browserStorage();
     const savers: Record<SaveKind, () => Promise<boolean>> = {
-      snapshot: () => saveSnapshot(user.id, holdings),
-      profile: () => saveRbProfile(user.id, { monthly_living_cost: livingCostNum || null, emergency_months: emergencyMonths }),
+      snapshot: async () => storage != null && saveLocalHoldings(storage, user.id, holdings, todayInJapan()),
+      profile: async () => {
+        const localOk = storage != null && saveLocalLivingCost(storage, user.id, livingCostNum || null);
+        const serverOk = await saveRbProfile(user.id, emergencyMonths);
+        return localOk && serverOk;
+      },
       target: () => saveTargetAllocation(user.id, target),
     };
     const results = await Promise.all(kinds.map(k => savers[k]()));
@@ -306,7 +319,7 @@ export default function RebalancePage() {
         {failedSaves.length > 0 && (
           <div role="alert" className="mb-4 p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-center space-y-2">
             <p className="text-sm text-red-300">
-              {failedSaves.map(k => SAVE_LABELS[k]).join('・')}を保存できませんでした。この画面の計算には反映されていますが、次に開いたときは前の内容に戻ります
+              {failedSaves.map(k => SAVE_LABELS[k]).join('・')}を保存できませんでした。この画面の計算には反映されていますが、次に開いたときは前の内容に戻るか、入れ直しが要ります（保有残高と生活費はこのブラウザに保存します。プライベートブラウズなどでは保存できません）
             </p>
             <button
               onClick={() => runSaves(failedSaves)}
@@ -353,7 +366,10 @@ export default function RebalancePage() {
             </button>
 
             <div className="bg-slate-900 rounded-2xl p-4 mb-4">
-              <h2 className="text-sm text-slate-400 mb-4">アセットクラス別 保有額（円）</h2>
+              <h2 className="text-sm text-slate-400 mb-1">アセットクラス別 保有額（円）</h2>
+              <p className="text-xs text-slate-500 mb-4">
+                保有額と生活費はこの端末のブラウザにだけ保存し、サーバーには送りません。別の端末やブラウザでは入れ直してください
+              </p>
               <div className="space-y-3">
                 {ASSET_CLASSES.map(ac => (
                   <div key={ac.key}>

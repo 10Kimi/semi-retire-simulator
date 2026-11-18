@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-11-18 — /rb の残高と生活費をサーバーに送らずブラウザに持つ、既存の残高を割合と指数に置き換える migration 047（FI_project #109、D-065）
+
+- 残高（手入力の「次へ」と MF 取り込み）は `rb_snapshots` に送らず localStorage（`fi.rb.amounts.v1.<userId>`、`src/lib/rb/localAmounts.ts`）に。前回の残高の復元もブラウザから（同じ端末・ブラウザだけ）。`saveSnapshot`・`fetchLatestSnapshot`・`fetchSnapshotDates` は削除
+- 月の生活費もブラウザに。`user_rb_profile` に送るのは緊急資金の月数だけ。前に DB に保存した生活費は、開いたときブラウザへ移してから DB 側を null に（保存できなければ消さない）
+- 入力欄に「この端末のブラウザにだけ保存し、サーバーには送りません」を表示
+- migration 047：`rb_snapshots` に `weight`（%）と `total_index`（最初の回＝100）を足し、既存の行を回（user_id, created_at）ごとに置き換えてから `amount` を null に、CHECK で今後も入れさせない。`user_rb_profile` は画面から新しい生活費を書かせないトリガー。開かなかった人の生活費を消す SQL は `supabase/pending/rb_clear_living_cost.sql`（適用日はオーナー）
+- 計算（`logic.ts`）は変えていない。047 の適用（オーナー、D-032）を確かめてから main に入れる
+
 ## 2026-11-12 — /rb「積立のみ」：売らずに戻るまでの月数と、その月数に合わせた毎月の積立先（FI_project #76）
 
 - `estimateMonthsToRebalance` を、n か月後の総資産（今の総資産＋積立×n）の目標額が、目標より多い資産クラスの今の額に追いつく最小の月数に直した（今までは今の不足の合計÷積立で、積立で総資産が増える分を見ていなかった）。現金は取り崩して不足へ回せるので月数を縛らない。現金以外で目標0%なのに保有があれば「積立だけでは戻りません」と出し、今月の積立先（`calculateAddAdjustment`）だけ出す

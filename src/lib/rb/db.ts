@@ -1,6 +1,6 @@
 import { supabase } from '../supabase';
 import { ASSET_CLASSES, MODEL_ALLOCATIONS } from './types';
-import type { AssetClassKey, Holdings, TargetAllocation } from './types';
+import type { TargetAllocation } from './types';
 import type { FundMasterEntry } from './allocator';
 
 /** 目標配分を取得 */
@@ -51,82 +51,12 @@ export async function adoptModelAllocation(userId: string, level: number): Promi
   return saveTargetAllocation(userId, target);
 }
 
-/**
- * 最後に保存した1回分のスナップショットを取得。
- * 同じ日に何度も保存すると行が増える（UPDATE・DELETE のポリシーが無い）ので、日付ではなく created_at で見分ける。
- * 1回の insert の行は created_at が同じ（DEFAULT now()＝トランザクションの開始時刻）。金額が0の資産クラスは行が無い。
- */
-export async function fetchLatestSnapshot(userId: string): Promise<{ holdings: Holdings; date: string } | null> {
-  const { data, error } = await supabase
-    .from('rb_snapshots')
-    .select('snapshot_date, asset_class, amount, created_at')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(ASSET_CLASSES.length); // 1回の保存の最大件数＝資産クラス数
-
-  if (error) {
-    console.error('rb snapshot fetch error:', error);
-    return null;
-  }
-  if (!data || data.length === 0) return null;
-
-  // 最後の保存の行だけを抽出
-  const latest = data[0];
-  const latestRows = data.filter(r => r.created_at === latest.created_at);
-
-  const holdings: Holdings = {};
-  for (const row of latestRows) {
-    holdings[row.asset_class] = Number(row.amount);
-  }
-  return { holdings, date: latest.snapshot_date };
-}
+// 残高（rb_snapshots）はサーバーに保存しない・読まない（D-065、FI_project #109）。
+// 残高はブラウザ（localAmounts.ts）に持つ。rb_snapshots の過去の行は migration 047 で割合と指数に置き換えた。
 
 /** 日本時間の日付（YYYY-MM-DD） */
 export function todayInJapan(now: Date = new Date()): string {
   return now.toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
-}
-
-/** スナップショットを保存。成否を返す（保存する行が無ければ true） */
-export async function saveSnapshot(userId: string, holdings: Holdings): Promise<boolean> {
-  const today = todayInJapan();
-  const rows = ASSET_CLASSES
-    .filter(ac => (holdings[ac.key] || 0) > 0)
-    .map(ac => ({
-      user_id: userId,
-      snapshot_date: today,
-      asset_class: ac.key as AssetClassKey,
-      amount: holdings[ac.key] || 0,
-    }));
-
-  if (rows.length === 0) return true;
-
-  const { error } = await supabase
-    .from('rb_snapshots')
-    .insert(rows);
-
-  if (error) {
-    console.error('rb snapshot save error:', error);
-    return false;
-  }
-  return true;
-}
-
-/** スナップショット履歴（日付一覧）を取得 */
-export async function fetchSnapshotDates(userId: string): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('rb_snapshots')
-    .select('snapshot_date')
-    .eq('user_id', userId)
-    .order('snapshot_date', { ascending: false });
-
-  if (error) {
-    console.error('rb snapshot dates fetch error:', error);
-    return [];
-  }
-
-  // 重複排除
-  const dates = [...new Set(data.map(r => r.snapshot_date))];
-  return dates;
 }
 
 /** fund_masterの全レコードを取得 */
@@ -250,11 +180,17 @@ export function fundRequestBadge(ticker: string, requested: Set<string>, pending
   return null;
 }
 
-/** 緊急資金プロフィール */
+/**
+ * 緊急資金プロフィール（サーバーに置くのは月数だけ）。
+ * 月の生活費（円）はブラウザに持つ（D-065、FI_project #109）。
+ * legacy_monthly_living_cost は #109 より前にサーバーに保存された生活費で、ブラウザへ移してから消すためだけに読む。
+ */
 export interface RbProfile {
-  monthly_living_cost: number | null;
   emergency_months: number;
+  legacy_monthly_living_cost: number | null;
 }
+
+const DEFAULT_PROFILE: RbProfile = { emergency_months: 6, legacy_monthly_living_cost: null };
 
 /** 緊急資金設定を取得 */
 export async function fetchRbProfile(userId: string): Promise<RbProfile> {
@@ -264,27 +200,41 @@ export async function fetchRbProfile(userId: string): Promise<RbProfile> {
     .eq('user_id', userId)
     .single();
 
-  if (data) return data;
-  if (error?.code === 'PGRST116') {
-    // レコードなし → デフォルト
-    return { monthly_living_cost: null, emergency_months: 6 };
+  if (data) {
+    return {
+      emergency_months: data.emergency_months ?? DEFAULT_PROFILE.emergency_months,
+      legacy_monthly_living_cost: data.monthly_living_cost ?? null,
+    };
   }
-  console.error('rb profile fetch error:', error);
-  return { monthly_living_cost: null, emergency_months: 6 };
+  if (error?.code !== 'PGRST116') console.error('rb profile fetch error:', error); // PGRST116＝行が無い
+  return { ...DEFAULT_PROFILE };
 }
 
-/** 緊急資金設定を保存 */
-export async function saveRbProfile(userId: string, profile: RbProfile): Promise<boolean> {
+/** 緊急資金の月数を保存する。生活費（円）は送らない。成否を返す */
+export async function saveRbProfile(userId: string, emergencyMonths: number): Promise<boolean> {
   const { error } = await supabase
     .from('user_rb_profile')
     .upsert({
       user_id: userId,
-      monthly_living_cost: profile.monthly_living_cost,
-      emergency_months: profile.emergency_months,
+      emergency_months: emergencyMonths,
     }, { onConflict: 'user_id' });
 
   if (error) {
     console.error('rb profile save error:', error);
+    return false;
+  }
+  return true;
+}
+
+/** サーバーに残っている生活費を消す（ブラウザへ移したあとに呼ぶ）。成否を返す */
+export async function clearServerLivingCost(userId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('user_rb_profile')
+    .update({ monthly_living_cost: null })
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('rb profile clear error:', error);
     return false;
   }
   return true;

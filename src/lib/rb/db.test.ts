@@ -1,37 +1,35 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MODEL_ALLOCATIONS } from './types';
 
-type SnapshotRow = { snapshot_date: string; asset_class: string; amount: number; created_at: string };
+type Write = { table: string; op: 'insert' | 'upsert' | 'update'; payload: unknown };
 
 const db = vi.hoisted(() => ({
-  snapshots: [] as SnapshotRow[],
-  clock: 0,
+  writes: [] as Write[],
   result: { error: null as unknown },
-  rows: [] as { asset_class: string; target_ratio: number }[],
+  profileRow: null as Record<string, unknown> | null,
+  profileError: null as unknown,
 }));
 
 vi.mock('../supabase', () => ({
   supabase: {
-    from: () => ({
-      upsert: async (rows: typeof db.rows) => {
-        db.rows = rows;
+    from: (table: string) => ({
+      upsert: async (payload: unknown) => {
+        db.writes.push({ table, op: 'upsert', payload });
         return db.result;
       },
-      insert: async (rows: Omit<SnapshotRow, 'created_at'>[]) => {
-        if (db.result.error) return db.result;
-        db.clock += 1; // 1回の insert の行は同じ created_at
-        const created_at = `2026-11-05T01:00:${String(db.clock).padStart(2, '0')}.000000+00:00`;
-        db.snapshots.push(...rows.map(r => ({ ...r, created_at })));
+      insert: async (payload: unknown) => {
+        db.writes.push({ table, op: 'insert', payload });
         return db.result;
       },
+      update: (payload: unknown) => ({
+        eq: async () => {
+          db.writes.push({ table, op: 'update', payload });
+          return db.result;
+        },
+      }),
       select: () => ({
         eq: () => ({
-          order: () => ({
-            limit: async (n: number) => ({
-              data: [...db.snapshots].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, n),
-              error: null,
-            }),
-          }),
+          single: async () => ({ data: db.profileRow, error: db.profileError }),
         }),
       }),
     }),
@@ -40,22 +38,23 @@ vi.mock('../supabase', () => ({
 
 import {
   adoptModelAllocation,
-  fetchLatestSnapshot,
+  clearServerLivingCost,
+  fetchRbProfile,
   saveRbProfile,
-  saveSnapshot,
   saveTargetAllocation,
   todayInJapan,
 } from './db';
+import * as rbDb from './db';
+
+beforeEach(() => {
+  db.result = { error: null };
+  db.writes = [];
+  db.profileRow = null;
+  db.profileError = null;
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+});
 
 describe('目標配分の保存', () => {
-  beforeEach(() => {
-    db.result = { error: null };
-    db.rows = [];
-    db.snapshots = [];
-    db.clock = 0;
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-  });
-
   it('saveTargetAllocation：保存できたら true', async () => {
     expect(await saveTargetAllocation('user-1', {})).toBe(true);
   });
@@ -67,7 +66,8 @@ describe('目標配分の保存', () => {
 
   it('adoptModelAllocation：そのレベルのモデル配分を保存して true', async () => {
     expect(await adoptModelAllocation('user-1', 4)).toBe(true);
-    const saved = Object.fromEntries(db.rows.map(r => [r.asset_class, r.target_ratio]));
+    const rows = db.writes[0].payload as { asset_class: string; target_ratio: number }[];
+    const saved = Object.fromEntries(rows.map(r => [r.asset_class, r.target_ratio]));
     for (const [key, ratio] of Object.entries(MODEL_ALLOCATIONS[4])) {
       expect(saved[key]).toBe(ratio);
     }
@@ -78,53 +78,50 @@ describe('目標配分の保存', () => {
     db.result = { error: { message: 'failed' } };
     expect(await adoptModelAllocation('user-1', 4)).toBe(false);
   });
+});
 
-  it('saveSnapshot：保存できたら true、失敗したら false', async () => {
-    expect(await saveSnapshot('user-1', { us_equity: 100 })).toBe(true);
-    db.result = { error: { message: 'failed' } };
-    expect(await saveSnapshot('user-1', { us_equity: 100 })).toBe(false);
+describe('金額をサーバーに書かない（D-065、FI_project #109）', () => {
+  it('残高をサーバーに保存・読み込みする関数は無い', () => {
+    expect('saveSnapshot' in rbDb).toBe(false);
+    expect('fetchLatestSnapshot' in rbDb).toBe(false);
+    expect('fetchSnapshotDates' in rbDb).toBe(false);
   });
 
-  it('saveSnapshot：保存する行が無ければ true', async () => {
-    db.result = { error: { message: 'failed' } };
-    expect(await saveSnapshot('user-1', {})).toBe(true);
+  it('saveRbProfile は月数だけを送り、生活費の列を送らない', async () => {
+    expect(await saveRbProfile('user-1', 12)).toBe(true);
+    expect(db.writes).toHaveLength(1);
+    expect(db.writes[0].table).toBe('user_rb_profile');
+    expect(db.writes[0].payload).toEqual({ user_id: 'user-1', emergency_months: 12 });
+    expect(db.writes.some(w => w.table === 'rb_snapshots')).toBe(false);
   });
 
-  it('saveRbProfile：保存できたら true、失敗したら false', async () => {
-    const profile = { monthly_living_cost: null, emergency_months: 6 };
-    expect(await saveRbProfile('user-1', profile)).toBe(true);
+  it('saveRbProfile：失敗したら false', async () => {
     db.result = { error: { message: 'failed' } };
-    expect(await saveRbProfile('user-1', profile)).toBe(false);
+    expect(await saveRbProfile('user-1', 6)).toBe(false);
+  });
+
+  it('clearServerLivingCost は生活費を null にするだけ', async () => {
+    expect(await clearServerLivingCost('user-1')).toBe(true);
+    expect(db.writes).toEqual([{ table: 'user_rb_profile', op: 'update', payload: { monthly_living_cost: null } }]);
+    db.result = { error: { message: 'failed' } };
+    expect(await clearServerLivingCost('user-1')).toBe(false);
   });
 });
 
-describe('スナップショットの復元', () => {
-  beforeEach(() => {
-    db.result = { error: null };
-    db.snapshots = [];
-    db.clock = 0;
+describe('fetchRbProfile', () => {
+  it('行があれば月数と、移すための古い生活費を返す', async () => {
+    db.profileRow = { monthly_living_cost: 300000, emergency_months: 12 };
+    expect(await fetchRbProfile('user-1')).toEqual({ emergency_months: 12, legacy_monthly_living_cost: 300000 });
   });
 
-  it('同じ日に2回保存すると、2回目の内容だけが復元される（0にした資産クラスは戻らない）', async () => {
-    await saveSnapshot('user-1', { us_equity: 100, gold: 50, japan_equity: 30 });
-    await saveSnapshot('user-1', { us_equity: 200, gold: 0, japan_equity: 30 });
-    expect(db.snapshots).toHaveLength(5);
-
-    const latest = await fetchLatestSnapshot('user-1');
-    expect(latest?.holdings).toEqual({ us_equity: 200, japan_equity: 30 });
+  it('生活費が null なら null', async () => {
+    db.profileRow = { monthly_living_cost: null, emergency_months: 3 };
+    expect(await fetchRbProfile('user-1')).toEqual({ emergency_months: 3, legacy_monthly_living_cost: null });
   });
 
-  it('3回保存しても最後の1回分だけ（古い行の方が多くても）', async () => {
-    await saveSnapshot('user-1', { us_equity: 1, gold: 2, japan_equity: 3, japan_bond: 4 });
-    await saveSnapshot('user-1', { us_equity: 5, gold: 6, japan_equity: 7, japan_bond: 8 });
-    await saveSnapshot('user-1', { gold: 9 });
-
-    const latest = await fetchLatestSnapshot('user-1');
-    expect(latest?.holdings).toEqual({ gold: 9 });
-  });
-
-  it('保存が無ければ null', async () => {
-    expect(await fetchLatestSnapshot('user-1')).toBeNull();
+  it('行が無ければ既定値（6か月）', async () => {
+    db.profileError = { code: 'PGRST116' };
+    expect(await fetchRbProfile('user-1')).toEqual({ emergency_months: 6, legacy_monthly_living_cost: null });
   });
 });
 
