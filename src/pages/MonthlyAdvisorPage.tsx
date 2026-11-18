@@ -13,7 +13,7 @@ import type {
   JpIndex,
 } from '../lib/ma/types';
 import { MA_ASSET_CLASS_OPTIONS, MA_ACCOUNT_OPTIONS, ACCOUNT_MONTHLY_CAP, SLOT_LABELS, SLOT_KEYS, isTaxAdvantaged } from '../lib/ma/types';
-import { fetchLatestIndicators, fetchUserSettings, updateReserveBalance, updateSettings } from '../lib/ma/db';
+import { fetchLatestIndicators, loadUserSettings, updateReserveBalance, updateSettings } from '../lib/ma/db';
 import { calculateAllocation, formatCurrency, getCapeMultiplier, estimateNikkeiPbr, resolveReserveBase, deriveMonthlyInputs, computeCape5yMA, monthKey, nikkeiNow, evaluateCrashForMonth } from '../lib/ma/logic';
 import { resolveCrashBase, type CrashEvaluation } from '../lib/ma/crash';
 
@@ -36,13 +36,16 @@ export default function MonthlyAdvisorPage() {
   const [result, setResult] = useState<AllocationResult | null>(null);
   const [crash, setCrash] = useState<CrashEvaluation | null>(null);
   const [showSettings, setShowSettings] = useState(true);
+  // 金額をブラウザに保存できなかった（プライベートブラウズ・容量超過など）。D-065
+  const [localSaveFailed, setLocalSaveFailed] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       // 先にユーザー設定を取得（jp_index で PBR 自動補完の可否が変わるため）
       let sett: UserMaSettings;
       if (user) {
-        sett = await fetchUserSettings(user.id);
+        // 金額はブラウザから（オーナー本人の行だけサーバーから）。サーバーに残っていればここで一度ブラウザへ移す（D-065）
+        sett = await loadUserSettings(user.id);
       } else {
         const { DEFAULT_SETTINGS } = await import('../lib/ma/types');
         sett = { user_id: 'anonymous', ...DEFAULT_SETTINGS };
@@ -77,6 +80,8 @@ export default function MonthlyAdvisorPage() {
   }
 
   const cape5yMA = computeCape5yMA(indicators?.cape_history);
+  // 金額をサーバーに置く行か（オーナー本人だけ。D-065）
+  const onServer = settings.amounts_on_server === true;
 
   const currentDate = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' });
 
@@ -115,7 +120,13 @@ export default function MonthlyAdvisorPage() {
     const crashState = crash
       ? { current: crash.nextState, month: currentMonth, monthBase: resolveCrashBase(settings.crash_state, currentMonth) }
       : undefined;
-    await updateReserveBalance(user.id, result.newReserveBalance, currentMonth, reserveMonthBase, crashState);
+    const saved = await updateReserveBalance(user.id, result.newReserveBalance, currentMonth, reserveMonthBase, crashState, onServer);
+    if (!saved && !onServer) {
+      // 保存できないまま「更新しました」と出すと、次に開いたとき同じ投入額をもう一度勧めてしまう
+      setLocalSaveFailed(true);
+      alert('このブラウザに待機資金を保存できませんでした（プライベートブラウズなど）。次に開くと元の残高に戻ります');
+      return;
+    }
     setSettings({
       ...settings,
       reserve_balance: result.newReserveBalance,
@@ -129,7 +140,7 @@ export default function MonthlyAdvisorPage() {
   const handleMonthlyBudgetChange = async (value: number) => {
     const updated = { ...settings, monthly_budget: value };
     setSettings(updated);
-    if (user) await updateSettings(user.id, { monthly_budget: value });
+    if (user && !(await updateSettings(user.id, { monthly_budget: value }, onServer)) && !onServer) setLocalSaveFailed(true);
   };
 
   const handleSlotFieldChange = async <K extends keyof MaSlot>(slotKey: SlotKey, field: K, value: MaSlot[K]) => {
@@ -138,7 +149,8 @@ export default function MonthlyAdvisorPage() {
     const updated = { ...settings, [slotKey]: updatedSlot };
     setSettings(updated);
     if (user) {
-      await updateSettings(user.id, { slot: slotKey, field, value: value as number | string | MaAssetClass | MaAccount });
+      const ok = await updateSettings(user.id, { slot: slotKey, field, value: value as number | string | MaAssetClass | MaAccount }, onServer);
+      if (!ok && !onServer && field === 'amount') setLocalSaveFailed(true);
     }
   };
 
@@ -163,7 +175,7 @@ export default function MonthlyAdvisorPage() {
     } else {
       setPbr(nikkeiEstimate != null ? String(nikkeiEstimate) : '');
     }
-    if (user) await updateSettings(user.id, { jp_index: idx });
+    if (user) await updateSettings(user.id, { jp_index: idx }, onServer);
   };
 
   // 日経225 PBR の「基準」を実測値で更新（以降は株価変動で自動追従）
@@ -177,7 +189,7 @@ export default function MonthlyAdvisorPage() {
     setSettings(updated);
     setPbr(String(v));
     setAnchorInput('');
-    if (user) await updateSettings(user.id, { nikkei_pbr_anchor: v, nikkei_price_anchor: n225Now });
+    if (user) await updateSettings(user.id, { nikkei_pbr_anchor: v, nikkei_price_anchor: n225Now }, onServer);
   };
 
   const modeOptions: { value: MarketMode; label: string; desc: string }[] = [
@@ -223,6 +235,16 @@ export default function MonthlyAdvisorPage() {
 
           {showSettings && (
             <div className="mt-4 space-y-4">
+              {user && !onServer && (
+                <p className="text-xs text-slate-500">
+                  金額（月次予算・積立額・待機資金）はこのブラウザにだけ保存し、サーバーには送りません。別の端末やブラウザでは入れ直してください。
+                </p>
+              )}
+              {user && !onServer && localSaveFailed && (
+                <p className="text-xs text-amber-400">
+                  ⚠️ このブラウザに金額を保存できませんでした（プライベートブラウズなど）。ページを開き直すと入力した金額は消えます。
+                </p>
+              )}
               {/* 月次予算 */}
               <div className="flex items-center justify-between">
                 <label className="text-sm text-slate-400">月次予算</label>

@@ -41,7 +41,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Indicators, MarketMode, PricePoint } from '../../src/lib/ma/types';
 import { calculateMonthlyFromIndicators } from '../../src/lib/ma/logic';
-import { rowToSettings, type UserMaSettingsRow } from '../../src/lib/ma/settingsRow';
+import { ownerAmountsProblem, rowToSettings, type UserMaSettingsRow } from '../../src/lib/ma/settingsRow';
 import { decideSend } from '../../src/lib/ma/mail/schedule';
 import { checkFreshness, type Freshness } from '../../src/lib/ma/mail/freshness';
 import { buildMail } from '../../src/lib/ma/mail/buildMail';
@@ -142,6 +142,8 @@ async function checkCrashAlert(p: {
 
     const [row] = await rest<UserMaSettingsRow[]>(p.env, `user_ma_settings?select=*&user_id=eq.${p.config.userId}`);
     if (!row) return `確認できず（user_ma_settings に ${p.config.userId} がありません）`;
+    const amountsProblem = ownerAmountsProblem(row);
+    if (amountsProblem) return `確認できず（${amountsProblem}）`;
     const settings = rowToSettings(row);
     const decision = decideCrashAlert(sp500Usd, settings.crash_state?.current ?? null, p.state.crashAlert ?? null);
     const dd = (Math.min(0, sp500Usd.last / sp500Usd.ath - 1) * 100).toFixed(1);
@@ -213,6 +215,9 @@ async function main(): Promise<{ result: RunResult; targetMonth: string; catchup
   const [indicators] = await rest<Indicators[]>(env, 'indicators?select=*&order=fetched_at.desc&limit=1');
   const [row] = await rest<UserMaSettingsRow[]>(env, `user_ma_settings?select=*&user_id=eq.${config.userId}`);
   if (!row) throw new Error(`user_ma_settings に ${config.userId} がありません`);
+  // 金額がサーバーに無い行（D-065）で 0 円のまま計算して送らない
+  const amountsProblem = ownerAmountsProblem(row);
+  if (amountsProblem) throw new Error(amountsProblem);
   const settings = rowToSettings(row);
   const fails = new Set((opt('simulate-fail') ?? '').split(',').filter(Boolean));
   const simDd = opt('simulate-drawdown');
