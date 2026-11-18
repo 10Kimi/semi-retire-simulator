@@ -6,7 +6,8 @@ import { parseMfText, clampNegativeHoldings } from '../../lib/rb/mfParser';
 import type { MfHolding } from '../../lib/rb/mfParser';
 import { allocateHoldings, summarizeAllocations, sumExcludedCrypto, excludedCryptoNames } from '../../lib/rb/allocator';
 import type { AllocatedHolding } from '../../lib/rb/allocator';
-import { fetchFundMaster, submitFundRequest, fetchSubmittedRequestTickers, saveSnapshot, fundRequestBadge } from '../../lib/rb/db';
+import { fetchFundMaster, submitFundRequest, fetchSubmittedRequestTickers, fundRequestBadge, todayInJapan } from '../../lib/rb/db';
+import { browserStorage, saveLocalHoldings } from '../../lib/rb/localAmounts';
 import { formatCurrency } from '../../lib/rb/logic';
 
 type ImportStep = 'paste' | 'preview' | 'unclassified' | 'confirm';
@@ -137,8 +138,10 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
 
   const allUnclassifiedHandled = unclassified.every(a => a.manualClass);
 
-  const handleConfirm = async () => {
-    const saved = user ? await saveSnapshot(user.id, summary) : true;
+  // 取り込んだ残高はブラウザにだけ保存し、サーバーには送らない（D-065、FI_project #109）
+  const handleConfirm = () => {
+    const storage = browserStorage();
+    const saved = user ? storage != null && saveLocalHoldings(storage, user.id, summary, todayInJapan()) : true;
     onImportComplete(summary, saved);
   };
 
