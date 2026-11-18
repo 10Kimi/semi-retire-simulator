@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-11-18 — /pf は金額を送らず割合だけ保存、既存の金額を割合に置き換えて消す（FI_project #110、D-065）
+
+- /pf の保存は新しい RPC `save_pf_weights_with_snapshot` に、資産クラス別の割合（%、小数4桁）と指標だけを送る。保有額・合計はブラウザの中だけ（`buildPfSaveInput`・`toHoldingWeights`、`src/lib/diagnosisDb.ts`）。使っていなかった直接の INSERT（`saveDiagnosis`）を消した
+- migration 044：`portfolio_diagnoses.holding_weights` を足し、既存の行の `holding_amounts` を割合に置き換えてから `holding_amounts`・`total_amount` を null に。CHECK 制約で今後も金額を入れられないようにし、金額を受け取る旧 RPC `save_pf_with_snapshot` を消した。新しい RPC は割合の形でない値（0〜100 の外・合計が 99.9〜100.1 の外）を弾く
+- **044 の適用（オーナーが `db push`、D-032）を確かめてからコードを main に入れる**（逆順だと保存が失敗する）。テスト `src/lib/diagnosisDb.test.ts` で、送る中身に金額が出てこないことを確かめる
+
 ## 2026-11-12 — /rb「積立のみ」：売らずに戻るまでの月数と、その月数に合わせた毎月の積立先（FI_project #76）
 
 - `estimateMonthsToRebalance` を、n か月後の総資産（今の総資産＋積立×n）の目標額が、目標より多い資産クラスの今の額に追いつく最小の月数に直した（今までは今の不足の合計÷積立で、積立で総資産が増える分を見ていなかった）。現金は取り崩して不足へ回せるので月数を縛らない。現金以外で目標0%なのに保有があれば「積立だけでは戻りません」と出し、今月の積立先（`calculateAddAdjustment`）だけ出す

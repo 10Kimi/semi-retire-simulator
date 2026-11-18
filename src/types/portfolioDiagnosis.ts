@@ -49,12 +49,15 @@ export interface DiagnosisNavigationState {
   assessedPortfolioAllocations: AssetAllocation[] | null;
 }
 
+// サーバーに保存する資産クラス別の割合（%、合計100）
+export type HoldingWeights = Record<string, number>;
+
 // Supabase portfolio_diagnoses テーブルの行型
+// 金額の列（holding_amounts・total_amount）は 044 以降つねに null で、読まない（D-065）
 export interface DbPortfolioDiagnosis {
   id: string;
   user_id: string;
-  holding_amounts: HoldingAmounts;
-  total_amount: number;
+  holding_weights: HoldingWeights;
   expected_return: number;
   volatility: number;
   risk_level: number;

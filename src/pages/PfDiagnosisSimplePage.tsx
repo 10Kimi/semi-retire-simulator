@@ -11,7 +11,7 @@ import {
 } from '../logic/pfSimple';
 import { loadAssetClassParams, buildMarketDataFromParams } from '../lib/assetClassParamsDb';
 import { loadLatestRisk } from '../lib/riskDb';
-import { savePfWithSnapshot } from '../lib/diagnosisDb';
+import { buildPfSaveInput, savePfWithSnapshot } from '../lib/diagnosisDb';
 import { useAuth } from '../contexts/AuthContext';
 import RiskExcessWarning from '../components/risk/RiskExcessWarning';
 import { SEOHead } from '../components/seo/SEOHead';
@@ -98,20 +98,17 @@ export default function PfDiagnosisSimplePage() {
     setPhase('result');
 
     // Supabase保存（fire-and-forget・失敗してもUIは止めない）
+    // 金額は送らず割合だけ（D-065）
     if (user) {
-      void savePfWithSnapshot({
-        holdingAmounts: holdings,
-        totalAmount: result.totalAmount,
+      void savePfWithSnapshot(buildPfSaveInput({
+        holdings,
         expectedReturn: result.expectedReturn,
         volatility: result.volatility,
         riskLevel: result.riskLevel,
-        riskLevelKey: `level_${result.riskLevel}`,
-        assessmentRiskLevel: assessmentLevel !== null ? `level_${assessmentLevel}` : null,
-        assessmentSource: assessmentId ? 'detailed' : null,
+        assessmentLevel,
         assessmentId,
-        assessmentLevel7: assessmentLevel,
         assessedAt,
-      });
+      }));
     }
   }, [holdings, marketData, assessmentLevel, assessmentId, assessedAt, user]);
 
