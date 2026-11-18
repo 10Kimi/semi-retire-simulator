@@ -125,6 +125,11 @@ export interface MaSlot {
 
 export interface UserMaSettings {
   user_id: string;
+  /**
+   * 金額をサーバー（user_ma_settings）に置く行か（オーナー本人だけ true。D-065、migration 045 の keep_amounts_on_server）。
+   * false なら月の予算・積立額・待機資金・暴落ルールの状態はブラウザ（localStorage、src/lib/ma/localAmounts.ts）に持つ
+   */
+  amounts_on_server?: boolean;
   monthly_budget: number;
   reserve_balance: number;
   reserve_month: string | null;       // 待機資金を最後に更新した月 'YYYY-MM'（同月は上書き）

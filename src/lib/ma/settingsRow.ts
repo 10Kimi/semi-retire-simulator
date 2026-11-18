@@ -3,10 +3,25 @@
 // 画面（db.ts）と /ma 月次メールのスクリプト（Node）の両方から使える。
 import type { UserMaSettings, MaAccount, MaAssetClass, JpIndex, CrashRecord } from './types';
 
+/**
+ * 利用者の金額（円）とそれに付く待機資金の状態の列（D-065、migration 045）。
+ * keep_amounts_on_server が false の行（オーナー以外）は、ここをサーバーに置かずブラウザ（localStorage）に持つ。
+ * 銘柄名・口座・資産クラス・日本株の指数・PBR の基準はサーバーに残す。
+ */
+export const AMOUNT_COLUMNS = [
+  'monthly_budget', 'reserve_balance', 'reserve_month', 'reserve_month_base', 'crash_state',
+  'slot1_amount', 'slot2_amount', 'slot3_amount', 'slot4_amount', 'slot5_amount',
+  'slot6_amount', 'slot7_amount', 'slot8_amount', 'slot9_amount', 'slot10_amount',
+] as const;
+export type AmountColumn = typeof AMOUNT_COLUMNS[number];
+
 export interface UserMaSettingsRow {
   user_id: string;
-  monthly_budget: number;
-  reserve_balance: number;
+  /** オーナー本人の行だけ true（/ma 月次メール・暴落の通知が service key で読むため、D-065 の対象外）。画面からは変えられない（migration 045 のトリガー） */
+  keep_amounts_on_server?: boolean;
+  // 金額の列は migration 045 から null になりうる（オーナー以外の行）
+  monthly_budget: number | null;
+  reserve_balance: number | null;
   reserve_month: string | null;
   reserve_month_base: number | null;
   crash_state?: CrashRecord | null;
@@ -14,43 +29,43 @@ export interface UserMaSettingsRow {
   nikkei_pbr_anchor: number | null;
   nikkei_price_anchor: number | null;
   slot1_account: MaAccount;
-  slot1_amount: number;
+  slot1_amount: number | null;
   slot1_fund_name: string;
   slot1_asset_class: MaAssetClass;
   slot2_account: MaAccount;
-  slot2_amount: number;
+  slot2_amount: number | null;
   slot2_fund_name: string;
   slot2_asset_class: MaAssetClass;
   slot3_account: MaAccount;
-  slot3_amount: number;
+  slot3_amount: number | null;
   slot3_fund_name: string;
   slot3_asset_class: MaAssetClass;
   slot4_account: MaAccount;
-  slot4_amount: number;
+  slot4_amount: number | null;
   slot4_fund_name: string;
   slot4_asset_class: MaAssetClass;
   slot5_account: MaAccount;
-  slot5_amount: number;
+  slot5_amount: number | null;
   slot5_fund_name: string;
   slot5_asset_class: MaAssetClass;
   slot6_account: MaAccount;
-  slot6_amount: number;
+  slot6_amount: number | null;
   slot6_fund_name: string;
   slot6_asset_class: MaAssetClass;
   slot7_account: MaAccount;
-  slot7_amount: number;
+  slot7_amount: number | null;
   slot7_fund_name: string;
   slot7_asset_class: MaAssetClass;
   slot8_account: MaAccount;
-  slot8_amount: number;
+  slot8_amount: number | null;
   slot8_fund_name: string;
   slot8_asset_class: MaAssetClass;
   slot9_account: MaAccount;
-  slot9_amount: number;
+  slot9_amount: number | null;
   slot9_fund_name: string;
   slot9_asset_class: MaAssetClass;
   slot10_account: MaAccount;
-  slot10_amount: number;
+  slot10_amount: number | null;
   slot10_fund_name: string;
   slot10_asset_class: MaAssetClass;
 }
@@ -58,8 +73,9 @@ export interface UserMaSettingsRow {
 export function rowToSettings(row: UserMaSettingsRow): UserMaSettings {
   return {
     user_id: row.user_id,
-    monthly_budget: row.monthly_budget,
-    reserve_balance: row.reserve_balance,
+    amounts_on_server: row.keep_amounts_on_server === true,
+    monthly_budget: row.monthly_budget ?? 0,
+    reserve_balance: row.reserve_balance ?? 0,
     reserve_month: row.reserve_month ?? null,
     reserve_month_base: row.reserve_month_base ?? null,
     crash_state: row.crash_state ?? null,
@@ -77,6 +93,22 @@ export function rowToSettings(row: UserMaSettingsRow): UserMaSettings {
     slot9: { account: row.slot9_account ?? 'specific', amount: row.slot9_amount ?? 0, fund_name: row.slot9_fund_name ?? '', asset_class: row.slot9_asset_class ?? 'none' },
     slot10: { account: row.slot10_account ?? 'specific', amount: row.slot10_amount ?? 0, fund_name: row.slot10_fund_name ?? '', asset_class: row.slot10_asset_class ?? 'none' },
   };
+}
+
+/**
+ * /ma 月次メール・暴落の通知（オーナー本人の行）が金額を読めるかを確かめる。
+ * migration 045 のあと、目印（keep_amounts_on_server）が付いていない行は金額がブラウザに移り、サーバーでは null になる。
+ * 0 円のまま計算してメールを送らないよう、読めないときは理由を返す（読めるときは null）。
+ * 045 の前（列が無い＝undefined）は、金額があれば読めるとみなす。
+ */
+export function ownerAmountsProblem(row: UserMaSettingsRow): string | null {
+  if (row.keep_amounts_on_server === false) {
+    return 'この行は金額をサーバーに残す目印（keep_amounts_on_server）が付いていません。STATUS の #111 の手順で目印を付けてください';
+  }
+  if (row.monthly_budget == null) {
+    return 'この行の月の予算がサーバーにありません（金額がブラウザに移った可能性があります）';
+  }
+  return null;
 }
 
 export function settingsToRow(userId: string, s: Omit<UserMaSettings, 'user_id'>): UserMaSettingsRow {

@@ -92,7 +92,13 @@ DB 層は `rowToSettings` / `settingsToRow` でフラットな行と入れ子の
 - **判定と投入額は `src/lib/ma/crash.ts`**（画面とメールで共通）：S&P500 ドル建ての高値比 −20% に入った時点の残高を基準残高とし、
   −20%・−30% は基準残高の1/3、−40% は残高の全額。各段階1回、最高値更新でリセット
 - **投入額はスロットに足さない**（`AllocationResult.crashDeployment`、`totalInvest` に含めない）。何を買うかは本人が選ぶ。
-  「投資実行＆待機資金を更新」で待機資金から差し引き、`user_ma_settings.crash_state` に段階を確定する
+  「投資実行＆待機資金を更新」で待機資金から差し引き、`crash_state` に段階を確定する（オーナー本人の行は `user_ma_settings`、ほかの人はブラウザ）
+
+### `/ma` の金額はサーバーに置かない（D-065、FI_project #111、2026-11-18）
+- **月次予算・積立額・待機資金・暴落ルールの状態はブラウザ（localStorage）に持つ**（`src/lib/ma/localAmounts.ts`）。銘柄名・口座・資産クラス・指数・PBR の基準は `user_ma_settings` に残す
+- **例外はオーナー本人の行**（`keep_amounts_on_server = true`）：月次メール・暴落の通知が service key で読むので DB に置く。目印は画面から変えられない（migration 045 のトリガー）。オーナーが SQL Editor で付ける
+- 画面を開いたとき DB に金額が残っていれば、一度ブラウザへ移してから DB 側を null にする（保存に失敗したら消さない）。開かない人の分は `supabase/pending/046_*.sql` であとから消す
+- 月次メールは目印が false か予算が null なら送らずエラーにする（`ownerAmountsProblem`）
 - **同じ月に計算し直しても二重に発動しない**：`crash_state` は `{ current, month, monthBase }`。待機資金の `reserve_month_base` と同じ考え方
 - 高値データは `fetch_indicators.py` が取得して `indicators.drawdown` に書く（migration 040。未適用ならその列だけ書かない）
 
