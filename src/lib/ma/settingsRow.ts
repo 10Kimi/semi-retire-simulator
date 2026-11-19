@@ -19,6 +19,12 @@ export interface UserMaSettingsRow {
   user_id: string;
   /** オーナー本人の行だけ true（/ma 月次メール・暴落の通知が service key で読むため、D-065 の対象外）。画面からは変えられない（migration 045 のトリガー） */
   keep_amounts_on_server?: boolean;
+  /** 本人のパスフレーズの鍵で暗号化した金額（`src/lib/vault` の封筒。中身は localStorage と同じ文字列）。migration 048、#117 */
+  amounts_vault?: string | null;
+  /** 鍵の確かめ用の値（パスフレーズが合っているかを、金額を復号せずに判定する） */
+  vault_verifier?: string | null;
+  /** amounts_vault を保存した時刻（中身の saved_at と同じ）。端末をまたいだとき、どちらが新しいかを比べる。金額は含まない */
+  vault_saved_at?: string | null;
   // 金額の列は migration 045 から null になりうる（オーナー以外の行）
   monthly_budget: number | null;
   reserve_balance: number | null;

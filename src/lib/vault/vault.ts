@@ -15,6 +15,9 @@ export const VAULT_VERSION = 1;
  */
 export const PBKDF2_ITERATIONS = 2_000_000;
 
+/** 封筒の回数の上限。封筒はサーバーから来るので、書き換えられて端末が固まらないように（#117） */
+export const MAX_ITERATIONS = 10_000_000;
+
 const SALT_BYTES = 16;
 const IV_BYTES = 12;
 /** 鍵の確かめに使う既知の文字列（秘密ではない） */
@@ -67,7 +70,8 @@ interface Envelope {
 }
 
 /** パスフレーズの条件を確かめ、足りない条件の一覧を返す（空なら通る） */
-export function validatePassphrase(passphrase: string): PassphraseIssue[] {
+export function validatePassphrase(raw: string): PassphraseIssue[] {
+  const passphrase = raw.normalize('NFC');
   const issues: PassphraseIssue[] = [];
   if (passphrase.length < PASSPHRASE_MIN_LENGTH) issues.push('too-short');
   if (!/[A-Z]/.test(passphrase)) issues.push('no-upper');
@@ -85,14 +89,17 @@ export function newKdfParams(): KdfParams {
   };
 }
 
-/** パスフレーズとパラメータから鍵を作る（重い。1 画面で 1 回だけ呼ぶ） */
+/**
+ * パスフレーズとパラメータから鍵を作る（重い。1 画面で 1 回だけ呼ぶ）。
+ * パスフレーズは NFC にそろえてから使う（端末によって同じ文字の形が違っても同じ鍵になるように、#117）
+ */
 export async function deriveKey(passphrase: string, kdf: KdfParams): Promise<VaultKey> {
-  if (kdf.name !== 'PBKDF2-SHA256' || !Number.isInteger(kdf.iterations) || kdf.iterations < 1) {
+  if (kdf.name !== 'PBKDF2-SHA256' || !validIterations(kdf.iterations)) {
     throw new VaultError('malformed');
   }
   const base = await crypto.subtle.importKey(
     'raw',
-    new TextEncoder().encode(passphrase),
+    new TextEncoder().encode(passphrase.normalize('NFC')),
     'PBKDF2',
     false,
     ['deriveKey'],
@@ -192,6 +199,7 @@ function parseEnvelope(envelope: string): Envelope {
     kdf === null ||
     kdf.name !== 'PBKDF2-SHA256' ||
     typeof kdf.iterations !== 'number' ||
+    !validIterations(kdf.iterations) ||
     typeof kdf.salt !== 'string'
   ) {
     throw new VaultError('malformed');
@@ -203,6 +211,10 @@ function parseEnvelope(envelope: string): Envelope {
     iv: e.iv,
     ct: e.ct,
   };
+}
+
+function validIterations(n: number): boolean {
+  return Number.isInteger(n) && n >= 1 && n <= MAX_ITERATIONS;
 }
 
 /** 追加データ：版・方式・パラメータ・IV を決まった順で並べたもの */

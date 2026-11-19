@@ -3,9 +3,15 @@ import type { Indicators, UserMaSettings, MaSlot, MaAssetClass, MaAccount, SlotK
 import { DEFAULT_SETTINGS } from './types';
 import { rowToSettings, settingsToRow, type UserMaSettingsRow } from './settingsRow';
 import {
-  amountsToRowPatch, loadLocalAmounts, mergeAmounts, nullAmountsPatch, patchLocalAmounts, planAmountMove, rowAmounts,
-  saveLocalAmounts, withoutAmounts, type AmountStorage,
+  amountsToRowPatch, baseOf, defaultAmounts, loadLocalAmounts, loadLocalRaw, mergeAmounts, nullAmountsPatch, parseAmountsJson,
+  patchLocalAmounts, planAmountMove, rowAmounts, sameTime, saveLocalAmounts, saveLocalRaw, savedAtOf, setLocalBase,
+  withoutAmounts, type AmountStorage,
 } from './localAmounts';
+import {
+  checkKey, decryptValue, deriveKey, encryptValue, kdfParamsOf, makeVerifier, newKdfParams, validatePassphrase,
+  VaultError, type KdfParams, type VaultKey,
+} from '../vault/vault';
+import { EMPTY_VAULT, vaultStatus, type VaultColumns, type VaultStatus } from './vaultAmounts';
 
 export async function fetchLatestIndicators(): Promise<Indicators | null> {
   const { data, error } = await supabase
@@ -82,7 +88,28 @@ function browserStorage(): AmountStorage | null {
  * それ以外は金額をブラウザ（localStorage）から読み、サーバーに金額が残っていれば一度ブラウザへ移してからサーバー側を消す（D-065、#111）。
  */
 export async function loadUserSettings(userId: string, storage: AmountStorage | null = browserStorage()): Promise<UserMaSettings> {
+  return (await loadUserSettingsWithVault(userId, storage)).settings;
+}
+
+/** /ma の画面が開いたときに使う：設定と、サーバーの暗号文の列と、その状態（#117） */
+export async function loadUserSettingsWithVault(
+  userId: string, storage: AmountStorage | null = browserStorage(),
+): Promise<{ settings: UserMaSettings; vault: VaultColumns; status: VaultStatus }> {
   const row = await fetchUserSettingsRow(userId);
+  const settings = await settingsFromRow(userId, row, storage);
+  const vault: VaultColumns | null = row ? vaultColumnsOf(row) : null;
+  let localRaw = storage ? loadLocalRaw(storage, userId) : null;
+  // ほかの端末でリセットされたあと、この端末に古い版の印（base）が残っていれば消す（再レビューの指摘・中1）
+  if (storage && vault && !vault.vault_verifier && baseOf(localRaw)) {
+    setLocalBase(storage, userId, null);
+    localRaw = loadLocalRaw(storage, userId);
+  }
+  return { settings, vault: vault ?? EMPTY_VAULT, status: vaultStatus(settings.amounts_on_server === true, vault, localRaw) };
+}
+
+async function settingsFromRow(
+  userId: string, row: UserMaSettingsRow | null, storage: AmountStorage | null,
+): Promise<UserMaSettings> {
   if (!row) {
     const base: UserMaSettings = { user_id: userId, ...DEFAULT_SETTINGS };
     const local = storage ? loadLocalAmounts(storage, userId) : null;
@@ -189,4 +216,139 @@ export async function updateSettings(
 
   if (error) console.error('settings update error:', error);
   return !error;
+}
+
+// ── 暗号文（案B、#117、D-070） ─────────────────────────────────────────────
+// 鍵はページの中（メモリ）だけに持つ。パスフレーズ・鍵はどこにも保存しない。
+// サーバーに置くのは暗号文・鍵の確かめ用の値・保存した時刻（版）だけ（金額は平文で置かない）。オーナー本人の行では使わない。
+// サーバーへの書き込みは、サーバーの版がこの端末の base のままで、確かめ用の値も同じときだけ通す（条件つきの更新）。
+// 0 行なら、ほかの端末がそのあとに保存したか、パスフレーズを設定し直した（#117 のレビュー役の指摘・高1・中2・中3）。
+
+function vaultColumnsOf(row: UserMaSettingsRow): VaultColumns {
+  return { amounts_vault: row.amounts_vault ?? null, vault_verifier: row.vault_verifier ?? null, vault_saved_at: row.vault_saved_at ?? null };
+}
+
+/** ブラウザに保存できなかった（プライベートブラウズ・容量超過）。暗号文の不具合と分けて表示する */
+export class LocalSaveError extends Error {
+  constructor() {
+    super('local-save-failed');
+    this.name = 'LocalSaveError';
+  }
+}
+
+export type VaultWrite = 'ok' | 'conflict' | 'error';
+
+/**
+ * この端末の値（localStorage の文字列そのもの）を暗号化してサーバーに置く。
+ * サーバーの版がこの端末の base と違う・確かめ用の値が違う（ほかの端末で設定し直した）ときは書かずに 'conflict'
+ */
+export async function pushVault(userId: string, key: VaultKey, verifier: string, storage: AmountStorage): Promise<VaultWrite> {
+  const raw = loadLocalRaw(storage, userId);
+  if (!raw) return 'error';
+  const base = baseOf(raw);
+  const savedAt = savedAtOf(raw) ?? new Date().toISOString();
+  let q = supabase
+    .from('user_ma_settings')
+    .update({ amounts_vault: await encryptValue(key, raw), vault_saved_at: savedAt })
+    .eq('user_id', userId)
+    .eq('vault_verifier', verifier);
+  q = base ? q.eq('vault_saved_at', base) : q.is('vault_saved_at', null);
+  const { data, error } = await q.select('user_id');
+  if (error) {
+    console.error('vault save error:', error);
+    return 'error';
+  }
+  if (!data || data.length === 0) return 'conflict';
+  // サーバーとそろったので、この端末の base を今の版にする
+  return setLocalBase(storage, userId, savedAt) ? 'ok' : 'error';
+}
+
+/**
+ * 投資実行の直前：サーバーの暗号文の版が、この端末の base のままか（鍵が無くても確かめられる）。
+ * 'changed' なら、ほかの端末が保存している（古い値のまま投資実行すると二重になりうる）
+ */
+export async function checkVaultUnchanged(userId: string, storage: AmountStorage): Promise<'same' | 'changed' | 'error'> {
+  const { data, error } = await supabase.from('user_ma_settings').select('vault_saved_at, vault_verifier').eq('user_id', userId).single();
+  if (error || !data) return 'error';
+  const row = data as { vault_saved_at: string | null; vault_verifier: string | null };
+  // パスフレーズを設定していない（ほかの端末でリセットされた場合も）なら、比べる暗号文が無いので止めない（再レビューの指摘・中1）
+  if (!row.vault_verifier) return 'same';
+  return sameTime(row.vault_saved_at ?? null, baseOf(loadLocalRaw(storage, userId))) ? 'same' : 'changed';
+}
+
+/**
+ * 初めてのパスフレーズの設定：条件を確かめ、鍵を作り、確かめ用の値とこの端末の値の暗号文をサーバーに置く。
+ * まだ誰も設定していない（vault_verifier が null）ときだけ書く。ほかの端末で設定済みなら 'already-set'。kdf はテスト用
+ */
+export async function setupVault(
+  userId: string, passphrase: string, storage: AmountStorage, kdf: KdfParams = newKdfParams(),
+): Promise<
+  | { key: VaultKey; verifier: string }
+  | { issues: ReturnType<typeof validatePassphrase> }
+  | { error: 'already-set' | 'server' | 'local' }
+> {
+  const issues = validatePassphrase(passphrase);
+  if (issues.length > 0) return { issues };
+  // この端末にまだ値が無ければ既定値（0）を保存してから暗号化する（サーバーに空の暗号文を置かない）
+  if (!loadLocalRaw(storage, userId) && !saveLocalAmounts(storage, userId, defaultAmounts())) return { error: 'local' };
+  const key = await deriveKey(passphrase, kdf);
+  const verifier = await makeVerifier(key);
+  const raw = loadLocalRaw(storage, userId)!;
+  const savedAt = savedAtOf(raw) ?? new Date().toISOString();
+  const { data, error } = await supabase
+    .from('user_ma_settings')
+    .update({ vault_verifier: verifier, amounts_vault: await encryptValue(key, raw), vault_saved_at: savedAt })
+    .eq('user_id', userId)
+    .is('vault_verifier', null)
+    .select('user_id');
+  if (error) {
+    console.error('vault setup error:', error);
+    return { error: 'server' };
+  }
+  if (!data || data.length === 0) return { error: 'already-set' };
+  if (!setLocalBase(storage, userId, savedAt)) return { error: 'local' };
+  return { key, verifier };
+}
+
+/**
+ * パスフレーズを入れたとき：鍵を作って確かめる。
+ * - この端末に値が無いか、この端末がそろえたあとでサーバーが変わっていたら、サーバーの値で戻す（両方で変えていたらサーバーを採る）。
+ *   この端末で変えた分を捨てたときは discarded: true（画面で知らせる）
+ * - サーバーが変わっていなければ、この端末の値をサーバーに置く（push の結果を返す）
+ * パスフレーズが違えば VaultError('wrong-passphrase')、ブラウザに保存できなければ LocalSaveError
+ */
+export async function unlockVault(
+  userId: string, passphrase: string, vault: VaultColumns, storage: AmountStorage,
+): Promise<{ key: VaultKey; restored: boolean; discarded: boolean; push: VaultWrite | null }> {
+  if (!vault.vault_verifier) throw new VaultError('malformed');
+  const key = await deriveKey(passphrase, kdfParamsOf(vault.vault_verifier));
+  await checkKey(key, vault.vault_verifier);
+
+  const localRaw = loadLocalRaw(storage, userId);
+  if (vault.amounts_vault && (!localRaw || !sameTime(baseOf(localRaw), vault.vault_saved_at))) {
+    const serverRaw = await decryptValue<string>(key, vault.amounts_vault);
+    const serverAmounts = typeof serverRaw === 'string' ? parseAmountsJson(serverRaw) : null;
+    if (!serverAmounts) throw new VaultError('malformed');
+    const localAmounts = localRaw ? parseAmountsJson(localRaw) : null;
+    const withBase = JSON.stringify({ ...(JSON.parse(serverRaw) as Record<string, unknown>), base: vault.vault_saved_at });
+    if (!saveLocalRaw(storage, userId, withBase)) throw new LocalSaveError();
+    const discarded = !!localAmounts && JSON.stringify(localAmounts) !== JSON.stringify(serverAmounts);
+    return { key, restored: true, discarded, push: null };
+  }
+  const push = localRaw ? await pushVault(userId, key, vault.vault_verifier, storage) : null;
+  return { key, restored: false, discarded: false, push };
+}
+
+/** 「パスフレーズを忘れた」：暗号文・確かめ用の値・時刻を消す（この端末の値は残す）。行は消さない（DELETE のポリシーは無い） */
+export async function resetVault(userId: string, storage: AmountStorage | null = browserStorage()): Promise<boolean> {
+  const { error } = await supabase
+    .from('user_ma_settings')
+    .update({ amounts_vault: null, vault_verifier: null, vault_saved_at: null })
+    .eq('user_id', userId);
+  if (error) {
+    console.error('vault reset error:', error);
+    return false;
+  }
+  if (storage) setLocalBase(storage, userId, null);
+  return true;
 }

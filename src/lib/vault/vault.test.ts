@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { CrashRecord } from '../ma/types';
 import {
+  MAX_ITERATIONS,
   PBKDF2_ITERATIONS,
   VaultError,
   checkKey,
@@ -154,4 +155,31 @@ describe('暗号文の形式', () => {
     const again = await deriveKey(PASS, kdfParamsOf(env));
     expect(await decryptValue(again, env)).toEqual(crashRecord);
   }, 30_000);
+});
+
+describe('#117 で足したもの', () => {
+  it('封筒の回数が上限を超えると malformed（鍵を作らない）', async () => {
+    const env = JSON.parse(await encryptValue(key, 1));
+    const big = JSON.stringify({ ...env, kdf: { ...env.kdf, iterations: MAX_ITERATIONS + 1 } });
+    expect(() => kdfParamsOf(big)).toThrow(VaultError);
+    await expectCode(decryptValue(key, big), 'malformed');
+    await expectCode(deriveKey(PASS, { ...key.kdf, iterations: MAX_ITERATIONS + 1 }), 'malformed');
+  });
+
+  it('上限ちょうどは形として受け付ける', async () => {
+    const env = JSON.parse(await encryptValue(key, 1));
+    const max = JSON.stringify({ ...env, kdf: { ...env.kdf, iterations: MAX_ITERATIONS } });
+    expect(kdfParamsOf(max).iterations).toBe(MAX_ITERATIONS);
+  });
+
+  it('NFC と NFD の同じパスフレーズは同じ鍵になる', async () => {
+    const kdf = { ...newKdfParams(), iterations: 1000 };
+    const nfc = 'Abc123\u00e9'; // é（1文字）
+    const nfd = 'Abc123e\u0301'; // e ＋ 結合アクセント
+    expect(nfc).not.toBe(nfd);
+    const k1 = await deriveKey(nfc, kdf);
+    const k2 = await deriveKey(nfd, kdf);
+    expect(await decryptValue(k2, await encryptValue(k1, 42))).toBe(42);
+    expect(validatePassphrase(nfd)).toEqual(validatePassphrase(nfc));
+  });
 });

@@ -13,7 +13,13 @@ import type {
   JpIndex,
 } from '../lib/ma/types';
 import { MA_ASSET_CLASS_OPTIONS, MA_ACCOUNT_OPTIONS, ACCOUNT_MONTHLY_CAP, SLOT_LABELS, SLOT_KEYS, isTaxAdvantaged } from '../lib/ma/types';
-import { fetchLatestIndicators, loadUserSettings, updateReserveBalance, updateSettings } from '../lib/ma/db';
+import {
+  checkVaultUnchanged, fetchLatestIndicators, loadUserSettingsWithVault, pushVault, resetVault, setupVault, unlockVault,
+  updateReserveBalance, updateSettings,
+} from '../lib/ma/db';
+import { EMPTY_VAULT, passphraseIssueText, vaultErrorText, type VaultColumns, type VaultStatus } from '../lib/ma/vaultAmounts';
+import type { VaultKey } from '../lib/vault/vault';
+import MaVaultPanel from '../components/ma/MaVaultPanel';
 import { calculateAllocation, formatCurrency, getCapeMultiplier, estimateNikkeiPbr, resolveReserveBase, deriveMonthlyInputs, computeCape5yMA, monthKey, nikkeiNow, evaluateCrashForMonth } from '../lib/ma/logic';
 import { resolveCrashBase, type CrashEvaluation } from '../lib/ma/crash';
 
@@ -38,6 +44,11 @@ export default function MonthlyAdvisorPage() {
   const [showSettings, setShowSettings] = useState(true);
   // 金額をブラウザに保存できなかった（プライベートブラウズ・容量超過など）。D-065
   const [localSaveFailed, setLocalSaveFailed] = useState(false);
+  // 案B（#117）：鍵はこのページのメモリだけに持つ。パスフレーズ・鍵はどこにも保存しない
+  const [vault, setVault] = useState<VaultColumns>(EMPTY_VAULT);
+  const [vaultStatus, setVaultStatus] = useState<VaultStatus>('none');
+  const [vaultKey, setVaultKey] = useState<VaultKey | null>(null);
+  const [vaultNotice, setVaultNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -45,7 +56,10 @@ export default function MonthlyAdvisorPage() {
       let sett: UserMaSettings;
       if (user) {
         // 金額はブラウザから（オーナー本人の行だけサーバーから）。サーバーに残っていればここで一度ブラウザへ移す（D-065）
-        sett = await loadUserSettings(user.id);
+        const loaded = await loadUserSettingsWithVault(user.id);
+        sett = loaded.settings;
+        setVault(loaded.vault);
+        setVaultStatus(loaded.status);
       } else {
         const { DEFAULT_SETTINGS } = await import('../lib/ma/types');
         sett = { user_id: 'anonymous', ...DEFAULT_SETTINGS };
@@ -83,6 +97,84 @@ export default function MonthlyAdvisorPage() {
   // 金額をサーバーに置く行か（オーナー本人だけ。D-065）
   const onServer = settings.amounts_on_server === true;
 
+  // ── パスフレーズ（案B、#117）。オーナー本人の行（onServer）では使わない ──
+  const reloadFromVault = async () => {
+    if (!user) return;
+    const loaded = await loadUserSettingsWithVault(user.id);
+    setSettings(loaded.settings);
+    setVault(loaded.vault);
+    setVaultStatus(loaded.status);
+  };
+  const handleVaultSetup = async (passphrase: string): Promise<string[] | null> => {
+    if (!user) return null;
+    try {
+      const r = await setupVault(user.id, passphrase, window.localStorage);
+      if ('issues' in r) return passphraseIssueText(r.issues);
+      if ('error' in r) {
+        if (r.error === 'already-set') {
+          await reloadFromVault();
+          return ['ほかの端末でパスフレーズが設定されています。そのパスフレーズを入れてください'];
+        }
+        return [r.error === 'local' ? vaultErrorText({ name: 'LocalSaveError' } as Error) : '設定できませんでした。時間をおいてもう一度お試しください'];
+      }
+      setVaultNotice(null);
+      await reloadFromVault();
+      setVaultKey(r.key);
+      return null;
+    } catch (e) {
+      return [vaultErrorText(e)];
+    }
+  };
+  const handleVaultUnlock = async (passphrase: string) => {
+    if (!user) return;
+    const r = await unlockVault(user.id, passphrase, vault, window.localStorage);
+    await reloadFromVault();
+    setVaultKey(r.key);
+    if (r.discarded) setVaultNotice('ほかの端末で保存した値に戻しました。この端末で変えた金額は使っていません。必要なら入れ直してください');
+    else if (r.push === 'conflict') {
+      setVaultKey(null);
+      await reloadFromVault();
+    } else if (r.push === 'error') setVaultNotice('サーバーの暗号文への保存に失敗しました。次に金額を保存したときにもう一度送ります');
+    else setVaultNotice(null);
+  };
+  const handleVaultReset = async (): Promise<boolean> => {
+    if (!user || !(await resetVault(user.id))) return false;
+    setVaultKey(null);
+    setVaultNotice(null);
+    await reloadFromVault();
+    return true;
+  };
+  /** 保存のあと：鍵があれば暗号文もサーバーに置く。ぶつかったら（ほかの端末が保存した）戻す画面に。成功か鍵が無ければ true */
+  const syncVault = async (): Promise<boolean> => {
+    if (!user || onServer || !vaultKey || !vault.vault_verifier) return true;
+    const r = await pushVault(user.id, vaultKey, vault.vault_verifier, window.localStorage);
+    if (r === 'conflict') {
+      setVaultKey(null);
+      await reloadFromVault();
+      return false;
+    }
+    if (r === 'error') {
+      setVaultNotice('サーバーの暗号文への保存に失敗しました（この端末には保存済み）。次に金額を保存したときにもう一度送ります');
+      return false;
+    }
+    setVaultNotice(null);
+    return true;
+  };
+  const panelStatus = vaultStatus === 'restore-needed' || !vaultKey ? vaultStatus : 'unlocked';
+  const vaultPanel =
+    user && !onServer ? (
+      <>
+        {vaultNotice && <p className="text-amber-300 text-sm mb-2">{vaultNotice}</p>}
+        <MaVaultPanel
+          key={panelStatus}
+          status={panelStatus as Exclude<VaultStatus, 'owner'> | 'unlocked'}
+          onSetup={handleVaultSetup}
+          onUnlock={handleVaultUnlock}
+          onReset={handleVaultReset}
+        />
+      </>
+    ) : null;
+
   const currentDate = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' });
 
   const calculate = () => {
@@ -115,6 +207,22 @@ export default function MonthlyAdvisorPage() {
 
   const confirmAndUpdateReserve = async () => {
     if (!result || !user) return;
+    // 案B（#117）：投資実行の直前に、ほかの端末がそのあとに保存していないかを確かめる（鍵が無くても確かめられる）。
+    // 古い値のまま投資実行すると、暴落ルールの投入が二重になりうる（§13-69、レビュー役の指摘・高1）
+    if (!onServer) {
+      const check = await checkVaultUnchanged(user.id, window.localStorage);
+      if (check === 'changed') {
+        // ほかの端末の新しい暗号文を読み直してから、戻す画面に（読み直さないと古い暗号文で戻してしまう）
+        setVaultNotice('ほかの端末で、この端末よりあとに保存された値があります。パスフレーズを入れて戻してから、もう一度お試しください');
+        setVaultKey(null);
+        await reloadFromVault();
+        return;
+      }
+      if (check === 'error') {
+        alert('サーバーを確かめられませんでした（通信の失敗など）。ほかの端末で保存した値と食い違わないよう、つながってからもう一度お試しください');
+        return;
+      }
+    }
     // 同月内は月初base + 今月分で上書き（複数回実行しても最後の1回だけが反映される）
     // 暴落ルールの段階も同じタイミングで確定（同月の再計算に備えて月初の状態も残す）
     const crashState = crash
@@ -134,13 +242,17 @@ export default function MonthlyAdvisorPage() {
       reserve_month_base: reserveMonthBase,
       ...(crashState ? { crash_state: crashState } : {}),
     });
-    alert('待機資金を更新しました');
+    const synced = await syncVault();
+    alert(synced ? '待機資金を更新しました' : '待機資金をこのブラウザに保存しました（サーバーの暗号文への保存は、上の表示をご覧ください）');
   };
 
   const handleMonthlyBudgetChange = async (value: number) => {
     const updated = { ...settings, monthly_budget: value };
     setSettings(updated);
-    if (user && !(await updateSettings(user.id, { monthly_budget: value }, onServer)) && !onServer) setLocalSaveFailed(true);
+    if (!user) return;
+    if (!(await updateSettings(user.id, { monthly_budget: value }, onServer))) {
+      if (!onServer) setLocalSaveFailed(true);
+    } else await syncVault();
   };
 
   const handleSlotFieldChange = async <K extends keyof MaSlot>(slotKey: SlotKey, field: K, value: MaSlot[K]) => {
@@ -151,6 +263,7 @@ export default function MonthlyAdvisorPage() {
     if (user) {
       const ok = await updateSettings(user.id, { slot: slotKey, field, value: value as number | string | MaAssetClass | MaAccount }, onServer);
       if (!ok && !onServer && field === 'amount') setLocalSaveFailed(true);
+      else if (ok && field === 'amount') await syncVault();
     }
   };
 
@@ -198,6 +311,24 @@ export default function MonthlyAdvisorPage() {
     { value: 'cautious', label: '慎重', desc: '−0.25' },
   ];
 
+  // サーバーの暗号文の方が新しい（またはこの端末に値が無い）ときは、戻すまで計算の画面を出さない。
+  // 古い値のまま「投資実行」すると、暴落ルールの投入が二重になりうる（§13-69、#117）
+  if (user && !onServer && vaultStatus === 'restore-needed') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
+        <div className="max-w-2xl mx-auto px-4 py-6">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              📊 月次投資配分（計算）
+            </h1>
+            <UserStatusBar variant="dark" />
+          </div>
+          {vaultPanel}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
       <div className="max-w-2xl mx-auto px-4 py-6">
@@ -211,6 +342,8 @@ export default function MonthlyAdvisorPage() {
           </div>
           <UserStatusBar variant="dark" />
         </div>
+
+        {vaultPanel}
 
         {/* 待機資金残高 */}
         <div className="bg-amber-900/30 border-2 border-amber-500/50 rounded-2xl p-4 mb-4">
