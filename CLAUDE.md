@@ -99,6 +99,9 @@ DB 層は `rowToSettings` / `settingsToRow` でフラットな行と入れ子の
 - **例外はオーナー本人の行**（`keep_amounts_on_server = true`）：月次メール・暴落の通知が service key で読むので DB に置く。目印は画面から変えられない（migration 045 のトリガー）。オーナーが SQL Editor で付ける
 - 画面を開いたとき DB に金額が残っていれば、一度ブラウザへ移してから DB 側を null にする（保存に失敗したら消さない）。開かない人の分は `supabase/pending/046_*.sql` であとから消す
 - 月次メールは目印が false か予算が null なら送らずエラーにする（`ownerAmountsProblem`）
+- **暗号文でサーバーにも置く（案B、D-071、FI_project #117）**：オーナー以外は、本人のパスフレーズの鍵（`src/lib/vault/vault.ts`）で暗号化した localStorage の文字列を `user_ma_settings.amounts_vault` に置く（migration 048。確かめ用の値 `vault_verifier`・版 `vault_saved_at`）。鍵はページのメモリだけ。
+  ブラウザの値は `base`（最後にそろえたサーバーの版）を持ち、サーバーへの書き込みは版と確かめ用の値がそろうときだけ（`pushVault` の条件つきの更新）。版が違えば**サーバーを採る**（`vaultStatus` が restore-needed、その間は計算の画面を出さない）。投資実行の直前に `checkVaultUnchanged` で版を読み直す（古い値のまま投資実行すると暴落ルールの投入が二重になる）。
+  時刻の大小では比べない（端末の時計のずれ）。復元の仕組みは無い（忘れたらリセット＝3列を null）
 - **同じ月に計算し直しても二重に発動しない**：`crash_state` は `{ current, month, monthBase }`。待機資金の `reserve_month_base` と同じ考え方
 - 高値データは `fetch_indicators.py` が取得して `indicators.drawdown` に書く（migration 040。未適用ならその列だけ書かない）
 
