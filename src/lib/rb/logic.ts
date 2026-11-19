@@ -1,18 +1,20 @@
 import { ASSET_CLASSES } from './types';
 import type { AssetClassKey, Holdings, TargetAllocation, DeviationItem, AdjustmentItem, PeriodRebalanceResult, MonthlySnapshot } from './types';
 
-/** 緊急資金を計算して投資可能な現金を返す */
+/**
+ * 緊急資金と /ma の待機資金を現金から別枠にして、投資可能な現金を返す（待機資金は FI_project #118）。
+ * 投資可能な現金 ＝ 現金 − 緊急資金 − 待機資金（0 未満にしない）
+ */
 export function calculateEmergencyFund(
   cashAmount: number,
   monthlyLivingCost: number | null,
   emergencyMonths: number,
-): { emergencyFund: number; investableCash: number } {
-  if (!monthlyLivingCost || monthlyLivingCost <= 0) {
-    return { emergencyFund: 0, investableCash: cashAmount };
-  }
-  const emergencyFund = monthlyLivingCost * emergencyMonths;
-  const investableCash = Math.max(0, cashAmount - emergencyFund);
-  return { emergencyFund, investableCash };
+  reserveFund: number = 0,
+): { emergencyFund: number; reserveFund: number; investableCash: number } {
+  const emergencyFund = monthlyLivingCost && monthlyLivingCost > 0 ? monthlyLivingCost * emergencyMonths : 0;
+  const reserve = reserveFund > 0 ? reserveFund : 0;
+  const investableCash = Math.max(0, cashAmount - emergencyFund - reserve);
+  return { emergencyFund, reserveFund: reserve, investableCash };
 }
 
 /** holdingsの現金を投資可能額に置き換えたコピーを返す */
@@ -20,9 +22,10 @@ export function applyEmergencyFund(
   holdings: Holdings,
   monthlyLivingCost: number | null,
   emergencyMonths: number,
+  reserveFund: number = 0,
 ): Holdings {
   const cashAmount = holdings['cash'] || 0;
-  const { investableCash } = calculateEmergencyFund(cashAmount, monthlyLivingCost, emergencyMonths);
+  const { investableCash } = calculateEmergencyFund(cashAmount, monthlyLivingCost, emergencyMonths, reserveFund);
   return { ...holdings, cash: investableCash };
 }
 

@@ -4,7 +4,8 @@ import UserStatusBar from '../components/UserStatusBar';
 import { ASSET_CLASSES, MODEL_ALLOCATIONS, MODEL_META } from '../lib/rb/types';
 import type { Holdings, TargetAllocation, DeviationItem, AdjustmentItem, AdjustmentMode } from '../lib/rb/types';
 import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, estimateMonthsToRebalance, calculateEmergencyFund, applyEmergencyFund, calculatePeriod, isOverThreshold, isOverOneYear, isOverTenYears, formatUnreachable, periodSellRows, formatPeriodSellRow, countOverThreshold, REBALANCE_THRESHOLDS, DEFAULT_REBALANCE_THRESHOLD, getTotalAssets, formatCurrency, formatThousands } from '../lib/rb/logic';
-import { fetchTargetAllocation, saveTargetAllocation, fetchRbProfile, saveRbProfile, clearServerLivingCost, todayInJapan } from '../lib/rb/db';
+import { fetchTargetAllocation, saveTargetAllocation, fetchRbProfile, saveRbProfile, clearServerLivingCost, todayInJapan, fetchMaReserveRow } from '../lib/rb/db';
+import { pickMaReserve, type MaReserve, type MaReserveSource } from '../lib/rb/maReserve';
 import { browserStorage, loadRbAmounts, saveLocalHoldings, saveLocalLivingCost, planLivingCostMove } from '../lib/rb/localAmounts';
 import { loadLatestRisk } from '../lib/riskDb';
 import MfImportFlow from '../components/rb/MfImportFlow';
@@ -94,6 +95,19 @@ function loadThreshold(): number {
   }
 }
 
+/** /ma の待機資金の出どころの説明（#118）。0 として計算しているときは目立たせる */
+function MaReserveNote({ source }: { source: MaReserveSource }) {
+  const text: Record<MaReserveSource, string> = {
+    server: '待機資金は暴落ルールのために取っておくお金なので、緊急資金と同じく現金から別枠にしています（金額は /ma の値。ここでは変えられません。預金（現金）で持っている前提です）',
+    browser: '待機資金は暴落ルールのために取っておくお金なので、緊急資金と同じく現金から別枠にしています（金額はこの端末の /ma の値。ここでは変えられません。預金（現金）で持っている前提です）',
+    'browser-stale': '⚠️ 待機資金はこの端末の /ma の値ですが、ほかの端末で /ma を更新したあとのため古い可能性があります。この端末で /ma を開いてパスフレーズを入れると最新になります',
+    unavailable: '⚠️ 月次投資配分（/ma）の待機資金を読み込めませんでした。待機資金は 0 として計算しています。ページを再読み込みしてください',
+    none: '/ma を使っている場合：この端末では /ma の待機資金を読めませんでした。待機資金は 0 として計算しています（現金をすべて投資に回せる額として扱います）。この端末で /ma を一度開くと、現金から別枠にします',
+  };
+  const warn = source !== 'server' && source !== 'browser';
+  return <p className={`text-xs ${warn ? 'text-amber-400' : 'text-slate-500'}`}>{text[source]}</p>;
+}
+
 export default function RebalancePage() {
   const { user } = useAuth();
   const [step, setStep] = useState<Step>('input');
@@ -132,6 +146,8 @@ export default function RebalancePage() {
   // 緊急資金設定
   const [monthlyLivingCost, setMonthlyLivingCost] = useState<string>('');
   const [emergencyMonths, setEmergencyMonths] = useState<number>(6);
+  // /ma の待機資金（現金から別枠、#118）。/rb では読むだけ
+  const [maReserve, setMaReserve] = useState<MaReserve>({ amount: 0, source: 'none' });
 
   const changeThreshold = (v: number) => {
     setThreshold(v);
@@ -142,13 +158,15 @@ export default function RebalancePage() {
     const load = async () => {
       if (!user) { setLoading(false); return; }
 
-      const [savedTarget, profile, riskData] = await Promise.all([
+      const [savedTarget, profile, riskData, maRow] = await Promise.all([
         fetchTargetAllocation(user.id),
         fetchRbProfile(user.id),
         loadLatestRisk(user.id),
+        fetchMaReserveRow(user.id),
       ]);
       // 残高と生活費はブラウザから（サーバーには置かない、D-065・#109）
       const storage = browserStorage();
+      setMaReserve(pickMaReserve(maRow.row, storage, user.id, maRow.failed));
       const local = storage ? loadRbAmounts(storage, user.id) : null;
       if (riskData?.final_level) setUserRiskLevel(riskData.final_level);
 
@@ -192,8 +210,8 @@ export default function RebalancePage() {
 
   const livingCostNum = parseInt(monthlyLivingCost.replace(/[^0-9]/g, '')) || 0;
   const cashAmount = holdings['cash'] || 0;
-  const emergency = calculateEmergencyFund(cashAmount, livingCostNum || null, emergencyMonths);
-  const investableHoldings = applyEmergencyFund(holdings, livingCostNum || null, emergencyMonths);
+  const emergency = calculateEmergencyFund(cashAmount, livingCostNum || null, emergencyMonths, maReserve.amount);
+  const investableHoldings = applyEmergencyFund(holdings, livingCostNum || null, emergencyMonths, maReserve.amount);
   const totalAssets = getTotalAssets(investableHoldings);
 
   const handleHoldingChange = (key: string, value: string) => {
@@ -402,7 +420,7 @@ export default function RebalancePage() {
 
               {/* 緊急資金設定 */}
               <div className="border-t border-slate-700 mt-4 pt-4">
-                <h3 className="text-xs text-slate-400 mb-3">緊急資金の設定（リバランス計算から除外）</h3>
+                <h3 className="text-xs text-slate-400 mb-3">緊急資金・待機資金（リバランス計算から除外）</h3>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="text-sm">毎月の生活費（税込）</label>
@@ -428,21 +446,32 @@ export default function RebalancePage() {
                       <option value={24}>24ヶ月</option>
                     </select>
                   </div>
-                  {livingCostNum > 0 && (
+                  {(livingCostNum > 0 || emergency.reserveFund > 0) && (
                     <div className="bg-slate-800/50 rounded-lg p-3 space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">緊急資金</span>
-                        <span className="text-orange-400">{formatCurrency(emergency.emergencyFund)}</span>
-                      </div>
+                      {livingCostNum > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-400">緊急資金</span>
+                          <span className="text-orange-400">{formatCurrency(emergency.emergencyFund)}</span>
+                        </div>
+                      )}
+                      {maReserve.source !== 'none' && maReserve.source !== 'unavailable' && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-400">待機資金（月次投資配分 /ma）</span>
+                          <span className="text-amber-400">{formatCurrency(emergency.reserveFund)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-400">投資可能な現金</span>
                         <span className="text-emerald-400 font-medium">{formatCurrency(emergency.investableCash)}</span>
                       </div>
-                      {cashAmount < emergency.emergencyFund && (
-                        <p className="text-xs text-red-400 mt-1">緊急資金が現金保有額を超えています</p>
+                      {cashAmount < emergency.emergencyFund + emergency.reserveFund && (
+                        <p className="text-xs text-red-400 mt-1">
+                          {emergency.reserveFund > 0 ? '緊急資金と待機資金の合計が現金保有額を超えています' : '緊急資金が現金保有額を超えています'}
+                        </p>
                       )}
                     </div>
                   )}
+                  <MaReserveNote source={maReserve.source} />
                 </div>
               </div>
 
@@ -576,6 +605,9 @@ export default function RebalancePage() {
             <div className="bg-slate-900 rounded-2xl p-4 mb-4">
               <h2 className="text-sm text-slate-400 mb-1">総資産</h2>
               <p className="text-2xl font-bold text-emerald-400 mb-4">{formatCurrency(totalAssets)}</p>
+              {maReserve.source !== 'server' && maReserve.source !== 'browser' && (
+                <div className="-mt-2 mb-4"><MaReserveNote source={maReserve.source} /></div>
+              )}
 
               {/* 戻す目安 */}
               <div className="flex items-center gap-2 mb-2">

@@ -2,6 +2,7 @@ import { supabase } from '../supabase';
 import { ASSET_CLASSES, MODEL_ALLOCATIONS } from './types';
 import type { TargetAllocation } from './types';
 import type { FundMasterEntry } from './allocator';
+import type { MaReserveRow } from './maReserve';
 
 /** 目標配分を取得 */
 export async function fetchTargetAllocation(userId: string): Promise<TargetAllocation | null> {
@@ -238,4 +239,18 @@ export async function clearServerLivingCost(userId: string): Promise<boolean> {
     return false;
   }
   return true;
+}
+
+/** /ma の待機資金を決めるための行（目印・待機資金・暗号文の版だけ）。行が無ければ row は null、読めなければ failed（FI_project #118） */
+export async function fetchMaReserveRow(userId: string): Promise<{ row: MaReserveRow | null; failed: boolean }> {
+  const { data, error } = await supabase
+    .from('user_ma_settings')
+    .select('keep_amounts_on_server, reserve_balance, vault_saved_at')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) {
+    console.error('ma reserve fetch error:', error);
+    return { row: null, failed: true };
+  }
+  return { row: data ?? null, failed: false };
 }

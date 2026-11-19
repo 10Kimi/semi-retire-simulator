@@ -110,6 +110,24 @@ describe('calculateEmergencyFund', () => {
   });
 });
 
+describe('待機資金も現金から別枠（#118、期待値は検算役が実装を見ずに出したもの）', () => {
+  it.each([
+    ['A 待機資金 0', 5_000_000, 300_000, 6, 0, 1_800_000, 0, 3_200_000],
+    ['B 緊急資金と待機資金', 5_000_000, 300_000, 6, 1_000_000, 1_800_000, 1_000_000, 2_200_000],
+    ['C 生活費なし', 5_000_000, null, 6, 1_000_000, 0, 1_000_000, 4_000_000],
+    ['D 合計が現金を超える（0 で止め、内訳は削らない）', 2_000_000, 300_000, 6, 500_000, 1_800_000, 500_000, 0],
+    ['E 1万円の倍数でない', 18_707_820, 1_000_000, 6, 420_000, 6_000_000, 420_000, 12_287_820],
+    ['F 生活費 0・待機資金が負', 1_000_000, 0, 12, -50_000, 0, 0, 1_000_000],
+  ] as const)('%s', (_, cash, living, months, reserve, emergencyFund, reserveFund, investableCash) => {
+    expect(calculateEmergencyFund(cash, living, months, reserve)).toEqual({ emergencyFund, reserveFund, investableCash });
+  });
+
+  it('applyEmergencyFund は現金だけを置き換え、ほかの資産クラスは変えない', () => {
+    const h = { cash: 5_000_000, us_equity: 3_000_000 };
+    expect(applyEmergencyFund(h, 300_000, 6, 1_000_000)).toEqual({ cash: 2_200_000, us_equity: 3_000_000 });
+  });
+});
+
 describe('applyEmergencyFund', () => {
   it('holdingsの現金を投資可能額に置き換える', () => {
     const h: Holdings = { cash: 5_000_000, developed_equity: 3_000_000 };
