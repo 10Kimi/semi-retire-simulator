@@ -370,7 +370,9 @@ export default function MonthlyAdvisorPage() {
             <div className="mt-4 space-y-4">
               {user && !onServer && (
                 <p className="text-xs text-slate-500">
-                  金額（月次予算・積立額・待機資金）はこのブラウザにだけ保存し、サーバーには送りません。別の端末やブラウザでは入れ直してください。
+                  {vault.vault_verifier
+                    ? '金額（月次予算・積立額・待機資金）はこのブラウザに保存し、パスフレーズを入れたときだけ暗号化してサーバーにも保存します（運営者にも中身は見えません）。'
+                    : '金額（月次予算・積立額・待機資金）はこのブラウザにだけ保存し、サーバーには送りません。上の 🔒 でパスフレーズを設定すると、暗号化してサーバーにも保存し、別の端末でも戻せます。'}
                 </p>
               )}
               {user && !onServer && localSaveFailed && (
