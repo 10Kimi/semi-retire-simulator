@@ -64,6 +64,82 @@ export function loadLocalAmounts(storage: AmountStorage, userId: string): MaAmou
     return null;
   }
   if (!raw) return null;
+  return parseAmountsJson(raw);
+}
+
+/**
+ * 金額を保存する文字列にする（localStorage と暗号文の中身で同じ形、#117）。
+ * saved_at（保存した時刻、ISO 8601）は、端末をまたいだときにサーバーの暗号文とどちらが新しいかを比べるのに使う
+ */
+export function amountsToJson(a: MaAmounts, savedAt: string = new Date().toISOString(), base: string | null = null): string {
+  return JSON.stringify({ version: VERSION, saved_at: savedAt, base, ...a });
+}
+
+/**
+ * 保存した文字列の base：この端末の値が最後にそろえたサーバーの暗号文の版（vault_saved_at）。
+ * サーバーの版がこれと違えば、ほかの端末がそのあとに保存している（#117 のレビュー役の指摘・高1）。無ければ null
+ */
+export function baseOf(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw) as { base?: unknown };
+    return typeof v.base === 'string' ? v.base : null;
+  } catch {
+    return null;
+  }
+}
+
+/** 中身と saved_at はそのままで、base だけを書き換える（サーバーとそろえたあと） */
+export function setLocalBase(storage: AmountStorage, userId: string, base: string | null): boolean {
+  const raw = loadLocalRaw(storage, userId);
+  if (!raw) return false;
+  try {
+    const v = JSON.parse(raw) as Record<string, unknown>;
+    return saveLocalRaw(storage, userId, JSON.stringify({ ...v, base }));
+  } catch {
+    return false;
+  }
+}
+
+/** 2つの時刻が同じか（null 同士も同じ。Postgres の timestamptz と JS の ISO で書き方が違っても比べられるように） */
+export function sameTime(a: string | null, b: string | null): boolean {
+  if (!a || !b) return !a && !b;
+  return Date.parse(a) === Date.parse(b);
+}
+
+/** 保存した文字列の saved_at。無い（#117 より前に保存した）・壊れているときは null */
+export function savedAtOf(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw) as { saved_at?: unknown };
+    return typeof v.saved_at === 'string' && !Number.isNaN(Date.parse(v.saved_at)) ? v.saved_at : null;
+  } catch {
+    return null;
+  }
+}
+
+/** ブラウザに保存した文字列そのもの（暗号化してサーバーに置くとき・時刻を比べるとき）。無ければ null */
+export function loadLocalRaw(storage: AmountStorage, userId: string): string | null {
+  try {
+    return storage.getItem(storageKey(userId));
+  } catch {
+    return null;
+  }
+}
+
+/** 文字列をそのまま保存する（サーバーの暗号文から戻すとき。saved_at も元のまま）。形が違えば保存しない */
+export function saveLocalRaw(storage: AmountStorage, userId: string, raw: string): boolean {
+  if (!parseAmountsJson(raw)) return false;
+  try {
+    storage.setItem(storageKey(userId), raw);
+    return storage.getItem(storageKey(userId)) === raw;
+  } catch {
+    return false;
+  }
+}
+
+/** 保存した文字列から金額を読む。壊れている・形が違うときは null */
+export function parseAmountsJson(raw: string): MaAmounts | null {
   try {
     const v = JSON.parse(raw) as Partial<MaAmounts> & { version?: number };
     if (v.version !== VERSION || !isNum(v.monthly_budget) || !isNum(v.reserve_balance)) return null;
@@ -88,7 +164,8 @@ export function loadLocalAmounts(storage: AmountStorage, userId: string): MaAmou
 /** 保存して、読み直して同じ値が取れたら true（容量超過・プライベートブラウズなどで保存できなければ false） */
 export function saveLocalAmounts(storage: AmountStorage, userId: string, a: MaAmounts): boolean {
   try {
-    const json = JSON.stringify({ version: VERSION, ...a });
+    // base（サーバーの版）は引き継ぐ。中身を変えても、どの版から変えたかは変わらない
+    const json = amountsToJson(a, undefined, baseOf(loadLocalRaw(storage, userId)));
     storage.setItem(storageKey(userId), json);
     return storage.getItem(storageKey(userId)) === json;
   } catch {
