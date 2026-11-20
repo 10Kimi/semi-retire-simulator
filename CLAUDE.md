@@ -97,7 +97,7 @@ DB 層は `rowToSettings` / `settingsToRow` でフラットな行と入れ子の
 ### `/ma` の金額はサーバーに置かない（D-065、FI_project #111、2026-11-18）
 - **月次予算・積立額・待機資金・暴落ルールの状態はブラウザ（localStorage）に持つ**（`src/lib/ma/localAmounts.ts`）。銘柄名・口座・資産クラス・指数・PBR の基準は `user_ma_settings` に残す
 - **例外はオーナー本人の行**（`keep_amounts_on_server = true`）：月次メール・暴落の通知が service key で読むので DB に置く。目印は画面から変えられない（migration 045 のトリガー）。オーナーが SQL Editor で付ける
-- 画面を開いたとき DB に金額が残っていれば、一度ブラウザへ移してから DB 側を null にする（保存に失敗したら消さない）。開かない人の分は `supabase/pending/046_*.sql` であとから消す
+- 画面を開いたとき DB に金額が残っていれば、一度ブラウザへ移してから DB 側を null にする（保存に失敗したら消さない）。開かない人の分は migration 049 で消した（2026-11-20、オーナーの行は除く）。/rb の生活費の残りは 050 で消し、CHECK で今後も入れさせない
 - 月次メールは目印が false か予算が null なら送らずエラーにする（`ownerAmountsProblem`）
 - **暗号文でサーバーにも置く（案B、D-071、FI_project #117）**：オーナー以外は、本人のパスフレーズの鍵（`src/lib/vault/vault.ts`）で暗号化した localStorage の文字列を `user_ma_settings.amounts_vault` に置く（migration 048。確かめ用の値 `vault_verifier`・版 `vault_saved_at`）。鍵はページのメモリだけ。
   ブラウザの値は `base`（最後にそろえたサーバーの版）を持ち、サーバーへの書き込みは版と確かめ用の値がそろうときだけ（`pushVault` の条件つきの更新）。版が違えば**サーバーを採る**（`vaultStatus` が restore-needed、その間は計算の画面を出さない）。投資実行の直前に `checkVaultUnchanged` で版を読み直す（古い値のまま投資実行すると暴落ルールの投入が二重になる）。

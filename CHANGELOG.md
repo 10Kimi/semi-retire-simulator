@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-11-20 — /ma と /rb のサーバーに残っていた金額を消す migration 049・050（FI_project #111・#109、D-065）
+
+- 049：`user_ma_settings` の金額15列を、目印（`keep_amounts_on_server`）の無い行だけ null に。目印の行が無ければ止める。暗号文の列（048）には触れない
+- 050：`user_rb_profile.monthly_living_cost` を全行 null にし、CHECK で今後も入れさせない（オーナーの生活費は /rb を開いたときブラウザへ移っている）
+- `supabase/pending/` に置いていた2本を 048 より大きい番号にして移した。オーナーの指示（2026-11-20「今やって。僕のデータは残す」）、適用はオーナーが `db push --remote --yes`
+
 ## 2026-11-18 — /rb の残高と生活費をサーバーに送らずブラウザに持つ、既存の残高を割合と指数に置き換える migration 047（FI_project #109、D-065）
 
 - 残高（手入力の「次へ」と MF 取り込み）は `rb_snapshots` に送らず localStorage（`fi.rb.amounts.v1.<userId>`、`src/lib/rb/localAmounts.ts`）に。前回の残高の復元もブラウザから（同じ端末・ブラウザだけ）。`saveSnapshot`・`fetchLatestSnapshot`・`fetchSnapshotDates` は削除
