@@ -6,6 +6,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { adoptModelAllocation } from '../../lib/rb/db';
 import AllocationDisclaimer from '../AllocationDisclaimer';
+import { useIsPremium } from '../../hooks/useIsPremium';
+import { RISK_TIER_DEFS, levelToTier, limitingAxisText, tierView } from '../../logic/riskTiers';
 
 interface Props {
   result: RiskResult;
@@ -27,7 +29,83 @@ function LevelBar({ level, label }: { level: number; label: string }) {
   );
 }
 
+/**
+ * 無料の利用者は3段階、有料の利用者（is_premium）は7段階とモデル配分（FI_project #101、D-062）。
+ * 計算・保存（final_level 1〜7）はどちらも同じ。
+ * 有料かどうかを読み込んでいる間はどちらも出さない（有料の人に3段階が一瞬出ないように、/pf と同じ）。
+ */
 export default function RiskResultDisplay({ result, onRetry }: Props) {
+  const { isPremium, loading } = useIsPremium();
+  const view = tierView(loading, isPremium);
+  if (view === 'loading') {
+    return <p className="text-sm text-gray-500 text-center py-10">結果を読み込み中...</p>;
+  }
+  return view === 'levels7'
+    ? <PremiumRiskResult result={result} onRetry={onRetry} />
+    : <FreeRiskResult result={result} onRetry={onRetry} />;
+}
+
+export function FreeRiskResult({ result, onRetry }: Props) {
+  const { capacityScore, toleranceScore, finalLevel, gapMessage } = result;
+  const tier = levelToTier(finalLevel);
+
+  return (
+    <div className="animate-fade-in space-y-6">
+      {/* メインの段階表示 */}
+      <div className="text-center">
+        <p className="text-xs text-gray-500 mb-2">あなたのリスク許容度</p>
+        <div className={`inline-flex items-center gap-3 px-6 py-4 rounded-xl ${tier.color}`}>
+          <span className={`text-3xl font-bold ${tier.textColor}`}>{tier.name}</span>
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          1年の値動きのめやす: {tier.volatility}
+        </p>
+      </div>
+
+      {/* どちらが結果を決めたか（数字は出さない） */}
+      <div className="bg-gray-50 rounded-xl border border-gray-200 p-5 space-y-3">
+        <p className="text-sm text-gray-700 leading-relaxed">{limitingAxisText(capacityScore, toleranceScore)}</p>
+        <p className="text-sm text-gray-700 leading-relaxed">{gapMessage}</p>
+      </div>
+
+      {/* 3段階の一覧 */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <h3 className="text-sm font-bold text-gray-800 mb-3">リスク許容度の3つの段階</h3>
+        <div className="space-y-1.5">
+          {RISK_TIER_DEFS.map((def) => {
+            const isActive = def.key === tier.key;
+            return (
+              <div
+                key={def.key}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-colors ${
+                  isActive ? `${def.color} ${def.textColor} font-semibold` : 'text-gray-500'
+                }`}
+              >
+                <span className="w-20">{def.name}</span>
+                <span className="text-gray-400">{def.volatility}</span>
+                {isActive && <span className="ml-auto text-xs font-bold">← あなた</span>}
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-xs text-gray-500 mt-3 leading-relaxed">
+          ここでは方向（安定・バランス・成長）までを示しています。同じ段階の中のどの位置か、何をどれだけ持つかは、有料のプログラムで扱います。
+        </p>
+      </div>
+
+      <div className="text-center">
+        <button
+          onClick={onRetry}
+          className="text-sm text-gray-500 hover:text-gray-700 underline"
+        >
+          もう一度診断する
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function PremiumRiskResult({ result, onRetry }: Props) {
   const { capacityScore, toleranceScore, finalLevel, gapMessage, levelDef } = result;
   const { user } = useAuth();
   const [adopt, setAdopt] = useState<'idle' | 'saving' | 'done' | 'failed'>('idle');
