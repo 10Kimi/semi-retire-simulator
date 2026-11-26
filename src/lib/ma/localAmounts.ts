@@ -190,11 +190,17 @@ export function saveLocalAmounts(storage: AmountStorage, userId: string, a: MaAm
   }
 }
 
-/** 一部だけ変える（無ければ既定値から） */
+/**
+ * 一部だけ変える（無ければ既定値から）。今の値が読めないとき（壊れている・引き継げない版・古い版を引き継げなかった）は、
+ * 既定値で上書きせずに false（データを残す、#135。/rb の patchRbAmounts と同じ）
+ */
 export function patchLocalAmounts(
   storage: AmountStorage, userId: string, patch: Partial<Omit<MaAmounts, 'slot_amounts'>> & { slot_amounts?: Partial<Record<SlotKey, number>> },
 ): boolean {
-  const cur = loadLocalAmounts(storage, userId) ?? defaultAmounts();
+  const r = readLocal(storage, userId);
+  if (r.status !== 'ok') return false;
+  const cur = r.raw ? parseAmountsJson(r.raw) : defaultAmounts();
+  if (!cur) return false;
   const { slot_amounts, ...rest } = patch;
   return saveLocalAmounts(storage, userId, {
     ...cur,

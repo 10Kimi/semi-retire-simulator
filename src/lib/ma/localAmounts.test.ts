@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  MA_AMOUNT_UPGRADES, amountsToJson, defaultAmounts, loadLocalAmounts, loadLocalRaw, saveLocalAmounts, saveLocalRaw,
+  MA_AMOUNT_UPGRADES, amountsToJson, defaultAmounts, loadLocalAmounts, loadLocalRaw, patchLocalAmounts, saveLocalAmounts, saveLocalRaw,
   storageKey, storageKeyFor, type AmountStorage, type MaAmounts,
 } from './localAmounts';
 
@@ -66,6 +66,26 @@ describe('今の版（v1）のデータは変わらず読める', () => {
   });
 });
 
+describe('patch は読めない値を上書きしない', () => {
+  it('壊れたデータ・引き継げない版があるとき false で、元の文字列を残す', () => {
+    const s = new MemoryStorage();
+    for (const bad of ['{not json', JSON.stringify({ ...JSON.parse(amountsToJson(amounts)), version: 2 }), 'null']) {
+      s.map.set(storageKey(USER), bad);
+      expect(patchLocalAmounts(s, USER, { monthly_budget: 1 })).toBe(false);
+      expect(s.map.get(storageKey(USER))).toBe(bad);
+    }
+  });
+
+  it('何も無ければ既定値に重ねて保存し、v1 の値があればそれに重ねる', () => {
+    const s = new MemoryStorage();
+    expect(patchLocalAmounts(s, USER, { monthly_budget: 1 })).toBe(true);
+    expect(loadLocalAmounts(s, USER)).toEqual({ ...defaultAmounts(), monthly_budget: 1 });
+    saveLocalAmounts(s, USER, amounts);
+    expect(patchLocalAmounts(s, USER, { reserve_balance: 5 })).toBe(true);
+    expect(loadLocalAmounts(s, USER)).toEqual({ ...amounts, reserve_balance: 5 });
+  });
+});
+
 describe('前の版（架空の v0）から引き継ぐ', () => {
   it('古い名前の v0 を引き継いで v1 の名前に保存し、古い名前を消す（saved_at・base も残す）', () => {
     const s = new MemoryStorage();
@@ -92,6 +112,15 @@ describe('前の版（架空の v0）から引き継ぐ', () => {
     // 次に保存できるようになれば引き継げる
     s.failSet = false;
     expect(loadLocalAmounts(s, USER)).toEqual(amounts);
+  });
+
+  it('引き継ぎで保存に失敗したら、patch も既定値で書かない', () => {
+    const s = new MemoryStorage();
+    s.map.set(storageKeyFor(0, USER), v0Raw());
+    addFakeV0();
+    s.failSet = true;
+    expect(patchLocalAmounts(s, USER, { reserve_balance: 1 })).toBe(false);
+    expect(s.map.get(storageKeyFor(0, USER))).toBe(v0Raw());
   });
 
   it('サーバーの暗号文から戻した v0 の文字列は、v1 にしてから保存する', () => {
