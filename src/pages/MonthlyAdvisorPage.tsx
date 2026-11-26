@@ -22,6 +22,9 @@ import type { VaultKey } from '../lib/vault/vault';
 import MaVaultPanel from '../components/ma/MaVaultPanel';
 import { calculateAllocation, formatCurrency, getCapeMultiplier, estimateNikkeiPbr, resolveReserveBase, deriveMonthlyInputs, computeCape5yMA, monthKey, nikkeiNow, evaluateCrashForMonth } from '../lib/ma/logic';
 import { resolveCrashBase, type CrashEvaluation } from '../lib/ma/crash';
+import { draftLedgerMonth, ledgerMonthlyCalc, latestRow, nextMonth, seedFromLegacy, type LedgerInputs, type LedgerRow } from '../lib/ma/ledger';
+import { fetchLedger, insertSeedWithOverride, setLedgerOverride } from '../lib/ma/ledgerDb';
+import MaLedgerPanel from '../components/ma/MaLedgerPanel';
 
 export default function MonthlyAdvisorPage() {
   const { user } = useAuth();
@@ -49,6 +52,10 @@ export default function MonthlyAdvisorPage() {
   const [vaultStatus, setVaultStatus] = useState<VaultStatus>('none');
   const [vaultKey, setVaultKey] = useState<VaultKey | null>(null);
   const [vaultNotice, setVaultNotice] = useState<string | null>(null);
+  // 台帳方式（オーナー本人の行だけ、FI_project #140）。null = 読んでいない（オーナー以外、または読み込み中）
+  const [ledger, setLedger] = useState<{ rows: LedgerRow[]; failed: boolean } | null>(null);
+  // 表示中の結果が今月の記録か（false = 下書き）
+  const [ledgerRecorded, setLedgerRecorded] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -65,6 +72,7 @@ export default function MonthlyAdvisorPage() {
         sett = { user_id: 'anonymous', ...DEFAULT_SETTINGS };
       }
       setSettings(sett);
+      if (user && sett.amounts_on_server) setLedger(await fetchLedger(user.id));
 
       // indicatorsは認証不要で取得
       const ind = await fetchLatestIndicators();
@@ -185,6 +193,35 @@ export default function MonthlyAdvisorPage() {
       alert('すべての数値を入力してください');
       return;
     }
+    if (onServer && ledger && !ledger.failed) {
+      // 台帳方式（#140）：今月がもう記録済みなら、その記録を出す（月次メールと同じ値）
+      const recorded = ledgerMonthlyCalc(ledger.rows, currentMonth);
+      if (recorded) {
+        setCrash(recorded.crash);
+        setResult(recorded.result);
+        setLedgerRecorded(true);
+        return;
+      }
+      // まだなら、月次メールが今月に作る記録と同じ計算をする（抜けた月は追いつきで積む）。保存しない（下書き）
+      const inputs: LedgerInputs = {
+        cape: capeVal, pbr: pbrVal, gsr: gsrVal,
+        momentum: { us: momentumUS, jp: momentumJP, em: momentumEM, gold: momentumGold },
+        cape5yMA,
+        as_of: indicators?.as_of ?? {},
+        sp500_usd: indicators?.drawdown?.sp500_usd ?? null,
+        mode,
+        monthly_budget: settings.monthly_budget,
+        jp_index: settings.jp_index,
+        slots: SLOT_KEYS.map((k) => settings[k]),
+      };
+      // 今月の行が seed（送信日のあとに画面で合わせた）なら、メールと同じく暴落ルールは判定しない（台帳に残らないため）
+      const seededThisMonth = ledger.rows.some((r) => r.month === currentMonth && r.kind === 'seed');
+      const { calc } = draftLedgerMonth(ledger.rows, settings, currentMonth, seededThisMonth ? { ...inputs, sp500_usd: null } : inputs);
+      setLedgerRecorded(false);
+      setCrash(calc.crash);
+      setResult(calc.result);
+      return;
+    }
     // 暴落ルール（待機資金の唯一の出口）。S&P500 の高値データが無ければ判定しない
     const crashEval = evaluateCrashForMonth(indicators, settings, new Date(), reserveMonthBase);
     setCrash(crashEval);
@@ -246,6 +283,17 @@ export default function MonthlyAdvisorPage() {
     alert(synced ? '待機資金を更新しました' : '待機資金をこのブラウザに保存しました（サーバーの暗号文への保存は、上の表示をご覧ください）');
   };
 
+  // 台帳の最後の行に実際の残高を上書きする（台帳が空なら、選んだ月の最初の行を旧列から作って上書きする）。#140
+  const handleLedgerOverride = async (month: string, amount: number | null): Promise<boolean> => {
+    if (!user || !ledger) return false;
+    const latest = latestRow(ledger.rows);
+    const ok = latest
+      ? await setLedgerOverride(user.id, latest.month, amount)
+      : amount != null && (await insertSeedWithOverride({ ...seedFromLegacy(settings, nextMonth(month)), user_id: user.id, month }, amount));
+    if (ok) setLedger(await fetchLedger(user.id));
+    return ok;
+  };
+
   const handleMonthlyBudgetChange = async (value: number) => {
     const updated = { ...settings, monthly_budget: value };
     setSettings(updated);
@@ -269,6 +317,7 @@ export default function MonthlyAdvisorPage() {
 
   // 待機資金: 同月内は最後の実行で上書き（月初baseから再計算）
   const currentMonth = monthKey(new Date());
+  const todayYmd = `${currentMonth}-${String(new Date().getDate()).padStart(2, '0')}`;
   const reserveMonthBase = resolveReserveBase(
     settings.reserve_balance, settings.reserve_month, settings.reserve_month_base, currentMonth,
   );
@@ -345,7 +394,17 @@ export default function MonthlyAdvisorPage() {
 
         {vaultPanel}
 
-        {/* 待機資金残高 */}
+        {/* 待機資金残高（オーナー本人は台帳の想定の累計と「実際の残高に合わせる」、#140） */}
+        {onServer && ledger ? (
+          <MaLedgerPanel
+            rows={ledger.rows}
+            failed={ledger.failed}
+            legacyBalance={settings.reserve_balance}
+            currentMonth={currentMonth}
+            today={todayYmd}
+            onOverride={handleLedgerOverride}
+          />
+        ) : (
         <div className="bg-amber-900/30 border-2 border-amber-500/50 rounded-2xl p-4 mb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -358,6 +417,7 @@ export default function MonthlyAdvisorPage() {
             <div className="text-2xl font-bold text-amber-300">{formatCurrency(settings.reserve_balance)}</div>
           </div>
         </div>
+        )}
 
         {/* 投資設定 */}
         <div className="bg-slate-900 rounded-2xl p-4 mb-4">
@@ -798,17 +858,25 @@ export default function MonthlyAdvisorPage() {
                 </div>
               )}
               <div className="flex justify-between py-2 mt-2 border-t border-slate-700">
-                <span>待機資金 更新後残高</span>
+                <span>{onServer && ledger ? (ledgerRecorded ? '今月の想定残高（記録済み）' : '今月の想定残高（下書き）') : '待機資金 更新後残高'}</span>
                 <span className="text-amber-300 font-bold">{formatCurrency(result.newReserveBalance)}</span>
               </div>
             </div>
 
-            <button
-              onClick={confirmAndUpdateReserve}
-              className="w-full mt-4 py-3 bg-amber-600 hover:bg-amber-500 rounded-xl font-bold transition-colors"
-            >
-              ✅ 投資実行＆待機資金を更新
-            </button>
+            {onServer && ledger ? (
+              <p className="text-xs text-slate-400 mt-4">
+                {ledgerRecorded
+                  ? '今月はもう台帳に記録しました（月次メールと同じ値。上の入力は使っていません）。暴落ルールの投入額は想定の残高から計算しています。'
+                  : 'この計算は下書きで、保存しません。今月の記録は送信日（25日）の月次メールで作ります。暴落ルールの投入額は想定の残高から計算しています。'}
+              </p>
+            ) : (
+              <button
+                onClick={confirmAndUpdateReserve}
+                className="w-full mt-4 py-3 bg-amber-600 hover:bg-amber-500 rounded-xl font-bold transition-colors"
+              >
+                ✅ 投資実行＆待機資金を更新
+              </button>
+            )}
           </div>
         )}
 

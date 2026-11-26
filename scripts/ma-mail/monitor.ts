@@ -14,7 +14,7 @@ export interface RunRecord {
   result: RunResult;
   today: string;
   targetMonth: string | null;
-  recordedMonths: string[]; // 台帳方式（未着手）で使う。今は常に空
+  recordedMonths: string[]; // 台帳（ma_ledger）に新しく記録した月（#140）。記録しなかった日は空
   catchup: boolean;
   mailSent: boolean;
   error: string | null;
@@ -25,7 +25,7 @@ export interface RunRecord {
 
 export interface RunDeps {
   /** 判定・送信・state.json の更新まで。送らない日も結果を返す */
-  main: () => Promise<{ result: RunResult; targetMonth: string; catchup: boolean; alert?: string | null }>;
+  main: () => Promise<{ result: RunResult; targetMonth: string; catchup: boolean; alert?: string | null; recordedMonths?: string[] }>;
   ping: (record: RunRecord) => Promise<string>;
   write: (record: RunRecord) => void;
   now?: () => string;
@@ -43,6 +43,7 @@ export async function runOnce(today: string, deps: RunDeps): Promise<{ record: R
     record.result = r.result;
     record.targetMonth = r.targetMonth;
     record.catchup = r.catchup;
+    record.recordedMonths = r.recordedMonths ?? [];
     record.alert = r.alert ?? null;
     record.mailSent = r.result === 'sent' || r.result === 'force_sent';
   } catch (e) {

@@ -5,6 +5,7 @@ import { evaluateCrash, resolveCrashBase } from '../crash';
 import { buildMail, type MailInput } from './buildMail';
 import { calculateAllocation, calculateMonthlyFromIndicators, deriveMonthlyInputs, estimateNikkeiPbr } from '../logic';
 import { DEFAULT_SETTINGS, type Indicators, type UserMaSettings, type CrashState } from '../types';
+import { buildLedgerInputs, catchUpLedger, ledgerMonthlyCalc, seedFromLegacy, type LedgerRow } from '../ledger';
 
 const settings: UserMaSettings = {
   user_id: 'u',
@@ -215,6 +216,78 @@ describe('メール本文', () => {
     const i = base();
     i.calc = { ...i.calc!, crash: evaluateCrash({ last: 55, ath: 100, athDate: '2026-10-01', lastDate: '2026-11-24' }, null, 900_000) };
     const m = buildMail(i);
+    for (const w of ['推奨', '買い時', 'おすすめ']) {
+      expect(m.html).not.toContain(w);
+      expect(m.text).not.toContain(w);
+    }
+  });
+});
+
+describe('メール本文（台帳、#140）', () => {
+  const fresh = { stale: false, asOf: '2026-11-24', missing: false };
+  // 旧列から seed（2026-08 末 412,345）→ 9・10月は追いつき、11月を記録
+  const owner: UserMaSettings = { ...settings, monthly_budget: 153_700, reserve_balance: 412_345, reserve_month: '2026-08' };
+  const ind: Indicators = { ...indicators, drawdown: { sp500_usd: { last: 68, lastDate: '2026-11-24', ath: 100, athDate: '2026-10-01' }, sp500_jpy: null, classes: {} } };
+  const ledgerFor = (extra: (rows: LedgerRow[]) => LedgerRow[] = (r) => r) => {
+    const seed = seedFromLegacy(owner, '2026-11');
+    return extra([seed, ...catchUpLedger([seed], '2026-11', buildLedgerInputs(ind, owner, 'neutral')!)]);
+  };
+  const mailWith = (rows: LedgerRow[]): MailInput => ({
+    month: '2026-11',
+    mode: 'neutral',
+    settings: owner,
+    indicators: ind,
+    calc: ledgerMonthlyCalc(rows, '2026-11'),
+    freshness: Object.fromEntries(
+      ['cape', 'pbr', 'gsr', 'momentum_us', 'momentum_jp', 'momentum_em', 'momentum_gold', 'sp500_usd', 'sp500_jpy'].map((k) => [k, fresh]),
+    ),
+    sp500Usd: ind.drawdown!.sp500_usd,
+    sp500Jpy: null,
+    ledger: rows,
+  });
+
+  it('待機資金の表は opening／積み増し／暴落の投入／closing、脚注つき、ボタンの案内は出さない', () => {
+    const rows = ledgerFor();
+    const nov = rows.at(-1)!;
+    const t = buildMail(mailWith(rows)).text;
+    expect(t).toContain(`前月までの想定残高：${'¥' + nov.opening_balance!.toLocaleString('ja-JP')}`);
+    expect(t).toContain(`今月の積み増し：+¥${nov.monthly_reserve.toLocaleString('ja-JP')}`);
+    expect(t).toContain(`暴落ルールによる投入：−¥${nov.crash_deployment.toLocaleString('ja-JP')}`);
+    expect(t).toContain(`今月の想定残高：¥${nov.closing_balance.toLocaleString('ja-JP')}`);
+    expect(nov.closing_balance).toBe(nov.opening_balance! + nov.monthly_reserve - nov.crash_deployment);
+    expect(t).toContain('想定の残高は、配分どおりに積み立てた前提の累計です。実際の残高とずれたら /ma の「実際の残高に合わせる」で直せます。');
+    expect(t).not.toContain('投資実行＆待機資金を更新');
+    expect(t).not.toContain('現在の残高');
+  });
+  it('暴落の欄に「投入額は想定の残高から計算」', () => {
+    expect(buildMail(mailWith(ledgerFor())).text).toContain('投入額は想定の残高から計算');
+  });
+  it('追いつきで記録した月を出す', () => {
+    expect(buildMail(mailWith(ledgerFor())).text).toContain('追いつきで記録した月：2026-09・2026-10（当時の指標ではなく今の指標で計算）');
+  });
+  it('上書きが無ければ「まだ合わせていません」、あれば一番新しい月と額と想定との差', () => {
+    expect(buildMail(mailWith(ledgerFor())).text).toContain('最後に実際の残高で合わせた月：まだ合わせていません');
+    const rows = ledgerFor((r) => r.map((x) => (x.month === '2026-09' ? { ...x, override_balance: 400_123, override_at: '2026-09-30T00:00:00Z' } : x)));
+    const sep = rows.find((x) => x.month === '2026-09')!;
+    const t = buildMail(mailWith(rows)).text;
+    expect(t).toContain(`最後に実際の残高で合わせた月：2026-09（¥400,123。想定との差 −¥${(sep.closing_balance - 400_123).toLocaleString('ja-JP')}）`);
+  });
+  it('取れなかったモメンタムは台帳の行からも「取得できず（上昇扱い）」', () => {
+    const noEm: Indicators = { ...ind, momentum: { ...ind.momentum, em: undefined } };
+    const seed = seedFromLegacy(owner, '2026-11');
+    const rows = [seed, ...catchUpLedger([seed], '2026-11', buildLedgerInputs(noEm, owner, 'neutral')!)];
+    expect(rows.at(-1)!.inputs!.momentum.em).toBeNull();
+    expect(buildMail(mailWith(rows)).text).toContain('新興国 取得できず（上昇扱い）');
+  });
+  it('スロット表は、その月の行に固定したスロットから出す（今の設定が変わっていても）', () => {
+    const rows = ledgerFor();
+    const changed: UserMaSettings = { ...owner, slot3: { account: 'specific', amount: 77_777, fund_name: 'Z', asset_class: 'us' } };
+    const t = buildMail({ ...mailWith(rows), settings: changed }).text;
+    expect(t).toContain('特定口座／B：¥60,000 → ');
+    expect(t).not.toContain('¥77,777');
+  });
+  it('「推奨」「買い時」「おすすめ」を使わない', () => {
+    const m = buildMail(mailWith(ledgerFor()));
     for (const w of ['推奨', '買い時', 'おすすめ']) {
       expect(m.html).not.toContain(w);
       expect(m.text).not.toContain(w);

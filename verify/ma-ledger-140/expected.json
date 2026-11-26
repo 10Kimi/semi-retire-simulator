@@ -1,0 +1,2434 @@
+{
+  "spec": "140_spec.md + 設計書 v7.25 §13-69 台帳方式",
+  "input_check": {
+    "slot_total": 310000,
+    "nisa_tsumitate_year": 1185180,
+    "nisa_growth_year": 2258820,
+    "nisa_year_total": 3444000,
+    "ideco_month": 23000,
+    "monthly_reserve": 213456
+  },
+  "crash_state_shape": "{triggered, baseReserve, athValue, athDate}（台帳の行の crash_state。ボタン方式の {current, month, monthBase} の current と同じ形を想定）",
+  "cases": [
+    {
+      "id": "K1",
+      "desc": "通常の1か月（dd -5%）",
+      "call": "catchUpLedger",
+      "input": {
+        "rows": [
+          {
+            "month": "2026-10",
+            "kind": "seed",
+            "catchup": false,
+            "inputs": null,
+            "opening_balance": null,
+            "monthly_reserve": 0,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": null,
+            "closing_balance": 1234567,
+            "override_balance": null,
+            "override_at": null
+          }
+        ],
+        "targetMonth": "2026-11",
+        "inputs": {
+          "cape": 30.0,
+          "pbr": 1.4,
+          "gsr": 80.0,
+          "momentum": {
+            "us": true,
+            "jp": true,
+            "em": true,
+            "gold": true
+          },
+          "cape5yMA": null,
+          "as_of": {},
+          "sp500_usd": {
+            "last": 5700,
+            "ath": 6000,
+            "athDate": "2026-10-01"
+          },
+          "mode": "neutral",
+          "monthly_budget": 523456,
+          "jp_index": "topix",
+          "slots": [
+            {
+              "account": "nisa_tsumitate",
+              "amount": 98765,
+              "name": "全世界株式インデックス",
+              "assetClass": "global_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 188235,
+              "name": "S&P500インデックス",
+              "assetClass": "us_stock"
+            },
+            {
+              "account": "ideco",
+              "amount": 23000,
+              "name": "先進国株式インデックス",
+              "assetClass": "dev_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            }
+          ]
+        }
+      },
+      "expected": [
+        {
+          "month": "2026-11",
+          "kind": "record",
+          "catchup": false,
+          "opening_balance": 1234567,
+          "monthly_reserve": 213456,
+          "crash_deployment": 0,
+          "crash_triggered": [],
+          "crash_state": {
+            "triggered": [],
+            "baseReserve": null,
+            "athValue": 6000,
+            "athDate": "2026-10-01"
+          },
+          "closing_balance": 1448023,
+          "override_balance": null
+        }
+      ],
+      "trace": [
+        {
+          "2026-11": [
+            "opening = 1234567（prev 2026-10 の closing 1234567, override None）",
+            "前の状態なし → 今の高値で状態を作る",
+            "dd = 5700/6000 - 1 = -0.050000",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 1234567 + 213456 - 0 = 1448023"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "K2",
+      "desc": "追いつき2か月抜け（10・11月 catchup、12月 dd -10%）",
+      "call": "catchUpLedger",
+      "input": {
+        "rows": [
+          {
+            "month": "2026-09",
+            "kind": "seed",
+            "catchup": false,
+            "inputs": null,
+            "opening_balance": null,
+            "monthly_reserve": 0,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": null,
+            "closing_balance": 1234567,
+            "override_balance": null,
+            "override_at": null
+          }
+        ],
+        "targetMonth": "2026-12",
+        "inputs": {
+          "cape": 30.0,
+          "pbr": 1.4,
+          "gsr": 80.0,
+          "momentum": {
+            "us": true,
+            "jp": true,
+            "em": true,
+            "gold": true
+          },
+          "cape5yMA": null,
+          "as_of": {},
+          "sp500_usd": {
+            "last": 5400,
+            "ath": 6000,
+            "athDate": "2026-10-01"
+          },
+          "mode": "neutral",
+          "monthly_budget": 523456,
+          "jp_index": "topix",
+          "slots": [
+            {
+              "account": "nisa_tsumitate",
+              "amount": 98765,
+              "name": "全世界株式インデックス",
+              "assetClass": "global_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 188235,
+              "name": "S&P500インデックス",
+              "assetClass": "us_stock"
+            },
+            {
+              "account": "ideco",
+              "amount": 23000,
+              "name": "先進国株式インデックス",
+              "assetClass": "dev_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            }
+          ]
+        }
+      },
+      "expected": [
+        {
+          "month": "2026-10",
+          "kind": "record",
+          "catchup": true,
+          "opening_balance": 1234567,
+          "monthly_reserve": 213456,
+          "crash_deployment": 0,
+          "crash_triggered": [],
+          "crash_state": null,
+          "closing_balance": 1448023,
+          "override_balance": null
+        },
+        {
+          "month": "2026-11",
+          "kind": "record",
+          "catchup": true,
+          "opening_balance": 1448023,
+          "monthly_reserve": 213456,
+          "crash_deployment": 0,
+          "crash_triggered": [],
+          "crash_state": null,
+          "closing_balance": 1661479,
+          "override_balance": null
+        },
+        {
+          "month": "2026-12",
+          "kind": "record",
+          "catchup": false,
+          "opening_balance": 1661479,
+          "monthly_reserve": 213456,
+          "crash_deployment": 0,
+          "crash_triggered": [],
+          "crash_state": {
+            "triggered": [],
+            "baseReserve": null,
+            "athValue": 6000,
+            "athDate": "2026-10-01"
+          },
+          "closing_balance": 1874935,
+          "override_balance": null
+        }
+      ],
+      "trace": [
+        {
+          "2026-10": [
+            "opening = 1234567（prev 2026-09 の closing 1234567, override None）",
+            "追いつきの月 → 暴落は判定しない",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 1234567 + 213456 - 0 = 1448023"
+          ]
+        },
+        {
+          "2026-11": [
+            "opening = 1448023（prev 2026-10 の closing 1448023, override None）",
+            "追いつきの月 → 暴落は判定しない",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 1448023 + 213456 - 0 = 1661479"
+          ]
+        },
+        {
+          "2026-12": [
+            "opening = 1661479（prev 2026-11 の closing 1661479, override None）",
+            "前の状態なし → 今の高値で状態を作る",
+            "dd = 5400/6000 - 1 = -0.100000",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 1661479 + 213456 - 0 = 1874935"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C1",
+      "desc": "-32% でまとめて発動（20・30）",
+      "call": "catchUpLedger",
+      "input": {
+        "rows": [
+          {
+            "month": "2026-11",
+            "kind": "seed",
+            "catchup": false,
+            "inputs": null,
+            "opening_balance": null,
+            "monthly_reserve": 0,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": null,
+            "closing_balance": 3000001,
+            "override_balance": null,
+            "override_at": null
+          }
+        ],
+        "targetMonth": "2026-12",
+        "inputs": {
+          "cape": 30.0,
+          "pbr": 1.4,
+          "gsr": 80.0,
+          "momentum": {
+            "us": true,
+            "jp": true,
+            "em": true,
+            "gold": true
+          },
+          "cape5yMA": null,
+          "as_of": {},
+          "sp500_usd": {
+            "last": 4080,
+            "ath": 6000,
+            "athDate": "2026-10-01"
+          },
+          "mode": "neutral",
+          "monthly_budget": 523456,
+          "jp_index": "topix",
+          "slots": [
+            {
+              "account": "nisa_tsumitate",
+              "amount": 98765,
+              "name": "全世界株式インデックス",
+              "assetClass": "global_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 188235,
+              "name": "S&P500インデックス",
+              "assetClass": "us_stock"
+            },
+            {
+              "account": "ideco",
+              "amount": 23000,
+              "name": "先進国株式インデックス",
+              "assetClass": "dev_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            }
+          ]
+        }
+      },
+      "expected": [
+        {
+          "month": "2026-12",
+          "kind": "record",
+          "catchup": false,
+          "opening_balance": 3000001,
+          "monthly_reserve": 213456,
+          "crash_deployment": 2000000,
+          "crash_triggered": [
+            20,
+            30
+          ],
+          "crash_state": {
+            "triggered": [
+              20,
+              30
+            ],
+            "baseReserve": 3000001,
+            "athValue": 6000,
+            "athDate": "2026-10-01"
+          },
+          "closing_balance": 1213457,
+          "override_balance": null
+        }
+      ],
+      "trace": [
+        {
+          "2026-12": [
+            "opening = 3000001（prev 2026-11 の closing 3000001, override None）",
+            "前の状態なし → 今の高値で状態を作る",
+            "dd = 4080/6000 - 1 = -0.320000",
+            "基準残高 = 3000001",
+            "段階20: 投入 1000000（残り 2000001）",
+            "段階30: 投入 1000000（残り 1000001）",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 3000001 + 213456 - 2000000 = 1213457"
+          ]
+        }
+      ],
+      "note": "4080/6000-1 は浮動小数で -0.32000000000000006。-0.30 の境界には掛からない"
+    },
+    {
+      "id": "C2",
+      "desc": "-45% で3段階まとめて",
+      "call": "catchUpLedger",
+      "input": {
+        "rows": [
+          {
+            "month": "2026-11",
+            "kind": "seed",
+            "catchup": false,
+            "inputs": null,
+            "opening_balance": null,
+            "monthly_reserve": 0,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": null,
+            "closing_balance": 2345679,
+            "override_balance": null,
+            "override_at": null
+          }
+        ],
+        "targetMonth": "2026-12",
+        "inputs": {
+          "cape": 30.0,
+          "pbr": 1.4,
+          "gsr": 80.0,
+          "momentum": {
+            "us": true,
+            "jp": true,
+            "em": true,
+            "gold": true
+          },
+          "cape5yMA": null,
+          "as_of": {},
+          "sp500_usd": {
+            "last": 3300,
+            "ath": 6000,
+            "athDate": "2026-10-01"
+          },
+          "mode": "neutral",
+          "monthly_budget": 523456,
+          "jp_index": "topix",
+          "slots": [
+            {
+              "account": "nisa_tsumitate",
+              "amount": 98765,
+              "name": "全世界株式インデックス",
+              "assetClass": "global_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 188235,
+              "name": "S&P500インデックス",
+              "assetClass": "us_stock"
+            },
+            {
+              "account": "ideco",
+              "amount": 23000,
+              "name": "先進国株式インデックス",
+              "assetClass": "dev_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            }
+          ]
+        }
+      },
+      "expected": [
+        {
+          "month": "2026-12",
+          "kind": "record",
+          "catchup": false,
+          "opening_balance": 2345679,
+          "monthly_reserve": 213456,
+          "crash_deployment": 2345679,
+          "crash_triggered": [
+            20,
+            30,
+            40
+          ],
+          "crash_state": {
+            "triggered": [
+              20,
+              30,
+              40
+            ],
+            "baseReserve": 2345679,
+            "athValue": 6000,
+            "athDate": "2026-10-01"
+          },
+          "closing_balance": 213456,
+          "override_balance": null
+        }
+      ],
+      "trace": [
+        {
+          "2026-12": [
+            "opening = 2345679（prev 2026-11 の closing 2345679, override None）",
+            "前の状態なし → 今の高値で状態を作る",
+            "dd = 3300/6000 - 1 = -0.450000",
+            "基準残高 = 2345679",
+            "段階20: 投入 781893（残り 1563786）",
+            "段階30: 投入 781893（残り 781893）",
+            "段階40: 投入 781893（残り 0）",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 2345679 + 213456 - 2345679 = 213456"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C3",
+      "desc": "20 発動済み・基準 2,400,000、今 -32% → 30 だけ",
+      "call": "catchUpLedger",
+      "input": {
+        "rows": [
+          {
+            "month": "2026-11",
+            "kind": "seed",
+            "catchup": false,
+            "inputs": null,
+            "opening_balance": null,
+            "monthly_reserve": 0,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": {
+              "triggered": [
+                20
+              ],
+              "baseReserve": 2400000,
+              "athValue": 6000,
+              "athDate": "2026-10-01"
+            },
+            "closing_balance": 1654321,
+            "override_balance": null,
+            "override_at": null
+          }
+        ],
+        "targetMonth": "2026-12",
+        "inputs": {
+          "cape": 30.0,
+          "pbr": 1.4,
+          "gsr": 80.0,
+          "momentum": {
+            "us": true,
+            "jp": true,
+            "em": true,
+            "gold": true
+          },
+          "cape5yMA": null,
+          "as_of": {},
+          "sp500_usd": {
+            "last": 4080,
+            "ath": 6000,
+            "athDate": "2026-10-01"
+          },
+          "mode": "neutral",
+          "monthly_budget": 523456,
+          "jp_index": "topix",
+          "slots": [
+            {
+              "account": "nisa_tsumitate",
+              "amount": 98765,
+              "name": "全世界株式インデックス",
+              "assetClass": "global_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 188235,
+              "name": "S&P500インデックス",
+              "assetClass": "us_stock"
+            },
+            {
+              "account": "ideco",
+              "amount": 23000,
+              "name": "先進国株式インデックス",
+              "assetClass": "dev_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            }
+          ]
+        }
+      },
+      "expected": [
+        {
+          "month": "2026-12",
+          "kind": "record",
+          "catchup": false,
+          "opening_balance": 1654321,
+          "monthly_reserve": 213456,
+          "crash_deployment": 800000,
+          "crash_triggered": [
+            30
+          ],
+          "crash_state": {
+            "triggered": [
+              20,
+              30
+            ],
+            "baseReserve": 2400000,
+            "athValue": 6000,
+            "athDate": "2026-10-01"
+          },
+          "closing_balance": 1067777,
+          "override_balance": null
+        }
+      ],
+      "trace": [
+        {
+          "2026-12": [
+            "opening = 1654321（prev 2026-11 の closing 1654321, override None）",
+            "高値の更新? ath 6000 > 6000 = False, athDate 2026-10-01 > 2026-10-01 = False → False",
+            "dd = 4080/6000 - 1 = -0.320000",
+            "段階30: 投入 800000（残り 854321）",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 1654321 + 213456 - 800000 = 1067777"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C3b",
+      "desc": "C3 と同じだが残りが floor(基準/3) より少ない → 残り全部",
+      "call": "catchUpLedger",
+      "input": {
+        "rows": [
+          {
+            "month": "2026-11",
+            "kind": "seed",
+            "catchup": false,
+            "inputs": null,
+            "opening_balance": null,
+            "monthly_reserve": 0,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": {
+              "triggered": [
+                20
+              ],
+              "baseReserve": 2400000,
+              "athValue": 6000,
+              "athDate": "2026-10-01"
+            },
+            "closing_balance": 500001,
+            "override_balance": null,
+            "override_at": null
+          }
+        ],
+        "targetMonth": "2026-12",
+        "inputs": {
+          "cape": 30.0,
+          "pbr": 1.4,
+          "gsr": 80.0,
+          "momentum": {
+            "us": true,
+            "jp": true,
+            "em": true,
+            "gold": true
+          },
+          "cape5yMA": null,
+          "as_of": {},
+          "sp500_usd": {
+            "last": 4080,
+            "ath": 6000,
+            "athDate": "2026-10-01"
+          },
+          "mode": "neutral",
+          "monthly_budget": 523456,
+          "jp_index": "topix",
+          "slots": [
+            {
+              "account": "nisa_tsumitate",
+              "amount": 98765,
+              "name": "全世界株式インデックス",
+              "assetClass": "global_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 188235,
+              "name": "S&P500インデックス",
+              "assetClass": "us_stock"
+            },
+            {
+              "account": "ideco",
+              "amount": 23000,
+              "name": "先進国株式インデックス",
+              "assetClass": "dev_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            }
+          ]
+        }
+      },
+      "expected": [
+        {
+          "month": "2026-12",
+          "kind": "record",
+          "catchup": false,
+          "opening_balance": 500001,
+          "monthly_reserve": 213456,
+          "crash_deployment": 500001,
+          "crash_triggered": [
+            30
+          ],
+          "crash_state": {
+            "triggered": [
+              20,
+              30
+            ],
+            "baseReserve": 2400000,
+            "athValue": 6000,
+            "athDate": "2026-10-01"
+          },
+          "closing_balance": 213456,
+          "override_balance": null
+        }
+      ],
+      "trace": [
+        {
+          "2026-12": [
+            "opening = 500001（prev 2026-11 の closing 500001, override None）",
+            "高値の更新? ath 6000 > 6000 = False, athDate 2026-10-01 > 2026-10-01 = False → False",
+            "dd = 4080/6000 - 1 = -0.320000",
+            "段階30: 投入 500001（残り 0）",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 500001 + 213456 - 500001 = 213456"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C4a",
+      "desc": "高値の更新（値も日付も後）→ リセットしてから判定（-18.03% で発動なし）",
+      "call": "catchUpLedger",
+      "input": {
+        "rows": [
+          {
+            "month": "2026-11",
+            "kind": "seed",
+            "catchup": false,
+            "inputs": null,
+            "opening_balance": null,
+            "monthly_reserve": 0,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": {
+              "triggered": [
+                20
+              ],
+              "baseReserve": 2400000,
+              "athValue": 6000,
+              "athDate": "2026-10-01"
+            },
+            "closing_balance": 1600000,
+            "override_balance": null,
+            "override_at": null
+          }
+        ],
+        "targetMonth": "2026-12",
+        "inputs": {
+          "cape": 30.0,
+          "pbr": 1.4,
+          "gsr": 80.0,
+          "momentum": {
+            "us": true,
+            "jp": true,
+            "em": true,
+            "gold": true
+          },
+          "cape5yMA": null,
+          "as_of": {},
+          "sp500_usd": {
+            "last": 5000,
+            "ath": 6100,
+            "athDate": "2026-11-20"
+          },
+          "mode": "neutral",
+          "monthly_budget": 523456,
+          "jp_index": "topix",
+          "slots": [
+            {
+              "account": "nisa_tsumitate",
+              "amount": 98765,
+              "name": "全世界株式インデックス",
+              "assetClass": "global_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 188235,
+              "name": "S&P500インデックス",
+              "assetClass": "us_stock"
+            },
+            {
+              "account": "ideco",
+              "amount": 23000,
+              "name": "先進国株式インデックス",
+              "assetClass": "dev_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            }
+          ]
+        }
+      },
+      "expected": [
+        {
+          "month": "2026-12",
+          "kind": "record",
+          "catchup": false,
+          "opening_balance": 1600000,
+          "monthly_reserve": 213456,
+          "crash_deployment": 0,
+          "crash_triggered": [],
+          "crash_state": {
+            "triggered": [],
+            "baseReserve": null,
+            "athValue": 6100,
+            "athDate": "2026-11-20"
+          },
+          "closing_balance": 1813456,
+          "override_balance": null
+        }
+      ],
+      "trace": [
+        {
+          "2026-12": [
+            "opening = 1600000（prev 2026-11 の closing 1600000, override None）",
+            "高値の更新? ath 6100 > 6000 = True, athDate 2026-11-20 > 2026-10-01 = True → True",
+            "リセット",
+            "dd = 5000/6100 - 1 = -0.180328",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 1600000 + 213456 - 0 = 1813456"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C4b",
+      "desc": "値だけ大きく日付が同じ → リセットしない",
+      "call": "catchUpLedger",
+      "input": {
+        "rows": [
+          {
+            "month": "2026-11",
+            "kind": "seed",
+            "catchup": false,
+            "inputs": null,
+            "opening_balance": null,
+            "monthly_reserve": 0,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": {
+              "triggered": [
+                20
+              ],
+              "baseReserve": 2400000,
+              "athValue": 6000,
+              "athDate": "2026-10-01"
+            },
+            "closing_balance": 1600000,
+            "override_balance": null,
+            "override_at": null
+          }
+        ],
+        "targetMonth": "2026-12",
+        "inputs": {
+          "cape": 30.0,
+          "pbr": 1.4,
+          "gsr": 80.0,
+          "momentum": {
+            "us": true,
+            "jp": true,
+            "em": true,
+            "gold": true
+          },
+          "cape5yMA": null,
+          "as_of": {},
+          "sp500_usd": {
+            "last": 5000,
+            "ath": 6100,
+            "athDate": "2026-10-01"
+          },
+          "mode": "neutral",
+          "monthly_budget": 523456,
+          "jp_index": "topix",
+          "slots": [
+            {
+              "account": "nisa_tsumitate",
+              "amount": 98765,
+              "name": "全世界株式インデックス",
+              "assetClass": "global_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 188235,
+              "name": "S&P500インデックス",
+              "assetClass": "us_stock"
+            },
+            {
+              "account": "ideco",
+              "amount": 23000,
+              "name": "先進国株式インデックス",
+              "assetClass": "dev_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            }
+          ]
+        }
+      },
+      "expected": [
+        {
+          "month": "2026-12",
+          "kind": "record",
+          "catchup": false,
+          "opening_balance": 1600000,
+          "monthly_reserve": 213456,
+          "crash_deployment": 0,
+          "crash_triggered": [],
+          "crash_state": {
+            "triggered": [
+              20
+            ],
+            "baseReserve": 2400000,
+            "athValue": 6000,
+            "athDate": "2026-10-01"
+          },
+          "closing_balance": 1813456,
+          "override_balance": null
+        }
+      ],
+      "trace": [
+        {
+          "2026-12": [
+            "opening = 1600000（prev 2026-11 の closing 1600000, override None）",
+            "高値の更新? ath 6100 > 6000 = True, athDate 2026-10-01 > 2026-10-01 = False → False",
+            "dd = 5000/6100 - 1 = -0.180328",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 1600000 + 213456 - 0 = 1813456"
+          ]
+        }
+      ],
+      "note": "dd の分母を今の ath(6100) にしても前の athValue(6000) にしても新しい段階は無い（-18.03% / -16.67%）"
+    },
+    {
+      "id": "C4c",
+      "desc": "リセットのあと同じ月に -20% を越える → 基準は今の opening（2,400,000 ではない）",
+      "call": "catchUpLedger",
+      "input": {
+        "rows": [
+          {
+            "month": "2026-11",
+            "kind": "seed",
+            "catchup": false,
+            "inputs": null,
+            "opening_balance": null,
+            "monthly_reserve": 0,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": {
+              "triggered": [
+                20
+              ],
+              "baseReserve": 2400000,
+              "athValue": 6000,
+              "athDate": "2026-10-01"
+            },
+            "closing_balance": 1600000,
+            "override_balance": null,
+            "override_at": null
+          }
+        ],
+        "targetMonth": "2026-12",
+        "inputs": {
+          "cape": 30.0,
+          "pbr": 1.4,
+          "gsr": 80.0,
+          "momentum": {
+            "us": true,
+            "jp": true,
+            "em": true,
+            "gold": true
+          },
+          "cape5yMA": null,
+          "as_of": {},
+          "sp500_usd": {
+            "last": 4800,
+            "ath": 6100,
+            "athDate": "2026-11-20"
+          },
+          "mode": "neutral",
+          "monthly_budget": 523456,
+          "jp_index": "topix",
+          "slots": [
+            {
+              "account": "nisa_tsumitate",
+              "amount": 98765,
+              "name": "全世界株式インデックス",
+              "assetClass": "global_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 188235,
+              "name": "S&P500インデックス",
+              "assetClass": "us_stock"
+            },
+            {
+              "account": "ideco",
+              "amount": 23000,
+              "name": "先進国株式インデックス",
+              "assetClass": "dev_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            }
+          ]
+        }
+      },
+      "expected": [
+        {
+          "month": "2026-12",
+          "kind": "record",
+          "catchup": false,
+          "opening_balance": 1600000,
+          "monthly_reserve": 213456,
+          "crash_deployment": 533333,
+          "crash_triggered": [
+            20
+          ],
+          "crash_state": {
+            "triggered": [
+              20
+            ],
+            "baseReserve": 1600000,
+            "athValue": 6100,
+            "athDate": "2026-11-20"
+          },
+          "closing_balance": 1280123,
+          "override_balance": null
+        }
+      ],
+      "trace": [
+        {
+          "2026-12": [
+            "opening = 1600000（prev 2026-11 の closing 1600000, override None）",
+            "高値の更新? ath 6100 > 6000 = True, athDate 2026-11-20 > 2026-10-01 = True → True",
+            "リセット",
+            "dd = 4800/6100 - 1 = -0.213115",
+            "基準残高 = 1600000",
+            "段階20: 投入 533333（残り 1066667）",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 1600000 + 213456 - 533333 = 1280123"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C4d",
+      "desc": "値だけ大きいとき dd の分母で結果が変わる例（last 4250）",
+      "call": "catchUpLedger",
+      "input": {
+        "rows": [
+          {
+            "month": "2026-11",
+            "kind": "seed",
+            "catchup": false,
+            "inputs": null,
+            "opening_balance": null,
+            "monthly_reserve": 0,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": {
+              "triggered": [
+                20
+              ],
+              "baseReserve": 2400000,
+              "athValue": 6000,
+              "athDate": "2026-10-01"
+            },
+            "closing_balance": 1600000,
+            "override_balance": null,
+            "override_at": null
+          }
+        ],
+        "targetMonth": "2026-12",
+        "inputs": {
+          "cape": 30.0,
+          "pbr": 1.4,
+          "gsr": 80.0,
+          "momentum": {
+            "us": true,
+            "jp": true,
+            "em": true,
+            "gold": true
+          },
+          "cape5yMA": null,
+          "as_of": {},
+          "sp500_usd": {
+            "last": 4250,
+            "ath": 6100,
+            "athDate": "2026-10-01"
+          },
+          "mode": "neutral",
+          "monthly_budget": 523456,
+          "jp_index": "topix",
+          "slots": [
+            {
+              "account": "nisa_tsumitate",
+              "amount": 98765,
+              "name": "全世界株式インデックス",
+              "assetClass": "global_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 188235,
+              "name": "S&P500インデックス",
+              "assetClass": "us_stock"
+            },
+            {
+              "account": "ideco",
+              "amount": 23000,
+              "name": "先進国株式インデックス",
+              "assetClass": "dev_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            }
+          ]
+        }
+      },
+      "expected": [
+        {
+          "month": "2026-12",
+          "kind": "record",
+          "catchup": false,
+          "opening_balance": 1600000,
+          "monthly_reserve": 213456,
+          "crash_deployment": 800000,
+          "crash_triggered": [
+            30
+          ],
+          "crash_state": {
+            "triggered": [
+              20,
+              30
+            ],
+            "baseReserve": 2400000,
+            "athValue": 6000,
+            "athDate": "2026-10-01"
+          },
+          "closing_balance": 1013456,
+          "override_balance": null
+        }
+      ],
+      "trace": [
+        {
+          "2026-12": [
+            "opening = 1600000（prev 2026-11 の closing 1600000, override None）",
+            "高値の更新? ath 6100 > 6000 = True, athDate 2026-10-01 > 2026-10-01 = False → False",
+            "dd = 4250/6100 - 1 = -0.303279",
+            "段階30: 投入 800000（残り 800000）",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 1600000 + 213456 - 800000 = 1013456"
+          ]
+        }
+      ],
+      "note": "曖昧な点：リセットしないとき dd の分母を今の sp500.ath(6100) にするか、状態の athValue(6000) にするか。expected は読み方A（今の ath、統括役の定義 dd = last/ath どおり）。読み方B は expected_alt",
+      "expected_alt": [
+        {
+          "month": "2026-12",
+          "kind": "record",
+          "catchup": false,
+          "opening_balance": 1600000,
+          "monthly_reserve": 213456,
+          "crash_deployment": 0,
+          "crash_triggered": [],
+          "crash_state": {
+            "triggered": [
+              20
+            ],
+            "baseReserve": 2400000,
+            "athValue": 6000,
+            "athDate": "2026-10-01"
+          },
+          "closing_balance": 1813456,
+          "override_balance": null
+        }
+      ],
+      "trace_alt": [
+        {
+          "2026-12": [
+            "opening = 1600000（prev 2026-11 の closing 1600000, override None）",
+            "高値の更新? ath 6100 > 6000 = True, athDate 2026-10-01 > 2026-10-01 = False → False",
+            "dd = 4250/6000 - 1 = -0.291667",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 1600000 + 213456 - 0 = 1813456"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C5",
+      "desc": "2か月抜け、今 -15% → 発動なし（抜けた間に越えて戻った段階は発動しない）",
+      "call": "catchUpLedger",
+      "input": {
+        "rows": [
+          {
+            "month": "2026-09",
+            "kind": "seed",
+            "catchup": false,
+            "inputs": null,
+            "opening_balance": null,
+            "monthly_reserve": 0,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": null,
+            "closing_balance": 1234567,
+            "override_balance": null,
+            "override_at": null
+          }
+        ],
+        "targetMonth": "2026-12",
+        "inputs": {
+          "cape": 30.0,
+          "pbr": 1.4,
+          "gsr": 80.0,
+          "momentum": {
+            "us": true,
+            "jp": true,
+            "em": true,
+            "gold": true
+          },
+          "cape5yMA": null,
+          "as_of": {},
+          "sp500_usd": {
+            "last": 5100,
+            "ath": 6000,
+            "athDate": "2026-10-01"
+          },
+          "mode": "neutral",
+          "monthly_budget": 523456,
+          "jp_index": "topix",
+          "slots": [
+            {
+              "account": "nisa_tsumitate",
+              "amount": 98765,
+              "name": "全世界株式インデックス",
+              "assetClass": "global_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 188235,
+              "name": "S&P500インデックス",
+              "assetClass": "us_stock"
+            },
+            {
+              "account": "ideco",
+              "amount": 23000,
+              "name": "先進国株式インデックス",
+              "assetClass": "dev_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            }
+          ]
+        }
+      },
+      "expected": [
+        {
+          "month": "2026-10",
+          "kind": "record",
+          "catchup": true,
+          "opening_balance": 1234567,
+          "monthly_reserve": 213456,
+          "crash_deployment": 0,
+          "crash_triggered": [],
+          "crash_state": null,
+          "closing_balance": 1448023,
+          "override_balance": null
+        },
+        {
+          "month": "2026-11",
+          "kind": "record",
+          "catchup": true,
+          "opening_balance": 1448023,
+          "monthly_reserve": 213456,
+          "crash_deployment": 0,
+          "crash_triggered": [],
+          "crash_state": null,
+          "closing_balance": 1661479,
+          "override_balance": null
+        },
+        {
+          "month": "2026-12",
+          "kind": "record",
+          "catchup": false,
+          "opening_balance": 1661479,
+          "monthly_reserve": 213456,
+          "crash_deployment": 0,
+          "crash_triggered": [],
+          "crash_state": {
+            "triggered": [],
+            "baseReserve": null,
+            "athValue": 6000,
+            "athDate": "2026-10-01"
+          },
+          "closing_balance": 1874935,
+          "override_balance": null
+        }
+      ],
+      "trace": [
+        {
+          "2026-10": [
+            "opening = 1234567（prev 2026-09 の closing 1234567, override None）",
+            "追いつきの月 → 暴落は判定しない",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 1234567 + 213456 - 0 = 1448023"
+          ]
+        },
+        {
+          "2026-11": [
+            "opening = 1448023（prev 2026-10 の closing 1448023, override None）",
+            "追いつきの月 → 暴落は判定しない",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 1448023 + 213456 - 0 = 1661479"
+          ]
+        },
+        {
+          "2026-12": [
+            "opening = 1661479（prev 2026-11 の closing 1661479, override None）",
+            "前の状態なし → 今の高値で状態を作る",
+            "dd = 5100/6000 - 1 = -0.150000",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 1661479 + 213456 - 0 = 1874935"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C6",
+      "desc": "K2 を2回実行 → 2回目は空",
+      "call": "catchUpLedger",
+      "input": {
+        "rows": [
+          {
+            "month": "2026-09",
+            "kind": "seed",
+            "catchup": false,
+            "inputs": null,
+            "opening_balance": null,
+            "monthly_reserve": 0,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": null,
+            "closing_balance": 1234567,
+            "override_balance": null,
+            "override_at": null
+          },
+          {
+            "month": "2026-10",
+            "kind": "record",
+            "catchup": true,
+            "opening_balance": 1234567,
+            "monthly_reserve": 213456,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": null,
+            "closing_balance": 1448023,
+            "override_balance": null,
+            "override_at": null
+          },
+          {
+            "month": "2026-11",
+            "kind": "record",
+            "catchup": true,
+            "opening_balance": 1448023,
+            "monthly_reserve": 213456,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": null,
+            "closing_balance": 1661479,
+            "override_balance": null,
+            "override_at": null
+          },
+          {
+            "month": "2026-12",
+            "kind": "record",
+            "catchup": false,
+            "opening_balance": 1661479,
+            "monthly_reserve": 213456,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": {
+              "triggered": [],
+              "baseReserve": null,
+              "athValue": 6000,
+              "athDate": "2026-10-01"
+            },
+            "closing_balance": 1874935,
+            "override_balance": null,
+            "override_at": null
+          }
+        ],
+        "rows_reversed_also_empty": true,
+        "targetMonth": "2026-12",
+        "inputs": {
+          "cape": 30.0,
+          "pbr": 1.4,
+          "gsr": 80.0,
+          "momentum": {
+            "us": true,
+            "jp": true,
+            "em": true,
+            "gold": true
+          },
+          "cape5yMA": null,
+          "as_of": {},
+          "sp500_usd": {
+            "last": 5400,
+            "ath": 6000,
+            "athDate": "2026-10-01"
+          },
+          "mode": "neutral",
+          "monthly_budget": 523456,
+          "jp_index": "topix",
+          "slots": [
+            {
+              "account": "nisa_tsumitate",
+              "amount": 98765,
+              "name": "全世界株式インデックス",
+              "assetClass": "global_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 188235,
+              "name": "S&P500インデックス",
+              "assetClass": "us_stock"
+            },
+            {
+              "account": "ideco",
+              "amount": 23000,
+              "name": "先進国株式インデックス",
+              "assetClass": "dev_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            }
+          ]
+        }
+      },
+      "expected": [],
+      "trace": [
+        "記録済み → 空"
+      ]
+    },
+    {
+      "id": "C7",
+      "desc": "抜けた月の投入 0、12月 -25% で 20 発動・基準 = 12月の opening",
+      "call": "catchUpLedger",
+      "input": {
+        "rows": [
+          {
+            "month": "2026-09",
+            "kind": "seed",
+            "catchup": false,
+            "inputs": null,
+            "opening_balance": null,
+            "monthly_reserve": 0,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": null,
+            "closing_balance": 1234567,
+            "override_balance": null,
+            "override_at": null
+          }
+        ],
+        "targetMonth": "2026-12",
+        "inputs": {
+          "cape": 30.0,
+          "pbr": 1.4,
+          "gsr": 80.0,
+          "momentum": {
+            "us": true,
+            "jp": true,
+            "em": true,
+            "gold": true
+          },
+          "cape5yMA": null,
+          "as_of": {},
+          "sp500_usd": {
+            "last": 4500,
+            "ath": 6000,
+            "athDate": "2026-10-01"
+          },
+          "mode": "neutral",
+          "monthly_budget": 523456,
+          "jp_index": "topix",
+          "slots": [
+            {
+              "account": "nisa_tsumitate",
+              "amount": 98765,
+              "name": "全世界株式インデックス",
+              "assetClass": "global_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 188235,
+              "name": "S&P500インデックス",
+              "assetClass": "us_stock"
+            },
+            {
+              "account": "ideco",
+              "amount": 23000,
+              "name": "先進国株式インデックス",
+              "assetClass": "dev_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            }
+          ]
+        }
+      },
+      "expected": [
+        {
+          "month": "2026-10",
+          "kind": "record",
+          "catchup": true,
+          "opening_balance": 1234567,
+          "monthly_reserve": 213456,
+          "crash_deployment": 0,
+          "crash_triggered": [],
+          "crash_state": null,
+          "closing_balance": 1448023,
+          "override_balance": null
+        },
+        {
+          "month": "2026-11",
+          "kind": "record",
+          "catchup": true,
+          "opening_balance": 1448023,
+          "monthly_reserve": 213456,
+          "crash_deployment": 0,
+          "crash_triggered": [],
+          "crash_state": null,
+          "closing_balance": 1661479,
+          "override_balance": null
+        },
+        {
+          "month": "2026-12",
+          "kind": "record",
+          "catchup": false,
+          "opening_balance": 1661479,
+          "monthly_reserve": 213456,
+          "crash_deployment": 553826,
+          "crash_triggered": [
+            20
+          ],
+          "crash_state": {
+            "triggered": [
+              20
+            ],
+            "baseReserve": 1661479,
+            "athValue": 6000,
+            "athDate": "2026-10-01"
+          },
+          "closing_balance": 1321109,
+          "override_balance": null
+        }
+      ],
+      "trace": [
+        {
+          "2026-10": [
+            "opening = 1234567（prev 2026-09 の closing 1234567, override None）",
+            "追いつきの月 → 暴落は判定しない",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 1234567 + 213456 - 0 = 1448023"
+          ]
+        },
+        {
+          "2026-11": [
+            "opening = 1448023（prev 2026-10 の closing 1448023, override None）",
+            "追いつきの月 → 暴落は判定しない",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 1448023 + 213456 - 0 = 1661479"
+          ]
+        },
+        {
+          "2026-12": [
+            "opening = 1661479（prev 2026-11 の closing 1661479, override None）",
+            "前の状態なし → 今の高値で状態を作る",
+            "dd = 4500/6000 - 1 = -0.250000",
+            "基準残高 = 1661479",
+            "段階20: 投入 553826（残り 1107653）",
+            "monthly_reserve = max(0, 523456 - 310000) = 213456",
+            "closing = 1661479 + 213456 - 553826 = 1321109"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "O1",
+      "desc": "11月の closing 2,000,000 に override 1,500,000 → 12月 opening 1,500,000。取り消すと 2,000,000",
+      "call": "catchUpLedger",
+      "input": {
+        "rows_override": [
+          {
+            "month": "2026-10",
+            "kind": "seed",
+            "catchup": false,
+            "inputs": null,
+            "opening_balance": null,
+            "monthly_reserve": 0,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": null,
+            "closing_balance": 1786544,
+            "override_balance": null,
+            "override_at": null
+          },
+          {
+            "month": "2026-11",
+            "kind": "record",
+            "catchup": false,
+            "opening_balance": 1786544,
+            "monthly_reserve": 213456,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": {
+              "triggered": [],
+              "baseReserve": null,
+              "athValue": 6000,
+              "athDate": "2026-10-01"
+            },
+            "closing_balance": 2000000,
+            "override_balance": 1500000,
+            "override_at": "(任意の時刻)"
+          }
+        ],
+        "rows_cancel": [
+          {
+            "month": "2026-10",
+            "kind": "seed",
+            "catchup": false,
+            "inputs": null,
+            "opening_balance": null,
+            "monthly_reserve": 0,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": null,
+            "closing_balance": 1786544,
+            "override_balance": null,
+            "override_at": null
+          },
+          {
+            "month": "2026-11",
+            "kind": "record",
+            "catchup": false,
+            "opening_balance": 1786544,
+            "monthly_reserve": 213456,
+            "crash_deployment": 0,
+            "crash_triggered": [],
+            "crash_state": {
+              "triggered": [],
+              "baseReserve": null,
+              "athValue": 6000,
+              "athDate": "2026-10-01"
+            },
+            "closing_balance": 2000000,
+            "override_balance": null,
+            "override_at": null
+          }
+        ],
+        "targetMonth": "2026-12",
+        "inputs": {
+          "cape": 30.0,
+          "pbr": 1.4,
+          "gsr": 80.0,
+          "momentum": {
+            "us": true,
+            "jp": true,
+            "em": true,
+            "gold": true
+          },
+          "cape5yMA": null,
+          "as_of": {},
+          "sp500_usd": {
+            "last": 5700,
+            "ath": 6000,
+            "athDate": "2026-10-01"
+          },
+          "mode": "neutral",
+          "monthly_budget": 523456,
+          "jp_index": "topix",
+          "slots": [
+            {
+              "account": "nisa_tsumitate",
+              "amount": 98765,
+              "name": "全世界株式インデックス",
+              "assetClass": "global_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 188235,
+              "name": "S&P500インデックス",
+              "assetClass": "us_stock"
+            },
+            {
+              "account": "ideco",
+              "amount": 23000,
+              "name": "先進国株式インデックス",
+              "assetClass": "dev_stock"
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            },
+            {
+              "account": "nisa_growth",
+              "amount": 0,
+              "name": "",
+              "assetClass": null
+            }
+          ]
+        }
+      },
+      "expected_nov_row": {
+        "month": "2026-11",
+        "kind": "record",
+        "catchup": false,
+        "opening_balance": 1786544,
+        "monthly_reserve": 213456,
+        "crash_deployment": 0,
+        "crash_triggered": [],
+        "crash_state": {
+          "triggered": [],
+          "baseReserve": null,
+          "athValue": 6000,
+          "athDate": "2026-10-01"
+        },
+        "closing_balance": 2000000,
+        "override_balance": null
+      },
+      "expected_override": [
+        {
+          "month": "2026-12",
+          "kind": "record",
+          "catchup": false,
+          "opening_balance": 1500000,
+          "monthly_reserve": 213456,
+          "crash_deployment": 0,
+          "crash_triggered": [],
+          "crash_state": {
+            "triggered": [],
+            "baseReserve": null,
+            "athValue": 6000,
+            "athDate": "2026-10-01"
+          },
+          "closing_balance": 1713456,
+          "override_balance": null
+        }
+      ],
+      "expected_cancel": [
+        {
+          "month": "2026-12",
+          "kind": "record",
+          "catchup": false,
+          "opening_balance": 2000000,
+          "monthly_reserve": 213456,
+          "crash_deployment": 0,
+          "crash_triggered": [],
+          "crash_state": {
+            "triggered": [],
+            "baseReserve": null,
+            "athValue": 6000,
+            "athDate": "2026-10-01"
+          },
+          "closing_balance": 2213456,
+          "override_balance": null
+        }
+      ],
+      "diff_override_minus_closing": -500000,
+      "trace": {
+        "nov": [
+          "opening = 1786544（prev 2026-10 の closing 1786544, override None）",
+          "前の状態なし → 今の高値で状態を作る",
+          "dd = 5700/6000 - 1 = -0.050000",
+          "monthly_reserve = max(0, 523456 - 310000) = 213456",
+          "closing = 1786544 + 213456 - 0 = 2000000"
+        ],
+        "override": [
+          {
+            "2026-12": [
+              "opening = 1500000（prev 2026-11 の closing 2000000, override 1500000）",
+              "高値の更新? ath 6000 > 6000 = False, athDate 2026-10-01 > 2026-10-01 = False → False",
+              "dd = 5700/6000 - 1 = -0.050000",
+              "monthly_reserve = max(0, 523456 - 310000) = 213456",
+              "closing = 1500000 + 213456 - 0 = 1713456"
+            ]
+          }
+        ],
+        "cancel": [
+          {
+            "2026-12": [
+              "opening = 2000000（prev 2026-11 の closing 2000000, override None）",
+              "高値の更新? ath 6000 > 6000 = False, athDate 2026-10-01 > 2026-10-01 = False → False",
+              "dd = 5700/6000 - 1 = -0.050000",
+              "monthly_reserve = max(0, 523456 - 310000) = 213456",
+              "closing = 2000000 + 213456 - 0 = 2213456"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "S1",
+      "desc": "seedFromLegacy(beforeMonth 2026-12)",
+      "call": "seedFromLegacy",
+      "input": {
+        "settings": {
+          "reserve_balance": 1100000,
+          "reserve_month": "2026-12",
+          "reserve_month_base": 900000,
+          "crash_state": {
+            "current": {
+              "triggered": [
+                20
+              ],
+              "baseReserve": 1000000,
+              "athValue": 6000,
+              "athDate": "2026-10-01"
+            },
+            "month": "2026-12",
+            "monthBase": {
+              "triggered": [],
+              "baseReserve": null,
+              "athValue": 6000,
+              "athDate": "2026-10-01"
+            }
+          }
+        },
+        "beforeMonth": "2026-12"
+      },
+      "expected": {
+        "month": "2026-11",
+        "kind": "seed",
+        "catchup": false,
+        "opening_balance": null,
+        "monthly_reserve": 0,
+        "crash_deployment": 0,
+        "crash_triggered": [],
+        "crash_state": {
+          "triggered": [],
+          "baseReserve": null,
+          "athValue": 6000,
+          "athDate": "2026-10-01"
+        },
+        "closing_balance": 900000,
+        "override_balance": null
+      }
+    },
+    {
+      "id": "S2",
+      "desc": "seedFromLegacy(beforeMonth 2026-12)",
+      "call": "seedFromLegacy",
+      "input": {
+        "settings": {
+          "reserve_balance": 800000,
+          "reserve_month": "2026-10",
+          "reserve_month_base": 750000,
+          "crash_state": {
+            "current": {
+              "triggered": [
+                20
+              ],
+              "baseReserve": 1000000,
+              "athValue": 6000,
+              "athDate": "2026-10-01"
+            },
+            "month": "2026-11",
+            "monthBase": {
+              "triggered": [],
+              "baseReserve": null,
+              "athValue": 6000,
+              "athDate": "2026-10-01"
+            }
+          }
+        },
+        "beforeMonth": "2026-12"
+      },
+      "expected": {
+        "month": "2026-10",
+        "kind": "seed",
+        "catchup": false,
+        "opening_balance": null,
+        "monthly_reserve": 0,
+        "crash_deployment": 0,
+        "crash_triggered": [],
+        "crash_state": {
+          "triggered": [
+            20
+          ],
+          "baseReserve": 1000000,
+          "athValue": 6000,
+          "athDate": "2026-10-01"
+        },
+        "closing_balance": 800000,
+        "override_balance": null
+      }
+    },
+    {
+      "id": "S3",
+      "desc": "seedFromLegacy(beforeMonth 2026-12)",
+      "call": "seedFromLegacy",
+      "input": {
+        "settings": {
+          "reserve_balance": 0,
+          "reserve_month": null,
+          "reserve_month_base": null,
+          "crash_state": null
+        },
+        "beforeMonth": "2026-12"
+      },
+      "expected": {
+        "month": "2026-11",
+        "kind": "seed",
+        "catchup": false,
+        "opening_balance": null,
+        "monthly_reserve": 0,
+        "crash_deployment": 0,
+        "crash_triggered": [],
+        "crash_state": null,
+        "closing_balance": 0,
+        "override_balance": null
+      }
+    }
+  ]
+}

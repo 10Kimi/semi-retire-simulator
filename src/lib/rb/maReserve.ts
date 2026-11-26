@@ -1,5 +1,6 @@
 // /rb が現金から別枠にする /ma の待機資金を決める（FI_project #118）。
-// オーナー本人の行（keep_amounts_on_server、D-066）はサーバーの reserve_balance、ほかの人は同じブラウザの /ma の値。
+// オーナー本人の行（keep_amounts_on_server、D-066）はサーバーの値（台帳 ma_ledger の最後の行の実効の月末残高。
+// 台帳が無い・読めなければ reserve_balance。FI_project #140）、ほかの人は同じブラウザの /ma の値。
 // サーバーの暗号文（D-071）は読まない（/rb ではパスフレーズを聞かない）。/rb からは書き換えない。
 import { baseOf, loadLocalRaw, parseAmountsJson, sameTime, type AmountStorage } from '../ma/localAmounts';
 
@@ -8,6 +9,11 @@ export interface MaReserveRow {
   reserve_balance: number | string | null;
   /** 暗号文の版（D-071）。この端末の値が古いかを見るだけに使う */
   vault_saved_at?: string | null;
+  /**
+   * 台帳（ma_ledger）の最後の行の実効の月末残高（ledger.ts の effectiveClosing(latestRow(rows))。FI_project #140）。
+   * 本人の行だけ読む。台帳が空・読めなければ null（reserve_balance を使う）
+   */
+  ledger_balance?: number | null;
 }
 
 /**
@@ -33,6 +39,9 @@ export function pickMaReserve(
   userId: string,
   fetchFailed = false,
 ): MaReserve {
+  if (row?.keep_amounts_on_server && row.ledger_balance != null && Number.isFinite(row.ledger_balance)) {
+    return { amount: nonNegative(row.ledger_balance), source: 'server' };
+  }
   if (row?.keep_amounts_on_server && row.reserve_balance != null) {
     const n = Number(row.reserve_balance);
     if (Number.isFinite(n)) return { amount: nonNegative(n), source: 'server' };

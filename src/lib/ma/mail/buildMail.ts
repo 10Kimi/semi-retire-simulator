@@ -7,6 +7,7 @@ import { formatCurrency } from '../logic';
 import type { Freshness } from './freshness';
 import { staleNote } from './freshness';
 import type { CrashEvaluation } from '../crash';
+import { lastOverride, type LedgerRow } from '../ledger';
 
 export const MODE_LABELS: Record<MarketMode, string> = {
   bullish: '強気（+0.25）',
@@ -24,6 +25,11 @@ export interface MailInput {
   freshness: Record<string, Freshness>;
   sp500Usd: PricePoint | null;
   sp500Jpy: PricePoint | null;
+  /**
+   * 台帳（FI_project #140、オーナー本人の行）。この月の行を含むその人の全部の行。
+   * あれば待機資金の欄を台帳の表示にする（calc は ledgerMonthlyCalc(ledger, month) を渡す）。無ければ今までのボタン方式の表示
+   */
+  ledger?: LedgerRow[] | null;
 }
 
 export interface BuiltMail {
@@ -69,8 +75,55 @@ const CLASS_INDICATORS: Record<MaAssetClass, string[]> = {
   none: [],
 };
 
+const signed = (n: number) => `${n < 0 ? '−' : '+'}${formatCurrency(Math.abs(n))}`;
+
+/** 台帳の待機資金の欄（想定の残高の流れ・最後に実際の残高で合わせた月・追いつきで記録した月） */
+function ledgerSection(rows: LedgerRow[], month: string, h2: (t: string) => void, html: string[], text: string[]) {
+  h2('待機資金');
+  const row = rows.find((r) => r.month === month);
+  if (!row || row.opening_balance == null) {
+    const msg = 'この月の台帳の記録がありません。';
+    html.push(`<p style="color:#b91c1c"><b>${esc(msg)}</b></p>`);
+    text.push(msg);
+    return;
+  }
+  const flow: [string, string][] = [
+    ['前月までの想定残高', formatCurrency(row.opening_balance)],
+    ['今月の積み増し', `+${formatCurrency(row.monthly_reserve)}`],
+    ['暴落ルールによる投入', `−${formatCurrency(row.crash_deployment)}`],
+    ['今月の想定残高', formatCurrency(row.closing_balance)],
+  ];
+  html.push('<table style="border-collapse:collapse;font-size:14px">');
+  flow.forEach(([k, v], idx) => {
+    const last = idx === flow.length - 1;
+    html.push(`<tr${last ? ' style="border-top:1px solid #cbd5e1;font-weight:bold"' : ''}><td style="padding:3px 16px 3px 0">${k}</td><td style="text-align:right">${v}</td></tr>`);
+    text.push(`${k}：${v}`);
+  });
+  html.push('</table>');
+
+  const ov = lastOverride(rows);
+  const ovLine = ov
+    ? `最後に実際の残高で合わせた月：${ov.month}（${formatCurrency(ov.override_balance!)}。想定との差 ${signed(ov.override_balance! - ov.closing_balance)}）`
+    : '最後に実際の残高で合わせた月：まだ合わせていません';
+  // この月の直前まで続く追いつきの月（今回まとめて記録した月）
+  const sorted = [...rows].sort((a, b) => (a.month < b.month ? -1 : 1));
+  const catchups: string[] = [];
+  for (let k = sorted.findIndex((r) => r.month === month) - 1; k >= 0 && sorted[k].catchup; k--) catchups.unshift(sorted[k].month);
+  const lines = [
+    ovLine,
+    ...(catchups.length ? [`追いつきで記録した月：${catchups.join('・')}（当時の指標ではなく今の指標で計算）`] : []),
+    '想定の残高は、配分どおりに積み立てた前提の累計です。実際の残高とずれたら /ma の「実際の残高に合わせる」で直せます。',
+  ];
+  lines.forEach((l, idx) => {
+    html.push(`<p style="color:#475569;font-size:${idx === lines.length - 1 ? 12 : 13}px">${esc(l)}</p>`);
+    text.push(l);
+  });
+}
+
 export function buildMail(i: MailInput): BuiltMail {
   const f = (k: string) => i.freshness[k] ?? { stale: true, asOf: null, missing: true };
+  // 台帳があれば、スロット・指数はその月の行に固定した入力から出す（記録した日と送る日で設定が変わってもずれない）
+  const ledgerInputs = i.ledger?.find((r) => r.month === i.month)?.inputs ?? null;
   const hasStale = Object.values(i.freshness).some((x) => x.stale) || !i.calc || !i.sp500Usd;
   const [y, m] = i.month.split('-').map(Number);
   const usdDd = i.sp500Usd ? Math.min(0, i.sp500Usd.last / i.sp500Usd.ath - 1) : null;
@@ -119,7 +172,7 @@ export function buildMail(i: MailInput): BuiltMail {
       html.push(`<p style="margin:4px 0;padding:8px;background:#fff7ed;border-left:4px solid #ea580c"><b>${esc(line)}</b></p>`);
       text.push(line);
     }
-    const totalLine = `暴落ルールによる投入額：${formatCurrency(crash.total)}（待機資金から。基準残高 ${formatCurrency(crash.nextState.baseReserve ?? 0)}）`;
+    const totalLine = `暴落ルールによる投入額：${formatCurrency(crash.total)}（待機資金から。基準残高 ${formatCurrency(crash.nextState.baseReserve ?? 0)}）${i.ledger ? '　投入額は想定の残高から計算' : ''}`;
     html.push(`<p style="margin:4px 0;font-size:15px"><b>${esc(totalLine)}</b></p>`);
     text.push(totalLine);
     const sub = '何を買うかはご自身で選んでください。資産クラスごとの高値からの下落率：';
@@ -144,7 +197,7 @@ export function buildMail(i: MailInput): BuiltMail {
     // [指標, 値, 基準日の注記キー, 判定, 倍率]
     ['CAPE（米国株）', ind.cape != null ? String(ind.cape) : '—', 'cape', d?.capeResult.label ?? '—', d ? `×${d.usMultiplier}` : '—'],
     ['CAPE 5年平均', i.calc?.inputs.cape5yMA != null ? i.calc.inputs.cape5yMA.toFixed(2) : '—', '', '', ''],
-    [i.settings.jp_index === 'topix' ? 'PBR（TOPIX）' : 'PBR（日経225・推定）', i.calc?.inputs.pbr != null ? String(i.calc.inputs.pbr) : '—', 'pbr', d?.pbrResult.label ?? '—', d ? `×${d.jpMultiplier}` : '—'],
+    [(ledgerInputs?.jp_index ?? i.settings.jp_index) === 'topix' ? 'PBR（TOPIX）' : 'PBR（日経225・推定）', i.calc?.inputs.pbr != null ? String(i.calc.inputs.pbr) : '—', 'pbr', d?.pbrResult.label ?? '—', d ? `×${d.jpMultiplier}` : '—'],
     ['金銀比率', ind.gold_silver_ratio != null ? String(ind.gold_silver_ratio) : '—', 'gsr', d?.gsrResult.label ?? '—', d ? `×${d.goldMultiplier}` : '—'],
     // 新興国株は割安・割高の指標を持たず、倍率はモメンタム（VWO と10ヶ月平均の比較）だけで決まる
     [
@@ -192,7 +245,8 @@ export function buildMail(i: MailInput): BuiltMail {
     html.push('<table style="border-collapse:collapse;font-size:13px">');
     html.push('<tr style="background:#f1f5f9"><th style="text-align:left;padding:4px 8px">枠</th><th style="text-align:left;padding:4px 8px">口座・銘柄</th><th style="text-align:right;padding:4px 8px">設定額</th><th style="text-align:left;padding:4px 8px">倍率</th><th style="text-align:right;padding:4px 8px">今月の額</th></tr>');
     SLOT_KEYS.forEach((key, idx) => {
-      const slot = i.settings[key];
+      const slot = ledgerInputs ? ledgerInputs.slots[idx] : i.settings[key];
+      if (!slot) return;
       const amount = r.perSlotAmount[idx];
       if (slot.amount === 0 && amount === 0) return;
       const fixed = isTaxAdvantaged(slot.account);
@@ -215,24 +269,27 @@ export function buildMail(i: MailInput): BuiltMail {
       text.push(l);
     }
 
-    // 待機資金の流れ（現在の残高 → 今月の積み増し → 暴落ルールによる投入 → 計算後の残高）
-    h2('待機資金');
-    const flow: [string, string][] = [
-      ['現在の残高', formatCurrency(i.calc.reserveMonthBase)],
-      ['今月の積み増し', `+${formatCurrency(r.monthlyReserve)}`],
-      ...(r.crashDeployment > 0 ? [['暴落ルールによる投入', `−${formatCurrency(r.crashDeployment)}`] as [string, string]] : []),
-      ['計算後の残高', formatCurrency(r.newReserveBalance)],
-    ];
-    html.push('<table style="border-collapse:collapse;font-size:14px">');
-    flow.forEach(([k, v], idx) => {
-      const last = idx === flow.length - 1;
-      html.push(`<tr${last ? ' style="border-top:1px solid #cbd5e1;font-weight:bold"' : ''}><td style="padding:3px 16px 3px 0">${k}</td><td style="text-align:right">${v}</td></tr>`);
-      text.push(`${k}：${v}`);
-    });
-    html.push('</table>');
-    const reserveNote = 'メールでは残高を更新していません。/ma の画面の「投資実行＆待機資金を更新」で確定してください。';
-    html.push(`<p style="color:#475569;font-size:12px">${reserveNote}</p>`);
-    text.push(reserveNote);
+    if (i.ledger) ledgerSection(i.ledger, i.month, h2, html, text);
+    else {
+      // 待機資金の流れ（現在の残高 → 今月の積み増し → 暴落ルールによる投入 → 計算後の残高）
+      h2('待機資金');
+      const flow: [string, string][] = [
+        ['現在の残高', formatCurrency(i.calc.reserveMonthBase)],
+        ['今月の積み増し', `+${formatCurrency(r.monthlyReserve)}`],
+        ...(r.crashDeployment > 0 ? [['暴落ルールによる投入', `−${formatCurrency(r.crashDeployment)}`] as [string, string]] : []),
+        ['計算後の残高', formatCurrency(r.newReserveBalance)],
+      ];
+      html.push('<table style="border-collapse:collapse;font-size:14px">');
+      flow.forEach(([k, v], idx) => {
+        const last = idx === flow.length - 1;
+        html.push(`<tr${last ? ' style="border-top:1px solid #cbd5e1;font-weight:bold"' : ''}><td style="padding:3px 16px 3px 0">${k}</td><td style="text-align:right">${v}</td></tr>`);
+        text.push(`${k}：${v}`);
+      });
+      html.push('</table>');
+      const reserveNote = 'メールでは残高を更新していません。/ma の画面の「投資実行＆待機資金を更新」で確定してください。';
+      html.push(`<p style="color:#475569;font-size:12px">${reserveNote}</p>`);
+      text.push(reserveNote);
+    }
   }
 
   // 5. 末尾

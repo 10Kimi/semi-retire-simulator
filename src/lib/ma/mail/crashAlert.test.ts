@@ -39,7 +39,13 @@ describe('暴落ルールの通知の判定（#34）', () => {
     const confirmed: CrashState = { athValue: ATH, athDate: '2026-10-06', triggered: [20], baseReserve: 300000 };
     expect(decideCrashAlert(at(-0.25), confirmed, null).stages).toEqual([]);
     expect(decideCrashAlert(at(-0.32), confirmed, null).stages).toEqual([30]);
-    expect(decideCrashAlert(at(-0.25, 7500), confirmed, null).stages).toEqual([20]);
+    expect(decideCrashAlert(at(-0.25, 7500, '2027-03-01'), confirmed, null).stages).toEqual([20]);
+  });
+
+  it('確定済みの段階は、値だけ大きく日付が同じ高値（過去の終値の訂正）では数え直さない（台帳と同じ判定、#140）', () => {
+    const confirmed: CrashState = { athValue: ATH, athDate: '2026-10-06', triggered: [20], baseReserve: 300000 };
+    expect(decideCrashAlert(at(-0.25, 7000.4, '2026-10-06'), confirmed, null).stages).toEqual([]);
+    expect(decideCrashAlert(at(-0.25, 7000.4, '2026-10-07'), confirmed, null).stages).toEqual([20]);
   });
 
   it('⑤ 一度に −30% まで落ちた → −20%・−30% を1通にまとめて通知する', () => {
@@ -53,6 +59,16 @@ describe('暴落ルールの通知の判定（#34）', () => {
     expect(mail.text).toContain('終値 4,690、最高値 7,000');
     const odd = buildCrashAlert({ today: '2026-11-11', stages: [20], sp500Usd: { ...at(-0.21), last: 6176.955 }, sp500Jpy: null, crash: null });
     expect(odd.text).toContain('終値 6,176.96');
+  });
+
+  it('通知済みも、値だけ大きく日付が同じ高値（過去の終値の訂正）では数え直さない（#140）', () => {
+    const prev: CrashAlertState = { athValue: ATH, athDate: '2026-10-06', notified: [20] };
+    const same = decideCrashAlert(at(-0.25, 7000.4, '2026-10-06'), null, prev);
+    expect(same.stages).toEqual([]);
+    expect(same.next).toEqual({ athValue: ATH, athDate: '2026-10-06', notified: [20] });
+    expect(decideCrashAlert(at(-0.25, 7000.4, '2026-10-07'), null, prev).stages).toEqual([20]);
+    expect(markNotified(at(-0.32, 7000.4, '2026-10-06'), [30], prev)).toEqual({ athValue: ATH, athDate: '2026-10-06', notified: [20, 30] });
+    expect(markNotified(at(-0.32, 7000.4, '2026-10-07'), [30], prev)).toEqual({ athValue: 7000.4, athDate: '2026-10-07', notified: [30] });
   });
 
   it('月次メールで知らせた段階は通知済みになる', () => {
@@ -70,6 +86,10 @@ describe('暴落ルールの通知の判定（#34）', () => {
     expect(mail.text).toContain('参考：S&P500（円建て）の高値からの位置 −40.0%');
     expect(mail.text).toContain('待機資金の残高の全額');
     expect(mail.text).toContain('/ma を開いて');
+    expect(mail.text).toContain('次の送信日の月次メールで台帳に記録します。このメールでは記録していません。');
+    expect(mail.text).not.toContain('投資実行');
+    const withDay = buildCrashAlert({ today: '2026-11-11', stages: [20], sp500Usd: at(-0.21), sp500Jpy: null, crash: null, sendDay: 25 });
+    expect(withDay.text).toContain('次の送信日（25日）の月次メールで台帳に記録します。');
     for (const w of [/提案/, /推奨/, /お勧め/, /おすすめ/, /アドバイス/, /買うべき/]) {
       expect(mail.text).not.toMatch(w);
       expect(mail.html).not.toMatch(w);

@@ -92,7 +92,15 @@ DB 層は `rowToSettings` / `settingsToRow` でフラットな行と入れ子の
 - **判定と投入額は `src/lib/ma/crash.ts`**（画面とメールで共通）：S&P500 ドル建ての高値比 −20% に入った時点の残高を基準残高とし、
   −20%・−30% は基準残高の1/3、−40% は残高の全額。各段階1回、最高値更新でリセット
 - **投入額はスロットに足さない**（`AllocationResult.crashDeployment`、`totalInvest` に含めない）。何を買うかは本人が選ぶ。
-  「投資実行＆待機資金を更新」で待機資金から差し引き、`crash_state` に段階を確定する（オーナー本人の行は `user_ma_settings`、ほかの人はブラウザ）
+  「投資実行＆待機資金を更新」で待機資金から差し引き、`crash_state` に段階を確定する（オーナー以外。値はブラウザ）。オーナー本人は下の台帳方式
+
+### `/ma` 待機資金の台帳方式（オーナー本人だけ、FI_project #140、§13-69、D-094）
+- 待機資金は「配分どおりに積み立てた前提の想定の累計」。新しいテーブル `ma_ledger`（1ユーザー×対象月で1行）に、その月の入力（`inputs`）・月初／月末の想定残高・暴落の投入と状態・上書きを持つ。計算は `src/lib/ma/ledger.ts`（純粋関数）
+- **行を作るのは月次メールのジョブだけ**（送信日、service key）。最後の行の次の月から送る月まで古い順に記録し、抜けた月は追いつき（`catchup`、今の指標で計算・暴落の投入 0）。暴落の判定は送る月で1回、高値の更新は「値が大きく、かつ日付が後」のときだけ（`evaluateCrash` の `strictNewHigh`）
+- 台帳が空なら旧列（`reserve_balance`・`reserve_month`・`reserve_month_base`・`crash_state`）から最初の行（`seed`、`seedFromLegacy`）を作る。旧列は1サイクル読み取り専用で残し、消すのは別の migration（D-091）
+- 画面はオーナーの「投資実行」を出さず、「実際の残高に合わせる」（`MaLedgerPanel`、台帳の最後の行の `override_balance`。取り消し可）を出す。計算は下書きで保存しない（`draftLedgerMonth`。今月が記録済みなら記録を出す）。台帳が空のときは、今月の送信日を過ぎていれば今月末、まだなら前月末で最初の行を作る
+- DB の守り（migration の RLS とトリガー）：読み書きは `keep_amounts_on_server` の行の持ち主だけ。画面から作れるのは台帳が空のときの seed だけ、更新できるのは最後の行の上書きの2列だけ
+- 暴落の通知の確定済みの段階と /rb の本人の待機資金は、台帳の最後の行から読む（台帳が空・読めなければ旧列）
 
 ### `/ma` の金額はサーバーに置かない（D-065、FI_project #111、2026-11-18）
 - **月次予算・積立額・待機資金・暴落ルールの状態はブラウザ（localStorage）に持つ**（`src/lib/ma/localAmounts.ts`）。銘柄名・口座・資産クラス・指数・PBR の基準は `user_ma_settings` に残す
@@ -120,10 +128,10 @@ DB 層は `rowToSettings` / `settingsToRow` でフラットな行と入れ子の
   `state.json`（送信済みの月）、`out/`（HTML の書き出し）。秘密は `scripts/market/.env` の `RESEND_API_KEY`
 - **古いデータで黙って計算しない**：`indicators.as_of`（migration 039）の基準日で判定し、未更新なら件名に【データ未更新あり】、本文の指標と倍率の横に明記。
   `fetch_indicators.py` は取得に失敗した値を null で上書きせず、前回の値と基準日を残す
-- **待機資金はメールでは書き換えない**（確定は /ma の画面）。市場モードは `config.local.json` の `mode`（初期値 neutral＝画面の「平常」）
+- **待機資金は台帳に記録する**（オーナー本人、上の「台帳方式」）。記録した月は台帳、送った月は `state.json`。送信だけ失敗したら、次の実行では計算し直さず台帳の行のまま送る。`--dry-run`・`--force-send` では台帳に書かない（dry-run は台帳のテーブルが無くても空として扱う）。市場モードは `config.local.json` の `mode`（初期値 neutral＝画面の「平常」）
 - **暴落ルール**は /ma 本体の機能（下の「待機資金の出口」）。メールは画面と同じ判定を表示するだけで、段階は書き換えない
-- **暴落ルールの通知**（FI_project #34）：送信日でない日は `scripts/market/fetch_sp500_drawdown.py` で S&P500 の高値と現在値だけを取り（DB には書かない）、まだ知らせていない段階に新たに達していたら短い通知メールを送る。判定と本文は `src/lib/ma/mail/crashAlert.ts`、通知済みの段階は `state.json` の `crashAlert`（`sentMonths` は変えない）。`crash_state` で確定済みの段階は送らない。月次メールで知らせた段階も通知済みにする。**結果（`result`）と healthchecks.io の合図は変えない**（通知の結果は記録ファイルの `alert`。失敗してもエラーにしない）。送信日でない日に `--dry-run` を付けると月次メールの下書きも作るので、`--no-fetch` を付けないと `fetch_indicators.py` が共有の `indicators` を書き換える
-- **本文の最後に「待機資金」の表**（現在の残高／今月の積み増し／暴落ルールによる投入／計算後の残高）。計算後の残高は「投資実行」をしたときの値と一致する
+- **暴落ルールの通知**（FI_project #34）：送信日でない日は `scripts/market/fetch_sp500_drawdown.py` で S&P500 の高値と現在値だけを取り（DB には書かない）、まだ知らせていない段階に新たに達していたら短い通知メールを送る。判定と本文は `src/lib/ma/mail/crashAlert.ts`、通知済みの段階は `state.json` の `crashAlert`（`sentMonths` は変えない）。台帳の最後の行で発動済みの段階は送らない（台帳が空なら `crash_state`、#140）。月次メールで知らせた段階も通知済みにする。**結果（`result`）と healthchecks.io の合図は変えない**（通知の結果は記録ファイルの `alert`。失敗してもエラーにしない）。送信日でない日に `--dry-run` を付けると月次メールの下書きも作るので、`--no-fetch` を付けないと `fetch_indicators.py` が共有の `indicators` を書き換える
+- **本文の最後に「待機資金」の表**（前月までの想定残高／今月の積み増し／暴落ルールによる投入／今月の想定残高）と、最後に実際の残高で合わせた月、追いつきで記録した月
 - **使い方**：`npx tsx scripts/ma-mail/run.ts --dry-run`（HTML だけ書き出す）／`--force-send`（テスト送信。送信済みの記録は残さない）。
   テスト用に `--today=` `--no-fetch` `--simulate-drawdown=` `--simulate-fail=` `--state=`
 - **gotcha**：launchd から node が `~/Documents` を読むには macOS の許可が要る（初回にダイアログ）。node は nvm のパスを plist の PATH で渡しているので、

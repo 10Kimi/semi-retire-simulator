@@ -4,7 +4,10 @@
  * launchd（jp.largogk.fi.ma-mail）が毎日 9:00 と RunAtLoad で起動する（送るかどうかはこのスクリプトが判定）。
  * 送信日の判定・計算・本文の組み立ては src/lib/ma/（画面と共通・実行環境に依存しない）。
  * このファイルはローカル固有の部分だけ：設定・状態ファイル、Python での取得、Resend への送信。
- * 暴落ルールの段階は user_ma_settings.crash_state（画面の「投資実行」で確定）を読むだけで、メールは書き換えない。
+ * 台帳方式（FI_project #140、§13-69）：送信日に、台帳（ma_ledger）の最後の行の次の月から送る月まで、古い順に記録してから送る。
+ *   台帳が空なら、旧列（reserve_balance・reserve_month・crash_state）から最初の行（seed）を作る。抜けた月は「追いつき」の印付き。
+ *   記録した月は台帳、送った月は state.json。送信だけ失敗したら、次の実行では計算し直さず台帳の行のまま送り直す。
+ *   --dry-run・--force-send では台帳に書かない（記録した前提の本文だけ作る）。
  *
  * 使い方:
  *   npx tsx scripts/ma-mail/run.ts                 # 送信日なら送る（launchd から）
@@ -25,8 +28,8 @@
  *
  * 暴落ルールの通知（FI_project #34）: 送信日でない日は、S&P500 の高値と現在値だけを取得し（scripts/market/fetch_sp500_drawdown.py、
  *   DB には書かない）、暴落ルールの段階にまだ知らせていない段階で新たに達していたら、短い通知メールを1通送る（判定は
- *   src/lib/ma/mail/crashAlert.ts）。通知済みの段階は state.json の crashAlert。画面の「投資実行」で確定済みの段階は通知しない。
- *   通知は知らせるだけで、待機資金・crash_state は書き換えない。結果（not_due など）と healthchecks.io の合図は変えず、
+ *   src/lib/ma/mail/crashAlert.ts）。通知済みの段階は state.json の crashAlert。台帳の最後の行で発動済みの段階は通知しない（#140）。
+ *   通知は知らせるだけで、台帳には書かない。結果（not_due など）と healthchecks.io の合図は変えず、
  *   記録ファイルの alert に書く。通知の確認の失敗はエラーにしない（毎日 /fail が飛ぶため。月次の送信の監視を変えない）。
  *   送信日に月次メールを送ったときは、そのメールで知らせた段階を通知済みにする（翌日に二度知らせない）。
  *   --dry-run では送信日でない日も通知の HTML（out/alert-YYYY-MM-DD.html）を書き出すだけ（送信・状態更新なし）
@@ -40,7 +43,8 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Indicators, MarketMode, PricePoint } from '../../src/lib/ma/types';
-import { calculateMonthlyFromIndicators } from '../../src/lib/ma/logic';
+import { buildLedgerInputs, catchUpLedger, draftLedgerMonth, latestRow, ledgerMonthlyCalc, projectNextRecord, seedFromLegacy, type LedgerRow } from '../../src/lib/ma/ledger';
+import { toLedgerRow } from '../../src/lib/ma/ledgerRow';
 import { ownerAmountsProblem, rowToSettings, type UserMaSettingsRow } from '../../src/lib/ma/settingsRow';
 import { decideSend } from '../../src/lib/ma/mail/schedule';
 import { checkFreshness, type Freshness } from '../../src/lib/ma/mail/freshness';
@@ -97,6 +101,32 @@ async function rest<T>(env: Record<string, string>, path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/** 台帳の行を作る（service key。RLS は通らないので user_id はスクリプトが入れる） */
+async function insertLedgerRows(env: Record<string, string>, rows: LedgerRow[]): Promise<void> {
+  if (rows.length === 0) return;
+  const key = env.SUPABASE_SERVICE_KEY;
+  const res = await fetch(`${env.SUPABASE_URL.replace(/\/$/, '')}/rest/v1/ma_ledger`, {
+    method: 'POST',
+    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify(rows),
+  });
+  if (!res.ok) throw new Error(`Supabase ma_ledger insert: ${res.status} ${await res.text()}`);
+}
+
+async function fetchLedgerRows(env: Record<string, string>, userId: string, allowMissingTable = false): Promise<LedgerRow[]> {
+  try {
+    const rows = await rest<Record<string, unknown>[]>(env, `ma_ledger?select=*&user_id=eq.${userId}&order=month`);
+    return rows.map(toLedgerRow);
+  } catch (e) {
+    // --dry-run だけ：台帳の migration を当てる前でも、記録した前提の本文を確かめられるように空として扱う
+    if (allowMissingTable && /ma_ledger.*(404|PGRST205)/.test(String(e))) {
+      console.log('  台帳（ma_ledger）がまだ無いので、空として扱う（dry-run）');
+      return [];
+    }
+    throw e;
+  }
+}
+
 /** S&P500 の高値と現在値だけを取得する（DB には書かない）。失敗したら null */
 function fetchSp500(env: Record<string, string>): { sp500_usd: PricePoint | null; sp500_jpy: PricePoint | null } | null {
   const script = join(ROOT, 'scripts/market/fetch_sp500_drawdown.py');
@@ -145,17 +175,24 @@ async function checkCrashAlert(p: {
     const amountsProblem = ownerAmountsProblem(row);
     if (amountsProblem) return `確認できず（${amountsProblem}）`;
     const settings = rowToSettings(row);
-    const decision = decideCrashAlert(sp500Usd, settings.crash_state?.current ?? null, p.state.crashAlert ?? null);
+    // 確定済みの段階は台帳の最後の行の状態（台帳が空なら旧列の crash_state、#140・D-037）
+    const ledger = await fetchLedgerRows(p.env, p.config.userId);
+    const last = latestRow(ledger);
+    const confirmed = last ? last.crash_state : settings.crash_state?.current ?? null;
+    const decision = decideCrashAlert(sp500Usd, confirmed, p.state.crashAlert ?? null);
     const dd = (Math.min(0, sp500Usd.last / sp500Usd.ath - 1) * 100).toFixed(1);
     console.log(`  暴落ルールの通知: S&P500 ドル建て ${dd}%、通知する段階 ${decision.stages.length ? decision.stages.map((s) => `−${s}%`).join('・') : 'なし'}`);
     if (decision.stages.length === 0) return `なし（${dd}%）`;
 
-    // 投入額の見込みは画面と同じ計算（evaluateCrash）。最新の indicators の高値データだけ今日の値に差し替える
+    // 投入額の見込みは、次に記録される行と同じ計算（抜けた月は追いつきで積む、projectNextRecord）。
+    // 最新の indicators の高値データだけ今日の値に差し替える
     const ind: Indicators = { ...indicators, drawdown: { ...(indicators.drawdown ?? { sp500_jpy: null, classes: {} }), sp500_usd: sp500Usd } };
-    const calc = calculateMonthlyFromIndicators(ind, settings, p.config.mode, new Date(`${p.today}T09:00:00`));
+    const month = p.today.slice(0, 7);
+    const inputs = buildLedgerInputs(ind, settings, p.config.mode);
+    const calc = inputs ? projectNextRecord(ledger, settings, month, inputs).calc : null;
     // --simulate-drawdown はドル建てだけを差し替えるので、円建て（参考）は出さない（実際の値と食い違うため）
     const sp500Jpy = simDd ? null : fetched?.sp500_jpy ?? null;
-    const mail = buildCrashAlert({ today: p.today, stages: decision.stages, sp500Usd, sp500Jpy, crash: calc?.crash ?? null });
+    const mail = buildCrashAlert({ today: p.today, stages: decision.stages, sp500Usd, sp500Jpy, crash: calc?.crash ?? null, sendDay: p.config.sendDay });
     const outDir = join(HERE, 'out');
     mkdirSync(outDir, { recursive: true });
     const preview = join(outDir, `alert-${p.today}.html`);
@@ -183,7 +220,7 @@ function runPython(script: string, env: Record<string, string>, extraArgs: strin
   return r.status === 0;
 }
 
-async function main(): Promise<{ result: RunResult; targetMonth: string; catchup: boolean; alert?: string | null }> {
+async function main(): Promise<{ result: RunResult; targetMonth: string; catchup: boolean; alert?: string | null; recordedMonths?: string[] }> {
   const dryRun = flag('dry-run');
   const forceSend = flag('force-send');
   const today = opt('today') ?? localToday();
@@ -245,9 +282,26 @@ async function main(): Promise<{ result: RunResult; targetMonth: string; catchup
     sp500_jpy: fr('sp500_jpy', asOf.sp500_jpy, 'price'),
   };
 
-  // 4. 計算（画面と同じ関数。暴落ルールの判定を含む。待機資金・段階は書き換えない）
-  const now = new Date(`${today}T09:00:00`);
-  const calc = calculateMonthlyFromIndicators(ind, settings, config.mode, now);
+  // 4. 台帳に記録する（#140）。最後の行の次の月から送る月まで古い順に。送る月が記録済みなら計算し直さない
+  const existing = await fetchLedgerRows(env, config.userId, dryRun);
+  const seed = existing.length === 0 ? { ...seedFromLegacy(settings, decision.month), user_id: config.userId } : null;
+  const base = seed ? [seed] : existing;
+  const inputs = buildLedgerInputs(ind, settings, config.mode);
+  const newRows = inputs ? catchUpLedger(base, decision.month, inputs).map((r) => ({ ...r, user_id: config.userId })) : [];
+  const ledger = [...base, ...newRows];
+  const targetRow = existing.find((r) => r.month === decision.month) ?? null;
+  // 送る月の行が seed（送信日のあと、ジョブより先に画面で合わせた）なら記録は作れないので、配分だけ下書きで出す。
+  // 暴落ルールは判定しない（台帳に残らないので、翌月の記録でもう一度発動して投入の案内が二重になるため）
+  const calc = ledgerMonthlyCalc(ledger, decision.month)
+    ?? (targetRow?.kind === 'seed' && inputs ? draftLedgerMonth(ledger, settings, decision.month, { ...inputs, sp500_usd: null }).calc : null);
+  const recordedMonths = newRows.map((r) => r.month);
+  // 送信だけの再試行（送る月が記録済み）は、暴落欄の下落率と通知済みの印も記録した値で出す（記録の判定と食い違わないように）
+  if (targetRow?.kind === 'record' && targetRow.inputs?.sp500_usd && !simDd) {
+    sp500Usd = targetRow.inputs.sp500_usd;
+    console.log('  送る月は記録済み（計算し直さず、台帳の行のまま送る）');
+  }
+  if (newRows.some((r) => r.catchup)) console.log(`  追いつき: ${newRows.filter((r) => r.catchup).map((r) => r.month).join('・')}`);
+  if (!inputs) console.log('  CAPE・PBR・金銀比率のどれかが無いので、台帳に記録しない');
 
   const mail = buildMail({
     month: decision.month,
@@ -255,6 +309,7 @@ async function main(): Promise<{ result: RunResult; targetMonth: string; catchup
     settings,
     indicators: ind,
     calc,
+    ledger,
     freshness,
     sp500Usd,
     sp500Jpy,
@@ -270,20 +325,26 @@ async function main(): Promise<{ result: RunResult; targetMonth: string; catchup
   if (crash?.newlyTriggered.length) console.log(`  暴落ルール: 第${crash.newlyTriggered.map((s) => s / 10 - 1).join('・')}段階に該当（投入額の合計 ${crash.total}円）`);
   if (dryRun) return { result: 'dry_run', targetMonth: decision.month, catchup, alert };
 
+  // 記録してから送る（送信だけ失敗したら、次の実行は台帳の行のまま送り直す）。テスト送信では記録しない
+  if (!forceSend) {
+    await insertLedgerRows(env, [...(seed ? [seed] : []), ...newRows]);
+    if (recordedMonths.length) console.log(`  台帳に記録: ${recordedMonths.join('・')}`);
+  }
+
   // 5. 送信（Resend。Phase A はドメイン認証なしの onboarding@resend.dev から本人宛て）
   const res = await sendViaResend(env, config, mail);
   const body = await res.text();
   if (!res.ok) throw new Error(`Resend: ${res.status} ${body}`);
   console.log(`  送信しました: ${body}`);
 
-  // 6. 送信済みの記録（テスト送信では記録しない＝本番の送信を妨げない）。暴落段階は画面の「投資実行」で確定する
+  // 6. 送信済みの記録（テスト送信では記録しない＝本番の送信を妨げない）。暴落の段階は台帳に記録済み（#140）
   if (!forceSend) {
     state.sentMonths = [...state.sentMonths, decision.month].slice(-24);
     // 月次メールで知らせた段階は通知済みにする（#34。翌日に同じ段階を二度知らせない）
     if (sp500Usd && crash?.newlyTriggered.length) state.crashAlert = markNotified(sp500Usd, crash.newlyTriggered, state.crashAlert ?? null);
     writeFileSync(statePath, JSON.stringify(state, null, 2));
   }
-  return { result: forceSend ? 'force_sent' : 'sent', targetMonth: decision.month, catchup };
+  return { result: forceSend ? 'force_sent' : 'sent', targetMonth: decision.month, catchup, recordedMonths: forceSend ? [] : recordedMonths };
 }
 
 function writeRecord(record: RunRecord) {

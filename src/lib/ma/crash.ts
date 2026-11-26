@@ -28,12 +28,32 @@ export function resolveCrashBase(record: CrashRecord | null, currentMonth: strin
   return record.month === currentMonth ? record.monthBase : record.current;
 }
 
+export interface CrashOptions {
+  /**
+   * 高値の更新を「値が大きく、かつ日付が後」のときだけとみなす（台帳方式、FI_project #140）。
+   * Yahoo が過去の終値をわずかに訂正しただけ（値だけ大きく日付が同じ）では段階をリセットしない。
+   * 省略時は値だけで判定する（ボタン方式の今の動き）。
+   */
+  strictNewHigh?: boolean;
+}
+
+/** 前回の状態から見て最高値を更新したか（更新なら段階と基準残高をリセットする） */
+export function isNewHigh(sp500: PricePoint, prev: Pick<CrashState, 'athValue' | 'athDate'>, opts: CrashOptions = {}): boolean {
+  if (!(sp500.ath > prev.athValue)) return false;
+  return opts.strictNewHigh ? sp500.athDate > prev.athDate : true;
+}
+
 /**
  * @param reserve 計算の基点にする待機資金残高（同月は月初 base。今月の積み増し分は含まない）
  */
-export function evaluateCrash(sp500: PricePoint, prev: CrashState | null, reserve: number): CrashEvaluation {
+export function evaluateCrash(
+  sp500: PricePoint,
+  prev: CrashState | null,
+  reserve: number,
+  opts: CrashOptions = {},
+): CrashEvaluation {
   const drawdown = Math.min(0, sp500.last / sp500.ath - 1);
-  const reset = !prev || sp500.ath > prev.athValue;
+  const reset = !prev || isNewHigh(sp500, prev, opts);
   const triggered = reset ? [] : prev.triggered;
   const newlyTriggered = CRASH_STAGES.filter((s) => drawdown <= -s / 100 && !triggered.includes(s));
   // 基準残高は最初の段階に入った時点の残高（一度に −30% まで落ちた場合もその時点の残高）

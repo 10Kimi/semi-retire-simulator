@@ -252,5 +252,16 @@ export async function fetchMaReserveRow(userId: string): Promise<{ row: MaReserv
     console.error('ma reserve fetch error:', error);
     return { row: null, failed: true };
   }
-  return { row: data ?? null, failed: false };
+  if (!data?.keep_amounts_on_server) return { row: data ?? null, failed: false };
+  // オーナー本人の行は、台帳（ma_ledger、#140）の最後の行の実効の月末残高を優先する。読めなければ reserve_balance のまま（D-072）
+  const { data: last, error: ledgerError } = await supabase
+    .from('ma_ledger')
+    .select('closing_balance, override_balance')
+    .eq('user_id', userId)
+    .order('month', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (ledgerError) console.error('ma_ledger fetch error:', ledgerError);
+  const ledgerBalance = last ? Number(last.override_balance ?? last.closing_balance) : null;
+  return { row: { ...data, ledger_balance: ledgerBalance }, failed: false };
 }

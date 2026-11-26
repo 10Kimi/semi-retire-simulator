@@ -2,7 +2,7 @@
 // 判定は暴落ルールと同じ（S&P500 ドル建ての高値比、CRASH_STAGES）。知らせるだけで、待機資金・crash_state は書き換えない。
 // 送信や取得はしない（実行環境に依存しない）。文言は「計算結果」「条件に該当」に統一する。
 import type { CrashState, PricePoint } from '../types';
-import { CRASH_STAGES, type CrashEvaluation } from '../crash';
+import { CRASH_STAGES, isNewHigh, type CrashEvaluation } from '../crash';
 import { formatCurrency } from '../logic';
 
 /** 通知済みの段階（scripts/ma-mail/state.json の crashAlert に持つ） */
@@ -22,7 +22,7 @@ export interface CrashAlertDecision {
 }
 
 /**
- * @param confirmed 画面の「投資実行」で確定済みの状態（crash_state.current）。ここで発動済みの段階は通知しない
+ * @param confirmed 確定済みの状態（台帳の最後の行の crash_state。台帳が空なら crash_state.current）。ここで発動済みの段階は通知しない
  * @param prev 前回までの通知の状態
  */
 export function decideCrashAlert(
@@ -31,10 +31,11 @@ export function decideCrashAlert(
   prev: CrashAlertState | null,
 ): CrashAlertDecision {
   const drawdown = Math.min(0, sp500.last / sp500.ath - 1);
-  // 高値を更新したら数え直す（crash.ts の段階のリセットと同じ考え方）
-  const reset = !prev || sp500.ath > prev.athValue;
+  // 高値を更新したら数え直す（台帳の段階のリセットと同じ判定：値が大きく、かつ日付が後のときだけ）
+  const reset = !prev || isNewHigh(sp500, prev, { strictNewHigh: true });
   const notified = reset ? [] : prev.notified;
-  const confirmedStages = confirmed && !(sp500.ath > confirmed.athValue) ? confirmed.triggered : [];
+  // 確定済みの段階を数え直すかは台帳と同じ判定（値が大きく、かつ日付が後のときだけ最高値の更新）
+  const confirmedStages = confirmed && !isNewHigh(sp500, confirmed, { strictNewHigh: true }) ? confirmed.triggered : [];
   const stages = CRASH_STAGES.filter(
     (s) => drawdown <= -s / 100 && !notified.includes(s) && !confirmedStages.includes(s),
   );
@@ -50,7 +51,7 @@ export function decideCrashAlert(
 
 /** 月次メールで知らせた段階を、通知済みとして記録する（翌日以降に同じ段階を二度知らせないため） */
 export function markNotified(sp500: PricePoint, stages: number[], prev: CrashAlertState | null): CrashAlertState {
-  const reset = !prev || sp500.ath > prev.athValue;
+  const reset = !prev || isNewHigh(sp500, prev, { strictNewHigh: true });
   const base = reset ? [] : prev.notified;
   return {
     athValue: reset ? sp500.ath : prev.athValue,
@@ -76,6 +77,8 @@ export function buildCrashAlert(i: {
   sp500Jpy: PricePoint | null;
   /** evaluateCrash の結果（投入額の見込み）。計算できなければ null */
   crash: CrashEvaluation | null;
+  /** 月次メールの送信日（config の sendDay）。無ければ日付を出さない */
+  sendDay?: number;
 }): CrashAlertMail {
   const stageLabel = (s: number) => `第${s / 10 - 1}段階（高値比 −${s}%）`;
   const subject = `【/ma 暴落ルール】${i.stages.map(stageLabel).join('・')}の条件に該当（${i.today}）`;
@@ -98,10 +101,10 @@ export function buildCrashAlert(i: {
         i.stages.reduce((sum, s) => sum + (i.crash?.deployments.find((x) => x.stage === s)?.amount ?? 0), 0),
       )}`
     : '';
-  const guide = '/ma を開いて、買うものを選んで「投資実行＆待機資金を更新」で確定してください。このメールでは待機資金も段階も更新していません。';
+  const sendDayText = i.sendDay != null ? `次の送信日（${i.sendDay}日）` : '次の送信日';
+  const guide = `/ma を開いて、買うものを選んでください。この段階は、${sendDayText}の月次メールで台帳に記録します。このメールでは記録していません。`;
   const notes = [
-    '画面は開いた時点の下落率で判定し直します。それまでに下落率が戻っていれば、この段階は画面では条件に該当しません。',
-    '同じ月に「投資実行」をもう一度押すと、その月の段階と待機資金が月初の状態から計算し直されます。この月は25日の月次メールのあとに、もう一度押さないでください。',
+    '台帳には、月次メールの日の下落率で判定して記録します。それまでに下落率が戻っていれば、この段階は記録されません。',
   ];
 
   const text = [...lines, '', ...amounts, ...(total ? [total] : []), '', guide, ...notes].join('\n') + '\n';

@@ -58,3 +58,25 @@ describe('レビュー役の指摘で足したもの（#118）', () => {
     expect(pickMaReserve(null, storageWith(30_000), USER, true)).toEqual({ amount: 30_000, source: 'browser' });
   });
 });
+
+describe('台帳の残高を優先する（#140）', () => {
+  it('本人の行で台帳の残高があれば、reserve_balance より台帳を採る', () => {
+    expect(pickMaReserve({ keep_amounts_on_server: true, reserve_balance: 420_000, ledger_balance: 433_323 }, storageWith(99_000), USER))
+      .toEqual({ amount: 433_323, source: 'server' });
+  });
+
+  it('台帳の残高が 0 でも台帳を採る（null とは扱いが違う）', () => {
+    expect(pickMaReserve({ keep_amounts_on_server: true, reserve_balance: 420_000, ledger_balance: 0 }, storageWith(null), USER))
+      .toEqual({ amount: 0, source: 'server' });
+  });
+
+  it('台帳が空・読めない（null）なら今どおり reserve_balance', () => {
+    expect(pickMaReserve({ keep_amounts_on_server: true, reserve_balance: 420_000, ledger_balance: null }, storageWith(null), USER))
+      .toEqual({ amount: 420_000, source: 'server' });
+  });
+
+  it('目印なしの行は台帳の値があっても使わない', () => {
+    expect(pickMaReserve({ keep_amounts_on_server: false, reserve_balance: null, ledger_balance: 433_323 }, storageWith(99_000), USER))
+      .toEqual({ amount: 99_000, source: 'browser' });
+  });
+});
