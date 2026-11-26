@@ -3,7 +3,7 @@
 -- 本番を Dashboard で手で直した分が migration に残っておらず、migration から作った DB（試験用）が本番とずれていた。
 -- どの文も、本番に当てたときは何もしない（すでにその形）。試験用だけが本番と同じ形になる。
 -- 本番だけにある手作りのテーブル english_subscribers・scene_cache はアプリが使っていないので入れない（#137）。
--- 番号は適用の直前に付ける（D-032・D-077）。
+-- 051：試験用に当てる直前に番号を付けた（2026-11-26、D-077）。
 
 -- 1. user_ma_settings：038 の ADD COLUMN IF NOT EXISTS は、本番では列がすでにあって飛ばされ、NOT NULL が付かなかった（推定）。
 --    本番に合わせて NOT NULL を外す（DEFAULT はそのまま。アプリは null を書かない）
@@ -30,13 +30,28 @@ DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies
                  WHERE schemaname = 'public' AND tablename = 'indicators' AND policyname = 'Anyone can read indicators') THEN
-    -- 仮：中身（ロール・USING）は本番の比較の結果で確かめてから決める
+    -- 本番と同じ中身（対象のロールは指定なし＝public、USING true。2026-11-26 に本番の比べる SQL で確かめた）
     CREATE POLICY "Anyone can read indicators" ON indicators FOR SELECT USING (true);
   END IF;
 END
 $$;
 
--- 3. 旧 v1 の診断のテーブル（001）：本番では手で消されている。使うのは App.tsx でルートを外したデッドコード
+-- 3. user_ma_settings の slot4_asset_class の CHECK：本番は許す値のリストに 'bond' が2回ある（手で直した名残り、推定）。
+--    許す値は同じだが、比べる SQL をそろえるため、本番と違う形のときだけ本番と同じ形に作り直す（本番では何もしない）
+DO $$
+BEGIN
+  IF (SELECT pg_get_constraintdef(oid) FROM pg_constraint
+      WHERE conrelid = 'public.user_ma_settings'::regclass AND conname = 'user_ma_settings_slot4_asset_class_check')
+     IS DISTINCT FROM
+     'CHECK ((slot4_asset_class = ANY (ARRAY[''us''::text, ''jp''::text, ''em''::text, ''gold''::text, ''bond''::text, ''bond''::text, ''none''::text])))' THEN
+    ALTER TABLE user_ma_settings DROP CONSTRAINT IF EXISTS user_ma_settings_slot4_asset_class_check;
+    ALTER TABLE user_ma_settings ADD CONSTRAINT user_ma_settings_slot4_asset_class_check
+      CHECK (slot4_asset_class IN ('us', 'jp', 'em', 'gold', 'bond', 'bond', 'none'));
+  END IF;
+END
+$$;
+
+-- 4. 旧 v1 の診断のテーブル（001）：本番では手で消されている。使うのは App.tsx でルートを外したデッドコード
 --    （src/lib/assessmentDb.ts の consent・assessment の関数）だけ
 DROP TABLE IF EXISTS risk_assessments;
 DROP TABLE IF EXISTS assessment_consents;
