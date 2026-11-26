@@ -102,6 +102,7 @@ DB 層は `rowToSettings` / `settingsToRow` でフラットな行と入れ子の
 - **暗号文でサーバーにも置く（案B、D-071、FI_project #117）**：オーナー以外は、本人のパスフレーズの鍵（`src/lib/vault/vault.ts`）で暗号化した localStorage の文字列を `user_ma_settings.amounts_vault` に置く（migration 048。確かめ用の値 `vault_verifier`・版 `vault_saved_at`）。鍵はページのメモリだけ。
   ブラウザの値は `base`（最後にそろえたサーバーの版）を持ち、サーバーへの書き込みは版と確かめ用の値がそろうときだけ（`pushVault` の条件つきの更新）。版が違えば**サーバーを採る**（`vaultStatus` が restore-needed、その間は計算の画面を出さない）。投資実行の直前に `checkVaultUnchanged` で版を読み直す（古い値のまま投資実行すると暴落ルールの投入が二重になる）。
   時刻の大小では比べない（端末の時計のずれ）。復元の仕組みは無い（忘れたらリセット＝3列を null）
+- **ブラウザに持つ金額・暗号文の形の「版」を上げるときは、前の版から引き継ぐ変換とテストを必ず付ける**（FI_project #135、D-093）。/ma は `MA_AMOUNT_UPGRADES`、/rb は `RB_AMOUNT_UPGRADES`（版 n → n+1 の変換、共通の部品は `src/lib/storage/versioned.ts`）、vault は `ENVELOPE_READERS`（前の版の封筒の読み方を残す）。版が違うデータを黙って捨てない。/rb の patch は読めない値を空で上書きしない。ここで言う版はデータの形の版（`VERSION`・`VAULT_VERSION`）で、上の `base`・`vault_saved_at`（サーバーの版）とは別
 - **同じ月に計算し直しても二重に発動しない**：`crash_state` は `{ current, month, monthBase }`。待機資金の `reserve_month_base` と同じ考え方
 - 高値データは `fetch_indicators.py` が取得して `indicators.drawdown` に書く（migration 040。未適用ならその列だけ書かない）
 

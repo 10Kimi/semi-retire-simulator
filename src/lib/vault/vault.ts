@@ -5,8 +5,24 @@
 // 暗号文（封筒）は JSON の文字列。版・方式・鍵を作るパラメータ・salt・IV を含むので、それだけで復号の条件がそろう。
 // 版・方式・パラメータ・salt・IV は AES-GCM の追加データ（AAD）にも入れるので、本文だけでなく見出しを書き換えても復号できない。
 
-/** 暗号文の形式の版。形式を変えたら上げる（古い版を読む処理を足してから） */
+/**
+ * 暗号文の形式の版。形式を変えたら上げる。上げるときは、前の版の封筒を読む処理を ENVELOPE_READERS に残し、
+ * 前の版の封筒が読めるテストを付ける（#135）。古い版の封筒は読めれば、次に暗号化したとき今の版で書き直される
+ */
 export const VAULT_VERSION = 1;
+
+/**
+ * 版ごとの封筒の読み方。ここに無い版は 'unsupported-version'（黙って捨てずにエラーにする）。
+ * 復号の追加データ（AAD）には封筒に書かれた版を使うので、古い版の封筒もその版のまま検証される
+ */
+const ENVELOPE_READERS: Readonly<Record<number, (e: Record<string, unknown>) => Envelope>> = {
+  1: readEnvelopeV1,
+};
+
+/** 読める封筒の版の一覧（古い順） */
+export function readableVaultVersions(): number[] {
+  return Object.keys(ENVELOPE_READERS).map(Number).sort((a, b) => a - b);
+}
 
 /**
  * PBKDF2-SHA256 の回数。6文字のパスフレーズを総当たりに強くするため重くする（#116）。
@@ -187,9 +203,14 @@ function parseEnvelope(envelope: string): Envelope {
   }
   if (typeof o !== 'object' || o === null) throw new VaultError('malformed');
   const e = o as Record<string, unknown>;
-  if (e.v !== VAULT_VERSION) {
-    throw new VaultError(typeof e.v === 'number' ? 'unsupported-version' : 'malformed');
-  }
+  if (typeof e.v !== 'number') throw new VaultError('malformed');
+  const read = Object.prototype.hasOwnProperty.call(ENVELOPE_READERS, e.v) ? ENVELOPE_READERS[e.v] : undefined;
+  if (!read) throw new VaultError('unsupported-version');
+  return read(e);
+}
+
+/** 版 1 の封筒：AES-GCM-256、PBKDF2-SHA256（回数・salt は封筒に入っている値を使う、D-070） */
+function readEnvelopeV1(e: Record<string, unknown>): Envelope {
   const kdf = e.kdf as Record<string, unknown> | undefined;
   if (
     e.alg !== 'AES-GCM-256' ||
@@ -205,7 +226,7 @@ function parseEnvelope(envelope: string): Envelope {
     throw new VaultError('malformed');
   }
   return {
-    v: e.v,
+    v: 1,
     alg: e.alg,
     kdf: { name: kdf.name, iterations: kdf.iterations, salt: kdf.salt },
     iv: e.iv,

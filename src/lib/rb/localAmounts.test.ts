@@ -1,9 +1,11 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  RB_AMOUNT_UPGRADES,
   loadRbAmounts,
   patchRbAmounts,
   planLivingCostMove,
   rbStorageKey,
+  rbStorageKeyFor,
   saveLocalHoldings,
   saveLocalLivingCost,
   type AmountStorage,
@@ -94,6 +96,73 @@ describe('読み込みの守り', () => {
     expect(saveLocalHoldings(b, 'u1', { us_equity: 100 }, '2026-11-18')).toBe(false);
     expect(saveLocalLivingCost(b, 'u1', 1)).toBe(false);
     expect(patchRbAmounts(b, 'u1', {})).toBe(false);
+  });
+});
+
+describe('版の引き継ぎと、読めないときに上書きしない（#135）', () => {
+  // 架空の v0：生活費を livingCost という名前で持っていたことにする
+  const v0 = JSON.stringify({ version: 0, holdings: { us_equity: 100 }, holdingsDate: '2026-11-01', livingCost: 250_000 });
+  const addFakeV0 = () => { RB_AMOUNT_UPGRADES[0] = ({ livingCost, ...rest }) => ({ ...rest, monthlyLivingCost: livingCost }); };
+  afterEach(() => { delete RB_AMOUNT_UPGRADES[0]; });
+
+  class RemovableStorage extends MemoryStorage {
+    failSet = false;
+    setItem(k: string, v: string) { if (this.failSet) throw new Error('QuotaExceededError'); super.setItem(k, v); }
+    removeItem(k: string) { this.map.delete(k); }
+  }
+
+  it('v1 の今のデータは変わらず読め、patch しても他の値は残る', () => {
+    const raw = JSON.stringify({ version: 1, holdings: { us_equity: 100 }, holdingsDate: '2026-11-18', monthlyLivingCost: 300_000 });
+    s.setItem(rbStorageKey('u1'), raw);
+    expect(rbStorageKey('u1')).toBe('fi.rb.amounts.v1.u1');
+    const got = loadRbAmounts(s, 'u1')!;
+    expect(got.holdings!.us_equity).toBe(100);
+    expect(got.holdingsDate).toBe('2026-11-18');
+    expect(got.monthlyLivingCost).toBe(300_000);
+    expect(s.map.get(rbStorageKey('u1'))).toBe(raw);
+    expect(saveLocalLivingCost(s, 'u1', 200_000)).toBe(true);
+    expect(loadRbAmounts(s, 'u1')!.holdings!.us_equity).toBe(100);
+  });
+
+  it('古い名前の v0 を引き継いで v1 で読め、古い名前は消える', () => {
+    const r = new RemovableStorage();
+    r.map.set(rbStorageKeyFor(0, 'u1'), v0);
+    addFakeV0();
+    const got = loadRbAmounts(r, 'u1')!;
+    expect(got.monthlyLivingCost).toBe(250_000);
+    expect(got.holdings!.us_equity).toBe(100);
+    expect(JSON.parse(r.map.get(rbStorageKey('u1'))!).version).toBe(1);
+    expect(r.map.has(rbStorageKeyFor(0, 'u1'))).toBe(false);
+  });
+
+  it('古い版だけがあるとき、patch は引き継いだ値に重ねる（空で上書きしない）', () => {
+    const r = new RemovableStorage();
+    r.map.set(rbStorageKeyFor(0, 'u1'), v0);
+    addFakeV0();
+    expect(saveLocalLivingCost(r, 'u1', 200_000)).toBe(true);
+    const got = loadRbAmounts(r, 'u1')!;
+    expect(got.monthlyLivingCost).toBe(200_000);
+    expect(got.holdings!.us_equity).toBe(100);
+  });
+
+  it('引き継ぎで保存に失敗したら、古いデータは残り、patch も書かない', () => {
+    const r = new RemovableStorage();
+    r.map.set(rbStorageKeyFor(0, 'u1'), v0);
+    addFakeV0();
+    r.failSet = true;
+    expect(loadRbAmounts(r, 'u1')).toBeNull();
+    expect(patchRbAmounts(r, 'u1', { monthlyLivingCost: 1 })).toBe(false);
+    expect(r.map.get(rbStorageKeyFor(0, 'u1'))).toBe(v0);
+    expect(r.map.has(rbStorageKey('u1'))).toBe(false);
+  });
+
+  it('壊れたデータ・引き継げない版があるとき、patch で上書きしない', () => {
+    for (const bad of ['{not json', JSON.stringify({ version: 99, holdings: { us_equity: 1 } }), 'null']) {
+      s.setItem(rbStorageKey('u1'), bad);
+      expect(saveLocalHoldings(s, 'u1', { us_equity: 5 }, '2026-11-26')).toBe(false);
+      expect(saveLocalLivingCost(s, 'u1', 1)).toBe(false);
+      expect(s.map.get(rbStorageKey('u1'))).toBe(bad);
+    }
   });
 });
 

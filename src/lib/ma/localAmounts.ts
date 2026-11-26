@@ -4,6 +4,7 @@
 import type { CrashRecord, SlotKey, UserMaSettings } from './types';
 import { DEFAULT_SETTINGS, SLOT_KEYS } from './types';
 import { AMOUNT_COLUMNS, type AmountColumn, type UserMaSettingsRow } from './settingsRow';
+import { readVersioned, upgradeData, upgradeJson, type ReadResult, type Upgrade, type VersionedStorage } from '../storage/versioned';
 
 /** ブラウザに持つ金額と待機資金の状態 */
 export interface MaAmounts {
@@ -15,12 +16,31 @@ export interface MaAmounts {
   slot_amounts: Record<SlotKey, number>;
 }
 
-export type AmountStorage = Pick<Storage, 'getItem' | 'setItem'>;
+export type AmountStorage = VersionedStorage;
 
+/**
+ * 保存する形の版。上げるときは MA_AMOUNT_UPGRADES に前の版からの変換を足し、引き継ぎのテストを付ける（#135）。
+ * 版は保存の名前にも入る。上げると前の名前を読まなくなるので、変換が無いと利用者には「入力が消えた」に見える
+ */
 const VERSION = 1;
 
+/** 版 n の金額を版 n+1 にする変換（今は無い。版を上げるときに足す。テストからも足す） */
+export const MA_AMOUNT_UPGRADES: Record<number, Upgrade> = {};
+
 export function storageKey(userId: string): string {
-  return `fi.ma.amounts.v${VERSION}.${userId}`;
+  return storageKeyFor(VERSION, userId);
+}
+
+/** 版ごとの保存の名前（アカウントごとに分ける、D-074） */
+export function storageKeyFor(version: number, userId: string): string {
+  return `fi.ma.amounts.v${version}.${userId}`;
+}
+
+/** 今の名前の文字列を読む。無ければ古い版の名前から引き継ぐ（保存し直せたら古い方を消す） */
+function readLocal(storage: AmountStorage, userId: string): ReadResult {
+  return readVersioned(
+    storage, (v) => storageKeyFor(v, userId), VERSION, MA_AMOUNT_UPGRADES, (json) => parseAmountsJson(json) !== null,
+  );
 }
 
 export function defaultAmounts(): MaAmounts {
@@ -57,14 +77,8 @@ const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFin
 
 /** 保存された値を読む。無い・壊れている・形が違うときは null */
 export function loadLocalAmounts(storage: AmountStorage, userId: string): MaAmounts | null {
-  let raw: string | null;
-  try {
-    raw = storage.getItem(storageKey(userId));
-  } catch {
-    return null;
-  }
-  if (!raw) return null;
-  return parseAmountsJson(raw);
+  const raw = loadLocalRaw(storage, userId);
+  return raw ? parseAmountsJson(raw) : null;
 }
 
 /**
@@ -120,29 +134,32 @@ export function savedAtOf(raw: string | null): string | null {
 
 /** ブラウザに保存した文字列そのもの（暗号化してサーバーに置くとき・時刻を比べるとき）。無ければ null */
 export function loadLocalRaw(storage: AmountStorage, userId: string): string | null {
-  try {
-    return storage.getItem(storageKey(userId));
-  } catch {
-    return null;
-  }
+  const r = readLocal(storage, userId);
+  return r.status === 'ok' ? r.raw : null;
 }
 
-/** 文字列をそのまま保存する（サーバーの暗号文から戻すとき。saved_at も元のまま）。形が違えば保存しない */
+/**
+ * 文字列をそのまま保存する（サーバーの暗号文から戻すとき。saved_at も元のまま）。形が違えば保存しない。
+ * 古い版の文字列（前の版のときに暗号化したもの）は、今の版に引き継いでから保存する
+ */
 export function saveLocalRaw(storage: AmountStorage, userId: string, raw: string): boolean {
-  if (!parseAmountsJson(raw)) return false;
+  const json = upgradeJson(raw, VERSION, MA_AMOUNT_UPGRADES);
+  if (!json || !parseAmountsJson(json)) return false;
   try {
-    storage.setItem(storageKey(userId), raw);
-    return storage.getItem(storageKey(userId)) === raw;
+    storage.setItem(storageKey(userId), json);
+    return storage.getItem(storageKey(userId)) === json;
   } catch {
     return false;
   }
 }
 
-/** 保存した文字列から金額を読む。壊れている・形が違うときは null */
+/** 保存した文字列から金額を読む（古い版なら引き継いで読む）。壊れている・形が違う・引き継げない版のときは null */
 export function parseAmountsJson(raw: string): MaAmounts | null {
   try {
-    const v = JSON.parse(raw) as Partial<MaAmounts> & { version?: number };
-    if (v.version !== VERSION || !isNum(v.monthly_budget) || !isNum(v.reserve_balance)) return null;
+    const up = upgradeData(JSON.parse(raw), VERSION, MA_AMOUNT_UPGRADES);
+    if (!up.ok) return null;
+    const v = up.data as Partial<MaAmounts>;
+    if (!isNum(v.monthly_budget) || !isNum(v.reserve_balance)) return null;
     const slot_amounts = {} as Record<SlotKey, number>;
     for (const k of SLOT_KEYS) {
       const n = v.slot_amounts?.[k];

@@ -3,6 +3,7 @@
 // Supabase クライアントを持たない純粋な関数だけにして、テストから直接呼べるようにする（/ma の localAmounts.ts と同じ形）。
 import { ASSET_CLASSES } from './types';
 import type { Holdings } from './types';
+import { readVersioned, upgradeData, type ReadResult, type Upgrade, type VersionedStorage } from '../storage/versioned';
 
 /** ブラウザに持つ /rb の金額 */
 export interface RbLocalAmounts {
@@ -14,12 +15,30 @@ export interface RbLocalAmounts {
   monthlyLivingCost: number | null;
 }
 
-export type AmountStorage = Pick<Storage, 'getItem' | 'setItem'>;
+export type AmountStorage = VersionedStorage;
 
+/**
+ * 保存する形の版。上げるときは RB_AMOUNT_UPGRADES に前の版からの変換を足し、引き継ぎのテストを付ける（#135）。
+ * 版は保存の名前にも入る。上げると前の名前を読まなくなるので、変換が無いと利用者には「入力が消えた」に見える
+ */
 const VERSION = 1;
 
+/** 版 n の金額を版 n+1 にする変換（今は無い。版を上げるときに足す。テストからも足す） */
+export const RB_AMOUNT_UPGRADES: Record<number, Upgrade> = {};
+
 export function rbStorageKey(userId: string): string {
-  return `fi.rb.amounts.v${VERSION}.${userId}`;
+  return rbStorageKeyFor(VERSION, userId);
+}
+
+/** 版ごとの保存の名前（アカウントごとに分ける、D-074） */
+export function rbStorageKeyFor(version: number, userId: string): string {
+  return `fi.rb.amounts.v${version}.${userId}`;
+}
+
+function readLocal(storage: AmountStorage, userId: string): ReadResult {
+  return readVersioned(
+    storage, (v) => rbStorageKeyFor(v, userId), VERSION, RB_AMOUNT_UPGRADES, (json) => parseRbJson(json) !== null,
+  );
 }
 
 export function emptyRbAmounts(): RbLocalAmounts {
@@ -28,18 +47,18 @@ export function emptyRbAmounts(): RbLocalAmounts {
 
 const isAmount = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 0;
 
-/** 保存された値を読む。無い・壊れている・形が違うときは null */
+/** 保存された値を読む（古い版の名前にあれば引き継ぐ）。無い・壊れている・形が違うときは null */
 export function loadRbAmounts(storage: AmountStorage, userId: string): RbLocalAmounts | null {
-  let raw: string | null;
+  const r = readLocal(storage, userId);
+  return r.status === 'ok' && r.raw ? parseRbJson(r.raw) : null;
+}
+
+/** 保存した文字列を読む（古い版なら引き継いで読む）。壊れている・引き継げない版のときは null */
+function parseRbJson(raw: string): RbLocalAmounts | null {
   try {
-    raw = storage.getItem(rbStorageKey(userId));
-  } catch {
-    return null;
-  }
-  if (!raw) return null;
-  try {
-    const v = JSON.parse(raw) as Partial<RbLocalAmounts> & { version?: number };
-    if (!v || v.version !== VERSION) return null;
+    const up = upgradeData(JSON.parse(raw), VERSION, RB_AMOUNT_UPGRADES);
+    if (!up.ok) return null;
+    const v = up.data as Partial<RbLocalAmounts>;
     let holdings: Holdings | null = null;
     if (v.holdings && typeof v.holdings === 'object') {
       holdings = {};
@@ -58,9 +77,20 @@ export function loadRbAmounts(storage: AmountStorage, userId: string): RbLocalAm
   }
 }
 
-/** 一部だけ変えて保存し、読み直して同じ値が取れたら true（容量超過・プライベートブラウズなどで保存できなければ false） */
+/**
+ * 一部だけ変えて保存し、読み直して同じ値が取れたら true（容量超過・プライベートブラウズなどで保存できなければ false）。
+ * 今の値が読めないとき（壊れている・引き継げない版・古い版を引き継げなかった）は、空で上書きせずに false（データを残す、#135）
+ */
 export function patchRbAmounts(storage: AmountStorage, userId: string, patch: Partial<RbLocalAmounts>): boolean {
-  const next: RbLocalAmounts = { ...(loadRbAmounts(storage, userId) ?? emptyRbAmounts()), ...patch };
+  const r = readLocal(storage, userId);
+  if (r.status !== 'ok') return false;
+  let cur = emptyRbAmounts();
+  if (r.raw) {
+    const parsed = parseRbJson(r.raw);
+    if (!parsed) return false;
+    cur = parsed;
+  }
+  const next: RbLocalAmounts = { ...cur, ...patch };
   try {
     const json = JSON.stringify({ version: VERSION, ...next });
     storage.setItem(rbStorageKey(userId), json);

@@ -3,7 +3,9 @@ import type { CrashRecord } from '../ma/types';
 import {
   MAX_ITERATIONS,
   PBKDF2_ITERATIONS,
+  VAULT_VERSION,
   VaultError,
+  readableVaultVersions,
   checkKey,
   decryptValue,
   deriveKey,
@@ -143,6 +145,15 @@ describe('暗号文の形式', () => {
   it('版が違うとエラー', async () => {
     const env = JSON.parse(await encryptValue(key, 1));
     await expectCode(decryptValue(key, JSON.stringify({ ...env, v: 2 })), 'unsupported-version');
+    await expectCode(decryptValue(key, JSON.stringify({ ...env, v: 0 })), 'unsupported-version');
+    await expectCode(decryptValue(key, JSON.stringify({ ...env, v: 'toString' })), 'malformed');
+  });
+
+  it('読める版の一覧は今の版 1 だけで、今の版の封筒はそのまま読める（#135）', async () => {
+    expect(VAULT_VERSION).toBe(1);
+    expect(readableVaultVersions()).toEqual([1]);
+    const env = await encryptValue(key, crashRecord);
+    expect(await decryptValue(key, env)).toEqual(crashRecord);
   });
 
   it('壊れた文字列は malformed', async () => {
