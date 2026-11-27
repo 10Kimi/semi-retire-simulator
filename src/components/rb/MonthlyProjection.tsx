@@ -50,16 +50,16 @@ export default function MonthlyProjection({ holdings, target, periodResult }: Pr
     <div className="mt-4">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full py-3 bg-slate-800 border border-slate-700 rounded-2xl text-sm text-slate-300 hover:bg-slate-700 flex items-center justify-center gap-2"
+        className="w-full py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-700 hover:bg-gray-100 flex items-center justify-center gap-2"
       >
-        <span>📊</span> 月次推移を見る <span className="text-xs text-slate-500">{open ? '▲' : '▼'}</span>
+        <span>📊</span> 月次推移を見る <span className="text-xs text-gray-500">{open ? '▲' : '▼'}</span>
       </button>
 
       {open && (
         <div className="mt-4 space-y-6">
           {/* 積み上げ面グラフ */}
-          <div className="bg-slate-900 rounded-2xl p-4">
-            <h4 className="text-xs text-slate-400 mb-3">アセットクラス比率の推移（%）</h4>
+          <div className="bg-gray-50 rounded-2xl p-4">
+            <h4 className="text-xs text-gray-600 mb-3">アセットクラス比率の推移（%）</h4>
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -98,56 +98,56 @@ export default function MonthlyProjection({ holdings, target, periodResult }: Pr
             {/* 凡例 */}
             <div className="flex flex-wrap gap-3 mt-2">
               {activeClasses.map((ac, i) => (
-                <div key={ac.key} className="flex items-center gap-1 text-xs text-slate-400">
+                <div key={ac.key} className="flex items-center gap-1 text-xs text-gray-600">
                   <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                   <span>{ac.label}</span>
-                  <span className="text-slate-600">({target[ac.key] || 0}%)</span>
+                  <span className="text-gray-400">({target[ac.key] || 0}%)</span>
                 </div>
               ))}
             </div>
           </div>
 
           {/* 月別操作テーブル */}
-          <div className="bg-slate-900 rounded-2xl p-4">
-            <h4 className="text-xs text-slate-400 mb-3">月別操作テーブル</h4>
+          <div className="bg-gray-50 rounded-2xl p-4">
+            <h4 className="text-xs text-gray-600 mb-3">月別操作テーブル</h4>
             <div className="overflow-x-auto -mx-4 px-4">
               <table className="min-w-max text-xs">
                 <thead>
-                  <tr className="border-b border-slate-700">
-                    <th className="text-left text-slate-500 py-2 pr-3 sticky left-0 bg-slate-900 z-10 min-w-[80px]">クラス</th>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left text-gray-500 py-2 pr-3 sticky left-0 bg-gray-50 z-10 min-w-[80px]">クラス</th>
                     {snapshots.map(snap => (
-                      <th key={snap.month} className="text-center text-slate-500 py-2 px-2 min-w-[100px]" colSpan={2}>
+                      <th key={snap.month} className="text-center text-gray-500 py-2 px-2 min-w-[100px]" colSpan={2}>
                         {snap.month}ヶ月目
                       </th>
                     ))}
                   </tr>
-                  <tr className="border-b border-slate-800">
-                    <th className="sticky left-0 bg-slate-900 z-10"></th>
+                  <tr className="border-b border-gray-200">
+                    <th className="sticky left-0 bg-gray-50 z-10"></th>
                     {snapshots.flatMap(snap => [
-                      <th key={`op-${snap.month}`} className="text-center text-slate-600 py-1 px-1">操作</th>,
-                      <th key={`ratio-${snap.month}`} className="text-center text-slate-600 py-1 px-1">比率</th>,
+                      <th key={`op-${snap.month}`} className="text-center text-gray-400 py-1 px-1">操作</th>,
+                      <th key={`ratio-${snap.month}`} className="text-center text-gray-400 py-1 px-1">比率</th>,
                     ])}
                   </tr>
                 </thead>
                 <tbody>
                   {activeClasses.map(ac => (
-                    <tr key={ac.key} className="border-b border-slate-800/50">
-                      <td className="text-slate-300 py-2 pr-3 sticky left-0 bg-slate-900 z-10 font-medium">
+                    <tr key={ac.key} className="border-b border-gray-100">
+                      <td className="text-gray-700 py-2 pr-3 sticky left-0 bg-gray-50 z-10 font-medium">
                         {ac.label}
                       </td>
                       {snapshots.map(snap => {
                         const op = snap.operations.find(o => o.key === ac.key);
                         if (!op) return [
-                          <td key={`${snap.month}-op`} className="text-center py-2 px-1 text-slate-600">−</td>,
-                          <td key={`${snap.month}-r`} className="text-center py-2 px-1 text-slate-500">−</td>,
+                          <td key={`${snap.month}-op`} className="text-center py-2 px-1 text-gray-400">−</td>,
+                          <td key={`${snap.month}-r`} className="text-center py-2 px-1 text-gray-500">−</td>,
                         ];
                         return [
                           <td key={`${snap.month}-op`} className={`text-center py-2 px-1 ${
-                            op.operationAmount > 0 ? 'text-emerald-400' : op.operationAmount < 0 ? 'text-red-400' : 'text-slate-600'
+                            op.operationAmount > 0 ? 'text-emerald-700' : op.operationAmount < 0 ? 'text-red-600' : 'text-gray-400'
                           }`}>
                             {formatThousands(op.operationAmount)}
                           </td>,
-                          <td key={`${snap.month}-r`} className="text-center py-2 px-1 text-slate-400">
+                          <td key={`${snap.month}-r`} className="text-center py-2 px-1 text-gray-600">
                             {op.ratio}%{op.reachedTarget ? ' ✓' : ''}
                           </td>,
                         ];

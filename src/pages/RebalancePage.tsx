@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
-import UserStatusBar from '../components/UserStatusBar';
 import { ASSET_CLASSES, MODEL_ALLOCATIONS, MODEL_META } from '../lib/rb/types';
 import type { Holdings, TargetAllocation, DeviationItem, AdjustmentItem, AdjustmentMode } from '../lib/rb/types';
 import { calculateDeviation, calculateAddAdjustment, calculateSellAdjustment, estimateMonthsToRebalance, calculateEmergencyFund, applyEmergencyFund, calculatePeriod, isOverThreshold, isOverOneYear, isOverTenYears, formatUnreachable, periodSellRows, formatPeriodSellRow, countOverThreshold, REBALANCE_THRESHOLDS, DEFAULT_REBALANCE_THRESHOLD, getTotalAssets, formatCurrency, formatThousands } from '../lib/rb/logic';
@@ -35,9 +34,9 @@ function AdjustmentList({ items }: { items: AdjustmentItem[] }) {
           actionLabel = item.amount > 0 ? '追加' : '売却';
         }
         return (
-          <div key={item.key} className="bg-slate-800 rounded-lg px-4 py-3 flex justify-between items-center">
+          <div key={item.key} className="bg-white rounded-lg px-4 py-3 flex justify-between items-center">
             <span className="text-sm">{item.label}</span>
-            <span className={`text-sm font-medium ${item.amount > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            <span className={`text-sm font-medium ${item.amount > 0 ? 'text-emerald-700' : 'text-red-600'}`}>
               {formatThousands(item.amount)} {actionLabel}
             </span>
           </div>
@@ -54,9 +53,9 @@ function AdjustmentList({ items }: { items: AdjustmentItem[] }) {
  */
 function SellAccountNote() {
   return (
-    <div className="bg-amber-900/20 border border-amber-500/30 rounded-lg px-4 py-3">
-      <p className="text-sm text-amber-300 mb-1">どの口座で売るか</p>
-      <p className="text-xs text-amber-400/80 leading-relaxed">
+    <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+      <p className="text-sm text-amber-700 mb-1">どの口座で売るか</p>
+      <p className="text-xs text-amber-700/80 leading-relaxed">
         ① iDeCo・401k内のスイッチング（非課税）→ ② NISA（非課税・枠は翌年復活）→ ③ 特定口座（課税）の順に検討してください。
         特定口座で売ると含み益に約20%課税されます。口座をまたいで大きく動かすときは、口座別リバランス・ワークシートを使ってください。
       </p>
@@ -65,17 +64,17 @@ function SellAccountNote() {
 }
 
 const SEVERITY_COLORS: Record<DeviationItem['severity'], string> = {
-  ok: 'text-slate-400',
-  minor: 'text-blue-400',
-  warning: 'text-yellow-300',
-  danger: 'text-red-400',
+  ok: 'text-gray-600',
+  minor: 'text-blue-600',
+  warning: 'text-yellow-700',
+  danger: 'text-red-600',
 };
 
 const SEVERITY_BG: Record<DeviationItem['severity'], string> = {
-  ok: 'bg-slate-800',
-  minor: 'bg-blue-900/30 border border-blue-500/30',
-  warning: 'bg-yellow-900/30 border border-yellow-500/40',
-  danger: 'bg-red-900/30 border border-red-500/30',
+  ok: 'bg-white',
+  minor: 'bg-blue-50 border border-blue-200',
+  warning: 'bg-yellow-50 border border-yellow-300',
+  danger: 'bg-red-50 border border-red-200',
 };
 
 const SEVERITY_LABELS: Record<DeviationItem['severity'], string> = {
@@ -106,7 +105,7 @@ function MaReserveNote({ source }: { source: MaReserveSource }) {
     none: '/ma を使っている場合：この端末では /ma の待機資金を読めませんでした。待機資金は 0 として計算しています（現金をすべて投資に回せる額として扱います）。この端末で /ma を開き、金額を保存するか、パスフレーズで戻してから、このページを開き直すと、現金から別枠にします',
   };
   const warn = source !== 'server' && source !== 'browser';
-  return <p className={`text-xs ${warn ? 'text-amber-400' : 'text-slate-500'}`}>{text[source]}</p>;
+  return <p className={`text-xs ${warn ? 'text-amber-700' : 'text-gray-500'}`}>{text[source]}</p>;
 }
 
 // 共通のメニューを、読み込み中・戻す画面を含む全部の画面の上に出す（FI_project #142）
@@ -212,8 +211,8 @@ function RebalancePageContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
-        <p className="text-slate-400">読み込み中...</p>
+      <div className="py-20 flex items-center justify-center">
+        <p className="text-gray-600">読み込み中...</p>
       </div>
     );
   }
@@ -303,17 +302,16 @@ function RebalancePageContent() {
     : calculateSellAdjustment(investableHoldings, target);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
+    <div className="text-gray-900">
       <div className="max-w-2xl mx-auto px-4 py-6">
         {/* ヘッダー */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
               リバランス計算
             </h1>
-            <p className="text-slate-400 text-sm mt-1">ポートフォリオ乖離チェック</p>
+            <p className="text-gray-600 text-sm mt-1">ポートフォリオ乖離チェック</p>
           </div>
-          <UserStatusBar variant="dark" />
         </div>
 
         {/* ステップインジケーター */}
@@ -324,7 +322,7 @@ function RebalancePageContent() {
             { key: 'result' as Step, label: '乖離・調整' },
           ].map((s, i) => (
             <div key={s.key} className="flex items-center gap-2">
-              {i > 0 && <div className="w-6 h-px bg-slate-700" />}
+              {i > 0 && <div className="w-6 h-px bg-gray-100" />}
               <button
                 onClick={() => {
                   if (s.key === 'result' && hasExistingTarget) {
@@ -334,8 +332,8 @@ function RebalancePageContent() {
                 }}
                 className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 step === s.key || (step === 'import' && s.key === 'input')
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'
-                  : 'bg-slate-800 text-slate-500 hover:text-slate-300'
+                  ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                  : 'bg-white text-gray-500 hover:text-gray-900'
               }`}>
                 {s.label}
               </button>
@@ -345,8 +343,8 @@ function RebalancePageContent() {
 
         {/* 保存の失敗の表示・MF取り込み */}
         {failedSaves.length > 0 && (
-          <div role="alert" className="mb-4 p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-center space-y-2">
-            <p className="text-sm text-red-300">
+          <div role="alert" className="mb-4 p-4 rounded-xl border border-red-300 bg-red-50 text-center space-y-2">
+            <p className="text-sm text-red-700">
               {failedSaves.map(k => SAVE_LABELS[k]).join('・')}を保存できませんでした。この画面の計算には反映されていますが、次に開いたときは前の内容に戻るか、入れ直しが要ります（保有残高と生活費はこのブラウザに保存します。プライベートブラウズなどでは保存できません）
             </p>
             <button
@@ -374,11 +372,11 @@ function RebalancePageContent() {
           <>
             {/* 目標配分更新バナー */}
             {showTargetUpdateBanner && (
-              <div className="bg-amber-900/30 border border-amber-500/50 rounded-2xl p-4 mb-4">
-                <p className="text-sm text-amber-200 mb-2">モデル配分が更新されました。目標配分を再設定してください。</p>
+              <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 mb-4">
+                <p className="text-sm text-amber-800 mb-2">モデル配分が更新されました。目標配分を再設定してください。</p>
                 <button
                   onClick={() => { setShowTargetUpdateBanner(false); setStep('target'); }}
-                  className="text-xs text-amber-400 hover:text-amber-300 underline"
+                  className="text-xs text-amber-700 hover:text-amber-700 underline"
                 >
                   目標配分を再設定する
                 </button>
@@ -388,14 +386,14 @@ function RebalancePageContent() {
             {/* MFインポートボタン */}
             <button
               onClick={() => setStep('import')}
-              className="w-full py-3 mb-4 bg-slate-800 border border-slate-700 rounded-2xl text-sm text-slate-300 hover:bg-slate-700 flex items-center justify-center gap-2"
+              className="w-full py-3 mb-4 bg-white border border-gray-200 rounded-2xl text-sm text-gray-700 hover:bg-gray-100 flex items-center justify-center gap-2"
             >
               <span>📋</span> MoneyForwardの資産ページから取り込む
             </button>
 
-            <div className="bg-slate-900 rounded-2xl p-4 mb-4">
-              <h2 className="text-sm text-slate-400 mb-1">アセットクラス別 保有額（円）</h2>
-              <p className="text-xs text-slate-500 mb-4">
+            <div className="bg-gray-50 rounded-2xl p-4 mb-4">
+              <h2 className="text-sm text-gray-600 mb-1">アセットクラス別 保有額（円）</h2>
+              <p className="text-xs text-gray-500 mb-4">
                 保有額と生活費はこの端末のブラウザにだけ保存し、サーバーには送りません。別の端末やブラウザでは入れ直してください
               </p>
               <div className="space-y-3">
@@ -406,7 +404,7 @@ function RebalancePageContent() {
                         <label className="text-sm">{ac.label}</label>
                         <button
                           onClick={() => setExpandedHint(expandedHint === ac.key ? null : ac.key)}
-                          className="text-xs text-slate-500 hover:text-slate-300"
+                          className="text-xs text-gray-500 hover:text-gray-900"
                         >
                           ?
                         </button>
@@ -418,19 +416,19 @@ function RebalancePageContent() {
                         key={`${ac.key}-${holdings[ac.key]}`}
                         onBlur={e => handleHoldingChange(ac.key, e.target.value)}
                         placeholder="0"
-                        className="w-40 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-right text-sm focus:border-emerald-500 focus:outline-none"
+                        className="w-40 bg-white border border-gray-200 rounded-lg px-3 py-2 text-right text-sm focus:border-emerald-500 focus:outline-none"
                       />
                     </div>
                     {expandedHint === ac.key && (
-                      <p className="text-xs text-slate-500 mt-1 ml-1">{ac.hint}</p>
+                      <p className="text-xs text-gray-500 mt-1 ml-1">{ac.hint}</p>
                     )}
                   </div>
                 ))}
               </div>
 
               {/* 緊急資金設定 */}
-              <div className="border-t border-slate-700 mt-4 pt-4">
-                <h3 className="text-xs text-slate-400 mb-3">緊急資金・待機資金（リバランス計算から除外）</h3>
+              <div className="border-t border-gray-200 mt-4 pt-4">
+                <h3 className="text-xs text-gray-600 mb-3">緊急資金・待機資金（リバランス計算から除外）</h3>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="text-sm">毎月の生活費（税込）</label>
@@ -440,7 +438,7 @@ function RebalancePageContent() {
                       value={monthlyLivingCost}
                       onChange={e => setMonthlyLivingCost(e.target.value.replace(/[^0-9]/g, ''))}
                       placeholder="例: 300,000"
-                      className="w-40 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-right text-sm focus:border-emerald-500 focus:outline-none"
+                      className="w-40 bg-white border border-gray-200 rounded-lg px-3 py-2 text-right text-sm focus:border-emerald-500 focus:outline-none"
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -448,7 +446,7 @@ function RebalancePageContent() {
                     <select
                       value={emergencyMonths}
                       onChange={e => setEmergencyMonths(Number(e.target.value))}
-                      className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                      className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                     >
                       <option value={3}>3ヶ月</option>
                       <option value={6}>6ヶ月</option>
@@ -457,25 +455,25 @@ function RebalancePageContent() {
                     </select>
                   </div>
                   {(livingCostNum > 0 || emergency.reserveFund > 0) && (
-                    <div className="bg-slate-800/50 rounded-lg p-3 space-y-1">
+                    <div className="bg-white rounded-lg p-3 space-y-1">
                       {livingCostNum > 0 && (
                         <div className="flex justify-between text-sm">
-                          <span className="text-slate-400">緊急資金</span>
-                          <span className="text-orange-400">{formatCurrency(emergency.emergencyFund)}</span>
+                          <span className="text-gray-600">緊急資金</span>
+                          <span className="text-orange-600">{formatCurrency(emergency.emergencyFund)}</span>
                         </div>
                       )}
                       {maReserve.source !== 'none' && maReserve.source !== 'unavailable' && (
                         <div className="flex justify-between text-sm">
-                          <span className="text-slate-400">待機資金（月次投資配分 /ma）</span>
-                          <span className="text-amber-400">{formatCurrency(emergency.reserveFund)}</span>
+                          <span className="text-gray-600">待機資金（月次投資配分 /ma）</span>
+                          <span className="text-amber-700">{formatCurrency(emergency.reserveFund)}</span>
                         </div>
                       )}
                       <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">投資可能な現金</span>
-                        <span className="text-emerald-400 font-medium">{formatCurrency(emergency.investableCash)}</span>
+                        <span className="text-gray-600">投資可能な現金</span>
+                        <span className="text-emerald-700 font-medium">{formatCurrency(emergency.investableCash)}</span>
                       </div>
                       {cashAmount < emergency.emergencyFund + emergency.reserveFund && (
-                        <p className="text-xs text-red-400 mt-1">
+                        <p className="text-xs text-red-600 mt-1">
                           {emergency.reserveFund > 0 ? '緊急資金と待機資金の合計が現金保有額を超えています' : '緊急資金が現金保有額を超えています'}
                         </p>
                       )}
@@ -485,16 +483,16 @@ function RebalancePageContent() {
                 </div>
               </div>
 
-              <div className="border-t border-slate-700 mt-4 pt-4 flex justify-between">
-                <span className="text-slate-400">投資可能資産 合計</span>
-                <span className="text-lg font-bold text-emerald-400">{formatCurrency(totalAssets)}</span>
+              <div className="border-t border-gray-200 mt-4 pt-4 flex justify-between">
+                <span className="text-gray-600">投資可能資産 合計</span>
+                <span className="text-lg font-bold text-emerald-700">{formatCurrency(totalAssets)}</span>
               </div>
             </div>
 
             <button
               onClick={goToTarget}
               disabled={totalAssets === 0}
-              className="w-full py-4 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-2xl font-bold text-lg mb-4 hover:opacity-90 transition-opacity disabled:opacity-40"
+              className="w-full py-4 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-2xl font-bold text-lg mb-4 hover:opacity-90 transition-opacity disabled:opacity-40 text-white"
             >
               {hasExistingTarget ? '乖離を計算' : '目標配分を設定'}
             </button>
@@ -502,7 +500,7 @@ function RebalancePageContent() {
             {hasExistingTarget && (
               <button
                 onClick={() => setStep('target')}
-                className="w-full py-3 bg-slate-800 border border-slate-700 rounded-2xl text-sm text-slate-400 hover:bg-slate-700"
+                className="w-full py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-600 hover:bg-gray-100"
               >
                 目標配分を編集
               </button>
@@ -513,8 +511,8 @@ function RebalancePageContent() {
         {/* STEP 2: 目標配分設定 */}
         {step === 'target' && (
           <>
-            <div className="bg-slate-900 rounded-2xl p-4 mb-4">
-              <h2 className="text-sm text-slate-400 mb-4">モデル配分プリセット（計算上の参考値）</h2>
+            <div className="bg-gray-50 rounded-2xl p-4 mb-4">
+              <h2 className="text-sm text-gray-600 mb-4">モデル配分プリセット（計算上の参考値）</h2>
               <div className="grid grid-cols-4 gap-2 mb-4">
                 {[1, 2, 3, 4, 5, 6, 7].map(lv => {
                   const meta = MODEL_META[lv];
@@ -525,7 +523,7 @@ function RebalancePageContent() {
                       className={`py-2 rounded-xl text-sm font-medium transition-colors ${
                         selectedPreset === lv
                           ? 'bg-emerald-600 text-white border border-emerald-500'
-                          : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
+                          : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
                       }`}
                     >
                       <div>Lv{lv}</div>
@@ -536,31 +534,31 @@ function RebalancePageContent() {
               </div>
 
               {selectedPreset && (
-                <div className="bg-slate-800/50 rounded-lg p-3 mb-4 space-y-2">
+                <div className="bg-white rounded-lg p-3 mb-4 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">期待リターン（計算上の目安）</span>
-                    <span className="text-emerald-400 font-medium">{MODEL_META[selectedPreset].expectedReturn}%</span>
+                    <span className="text-gray-600">期待リターン（計算上の目安）</span>
+                    <span className="text-emerald-700 font-medium">{MODEL_META[selectedPreset].expectedReturn}%</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">ボラティリティ</span>
-                    <span className="text-orange-400 font-medium">{MODEL_META[selectedPreset].volatility}%</span>
+                    <span className="text-gray-600">ボラティリティ</span>
+                    <span className="text-orange-600 font-medium">{MODEL_META[selectedPreset].volatility}%</span>
                   </div>
                 </div>
               )}
 
-              <AllocationDisclaimer variant="dark" />
+              <AllocationDisclaimer />
             </div>
 
             <button
               onClick={loadOptimalPF}
               disabled={optimalLoading}
-              className="w-full py-3 mb-4 bg-purple-900/30 border border-purple-500/50 rounded-2xl text-sm text-purple-300 hover:bg-purple-900/50 transition-colors disabled:opacity-50"
+              className="w-full py-3 mb-4 bg-purple-50 border border-purple-300 rounded-2xl text-sm text-purple-700 hover:bg-purple-100 transition-colors disabled:opacity-50"
             >
               {optimalLoading ? '読込中...' : '理論上の最適PFを読み込む'}
             </button>
 
-            <div className="bg-slate-900 rounded-2xl p-4 mb-4">
-              <h2 className="text-sm text-slate-400 mb-4">目標比率（%）</h2>
+            <div className="bg-gray-50 rounded-2xl p-4 mb-4">
+              <h2 className="text-sm text-gray-600 mb-4">目標比率（%）</h2>
               <div className="space-y-3">
                 {ASSET_CLASSES.map(ac => (
                   <div key={ac.key} className="flex items-center justify-between">
@@ -573,34 +571,34 @@ function RebalancePageContent() {
                         max="100"
                         value={target[ac.key] || ''}
                         onChange={e => handleTargetChange(ac.key, e.target.value)}
-                        className="w-20 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-right text-sm focus:border-emerald-500 focus:outline-none"
+                        className="w-20 bg-white border border-gray-200 rounded-lg px-3 py-2 text-right text-sm focus:border-emerald-500 focus:outline-none"
                       />
-                      <span className="text-slate-500 text-sm">%</span>
+                      <span className="text-gray-500 text-sm">%</span>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className={`border-t border-slate-700 mt-4 pt-4 flex justify-between ${targetValid ? '' : 'text-red-400'}`}>
+              <div className={`border-t border-gray-200 mt-4 pt-4 flex justify-between ${targetValid ? '' : 'text-red-600'}`}>
                 <span>合計</span>
                 <span className="font-bold">{targetSum.toFixed(1)}%</span>
               </div>
               {!targetValid && (
-                <p className="text-xs text-red-400 mt-1 text-right">合計を100%にしてください</p>
+                <p className="text-xs text-red-600 mt-1 text-right">合計を100%にしてください</p>
               )}
             </div>
 
             <div className="flex gap-3">
               <button
                 onClick={() => setStep('input')}
-                className="flex-1 py-3 bg-slate-800 border border-slate-700 rounded-2xl text-sm text-slate-400 hover:bg-slate-700"
+                className="flex-1 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-600 hover:bg-gray-100"
               >
                 戻る
               </button>
               <button
                 onClick={goToResult}
                 disabled={!targetValid}
-                className="flex-[2] py-4 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-2xl font-bold text-lg hover:opacity-90 transition-opacity disabled:opacity-40"
+                className="flex-[2] py-4 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-2xl font-bold text-lg hover:opacity-90 transition-opacity disabled:opacity-40 text-white"
               >
                 乖離を計算
               </button>
@@ -612,16 +610,16 @@ function RebalancePageContent() {
         {step === 'result' && (
           <>
             {/* 乖離サマリー */}
-            <div className="bg-slate-900 rounded-2xl p-4 mb-4">
-              <h2 className="text-sm text-slate-400 mb-1">総資産</h2>
-              <p className="text-2xl font-bold text-emerald-400 mb-4">{formatCurrency(totalAssets)}</p>
+            <div className="bg-gray-50 rounded-2xl p-4 mb-4">
+              <h2 className="text-sm text-gray-600 mb-1">総資産</h2>
+              <p className="text-2xl font-bold text-emerald-700 mb-4">{formatCurrency(totalAssets)}</p>
               {maReserve.source !== 'server' && maReserve.source !== 'browser' && (
                 <div className="-mt-2 mb-4"><MaReserveNote source={maReserve.source} /></div>
               )}
 
               {/* 戻す目安 */}
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm text-slate-400">戻す目安</span>
+                <span className="text-sm text-gray-600">戻す目安</span>
                 {REBALANCE_THRESHOLDS.map(v => (
                   <button
                     key={v}
@@ -629,7 +627,7 @@ function RebalancePageContent() {
                     className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
                       threshold === v
                         ? 'bg-emerald-600 text-white border border-emerald-500'
-                        : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
+                        : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
                     }`}
                   >
                     {v === DEFAULT_REBALANCE_THRESHOLD ? `${v}%（標準）` : `${v}%`}
@@ -638,22 +636,22 @@ function RebalancePageContent() {
               </div>
               <p className="text-xs mb-0.5">
                 <span className={SEVERITY_COLORS.ok}>2%未満 そのまま</span>
-                <span className="text-slate-600"> ／ </span>
+                <span className="text-gray-400"> ／ </span>
                 <span className={SEVERITY_COLORS.minor}>2〜5% 軽微</span>
-                <span className="text-slate-600"> ／ </span>
+                <span className="text-gray-400"> ／ </span>
                 <span className={SEVERITY_COLORS.warning}>5〜10% 要注意</span>
-                <span className="text-slate-600"> ／ </span>
+                <span className="text-gray-400"> ／ </span>
                 <span className={SEVERITY_COLORS.danger}>10%以上 大きなズレ</span>
               </p>
-              <p className="text-xs text-slate-400 mb-3">戻す目安：{threshold}%以上</p>
+              <p className="text-xs text-gray-600 mb-3">戻す目安：{threshold}%以上</p>
               {(() => {
                 const n = countOverThreshold(deviation, threshold);
                 return n === 0
-                  ? <p className="text-sm text-emerald-400 mb-4">戻す目安を超えた資産クラスはありません。今回は何もしなくて大丈夫です</p>
-                  : <p className="text-sm text-slate-200 mb-4">{n}つの資産クラスが戻す目安を超えています</p>;
+                  ? <p className="text-sm text-emerald-700 mb-4">戻す目安を超えた資産クラスはありません。今回は何もしなくて大丈夫です</p>
+                  : <p className="text-sm text-gray-800 mb-4">{n}つの資産クラスが戻す目安を超えています</p>;
               })()}
 
-              <h2 className="text-sm text-slate-400 mb-3">アセットクラス別 乖離</h2>
+              <h2 className="text-sm text-gray-600 mb-3">アセットクラス別 乖離</h2>
               <div className="space-y-2">
                 {deviation.map(d => (
                   <div key={d.key} className={`rounded-lg px-4 py-3 ${SEVERITY_BG[d.severity]}`}>
@@ -661,15 +659,15 @@ function RebalancePageContent() {
                       <span className="text-sm font-medium flex items-center gap-2">
                         {d.label}
                         {isOverThreshold(d.deviationRatio, threshold) && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-200 border border-slate-500">戻す目安</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-800 border border-gray-400">戻す目安</span>
                         )}
                       </span>
                       <span className="text-sm">{formatCurrency(d.amount)}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex gap-3">
-                        <span className="text-slate-500">現在 {d.currentRatio.toFixed(1)}%</span>
-                        <span className="text-slate-500">目標 {d.targetRatio.toFixed(1)}%</span>
+                        <span className="text-gray-500">現在 {d.currentRatio.toFixed(1)}%</span>
+                        <span className="text-gray-500">目標 {d.targetRatio.toFixed(1)}%</span>
                       </div>
                       <span className={`font-medium ${SEVERITY_COLORS[d.severity]}`}>
                         {d.deviationRatio >= 0 ? '+' : ''}{d.deviationRatio.toFixed(1)}%
@@ -683,7 +681,7 @@ function RebalancePageContent() {
                         style={{ width: `${Math.min(d.currentRatio, 100)}%` }}
                       />
                       <div
-                        className="bg-slate-600/40 rounded-sm border border-dashed border-slate-500"
+                        className="bg-gray-200 rounded-sm border border-dashed border-gray-400"
                         style={{ width: `${Math.max(0, d.targetRatio - d.currentRatio)}%` }}
                       />
                     </div>
@@ -693,8 +691,8 @@ function RebalancePageContent() {
             </div>
 
             {/* 調整計算 */}
-            <div className="bg-slate-900 rounded-2xl p-4 mb-4">
-              <h2 className="text-sm text-slate-400 mb-3">調整計算</h2>
+            <div className="bg-gray-50 rounded-2xl p-4 mb-4">
+              <h2 className="text-sm text-gray-600 mb-3">調整計算</h2>
 
               <div className="grid grid-cols-3 gap-2 mb-4">
                 {([
@@ -708,7 +706,7 @@ function RebalancePageContent() {
                     className={`py-3 rounded-xl text-sm font-medium transition-all ${
                       adjustMode === m.key
                         ? 'bg-emerald-600 text-white'
-                        : 'bg-slate-800 text-slate-400 border border-slate-700'
+                        : 'bg-white text-gray-600 border border-gray-200'
                     }`}
                   >
                     {m.label}
@@ -720,14 +718,14 @@ function RebalancePageContent() {
               {adjustMode === 'add' && (
                 <>
                   <div className="mb-4">
-                    <label className="text-sm text-slate-400 mb-2 block">毎月の積立額（円）</label>
+                    <label className="text-sm text-gray-600 mb-2 block">毎月の積立額（円）</label>
                     <input
                       type="text"
                       inputMode="numeric"
                       value={monthlyAmount}
                       onChange={e => setMonthlyAmount(e.target.value.replace(/[^0-9]/g, ''))}
                       placeholder="例: 500,000"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-lg focus:border-emerald-500 focus:outline-none"
+                      className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-lg focus:border-emerald-500 focus:outline-none"
                     />
                   </div>
 
@@ -736,10 +734,10 @@ function RebalancePageContent() {
                     const months = estimateMonthsToRebalance(investableHoldings, target, M);
                     if (months === 0) return (
                       <div className="space-y-4">
-                        <p className="text-xs text-emerald-400 text-center py-3">目標配分に到達しています</p>
+                        <p className="text-xs text-emerald-700 text-center py-3">目標配分に到達しています</p>
                         {adjustmentItems.length > 0 && (
                           <div>
-                            <h4 className="text-sm text-slate-300 font-medium mb-2">今月の積立先</h4>
+                            <h4 className="text-sm text-gray-700 font-medium mb-2">今月の積立先</h4>
                             <AdjustmentList items={adjustmentItems} />
                           </div>
                         )}
@@ -748,10 +746,10 @@ function RebalancePageContent() {
                     if (months == null) return null;
                     if (typeof months === 'object') return (
                       <div className="space-y-4">
-                        <p className="text-xs text-amber-300">目標が0%の資産クラス（{formatUnreachable(months.unreachable)}）があるため、積立だけでは戻りません。「売却あり」か「期間指定」を使ってください</p>
+                        <p className="text-xs text-amber-700">目標が0%の資産クラス（{formatUnreachable(months.unreachable)}）があるため、積立だけでは戻りません。「売却あり」か「期間指定」を使ってください</p>
                         {adjustmentItems.length > 0 && (
                           <div>
-                            <h4 className="text-sm text-slate-300 font-medium mb-2">今月の積立先</h4>
+                            <h4 className="text-sm text-gray-700 font-medium mb-2">今月の積立先</h4>
                             <AdjustmentList items={adjustmentItems} />
                           </div>
                         )}
@@ -762,35 +760,35 @@ function RebalancePageContent() {
                     return (
                       <div className="space-y-4">
                         <div>
-                          <h4 className="text-sm text-slate-300 font-medium mb-2">毎月の積立先（{isOverTenYears(months) ? '10年超' : `${months}ヶ月`}、計算上の目安）</h4>
+                          <h4 className="text-sm text-gray-700 font-medium mb-2">毎月の積立先（{isOverTenYears(months) ? '10年超' : `${months}ヶ月`}、計算上の目安）</h4>
                           <AdjustmentList items={plan.monthlyItems} />
                         </div>
                         {plan.monthlyCashContribution > 0 && (
-                          <p className="text-xs text-slate-400">現金の取り崩し（毎月）：{formatThousands(plan.monthlyCashContribution)}　目標より多い現金も、不足の資産クラスへ回します</p>
+                          <p className="text-xs text-gray-600">現金の取り崩し（毎月）：{formatThousands(plan.monthlyCashContribution)}　目標より多い現金も、不足の資産クラスへ回します</p>
                         )}
                         {plan.monthlyCashDeposit > 0 && (
-                          <p className="text-xs text-slate-400">現金のまま置く（毎月）：{formatThousands(plan.monthlyCashDeposit)}</p>
+                          <p className="text-xs text-gray-600">現金のまま置く（毎月）：{formatThousands(plan.monthlyCashDeposit)}</p>
                         )}
-                        <div className="bg-slate-800/50 rounded-lg px-4 py-3 text-center">
+                        <div className="bg-white rounded-lg px-4 py-3 text-center">
                           {isOverTenYears(months)
-                            ? <p className="text-sm text-slate-300">このペースでは、完了まで<span className="text-amber-300 font-bold">10年を超えます</span>（計算上の目安）</p>
-                            : <p className="text-sm text-slate-300">
-                                このペースで約 <span className="text-emerald-400 font-bold text-lg">{months}</span> ヶ月後にリバランス完了（計算上の目安）
+                            ? <p className="text-sm text-gray-700">このペースでは、完了まで<span className="text-amber-700 font-bold">10年を超えます</span>（計算上の目安）</p>
+                            : <p className="text-sm text-gray-700">
+                                このペースで約 <span className="text-emerald-700 font-bold text-lg">{months}</span> ヶ月後にリバランス完了（計算上の目安）
                               </p>}
                         </div>
                         {isOverOneYear(months) && (
-                          <div className="bg-amber-900/20 border border-amber-500/30 rounded-lg">
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg">
                             <button
                               type="button"
                               onClick={() => setOverYearOpen(o => !o)}
                               aria-expanded={overYearOpen}
-                              className="w-full flex justify-between items-center px-4 py-2 text-sm text-amber-300"
+                              className="w-full flex justify-between items-center px-4 py-2 text-sm text-amber-700"
                             >
                               <span>⚠ 完了まで1年超</span>
                               <span aria-hidden="true">{overYearOpen ? '−' : '＋'}</span>
                             </button>
                             {overYearOpen && (
-                              <p className="px-4 pb-3 text-xs text-amber-200/80 leading-relaxed">完了まで1年を超えます。期間が長いほど、その間に相場が大きく動いたときの影響を受けやすくなります。「期間指定」で短くすることも考えてください（売らずに戻すことを優先するなら、このままでもかまいません）</p>
+                              <p className="px-4 pb-3 text-xs text-amber-800/80 leading-relaxed">完了まで1年を超えます。期間が長いほど、その間に相場が大きく動いたときの影響を受けやすくなります。「期間指定」で短くすることも考えてください（売らずに戻すことを優先するなら、このままでもかまいません）</p>
                             )}
                           </div>
                         )}
@@ -799,7 +797,7 @@ function RebalancePageContent() {
                   })()}
 
                   {!monthlyAmount && (
-                    <p className="text-xs text-slate-500 text-center py-4">毎月の積立額を入力すると計算結果を表示します</p>
+                    <p className="text-xs text-gray-500 text-center py-4">毎月の積立額を入力すると計算結果を表示します</p>
                   )}
                 </>
               )}
@@ -809,7 +807,7 @@ function RebalancePageContent() {
                 <>
                   {adjustmentItems.length > 0
                     ? <AdjustmentList items={adjustmentItems} />
-                    : <p className="text-xs text-slate-500 text-center py-4">調整不要です</p>
+                    : <p className="text-xs text-gray-500 text-center py-4">調整不要です</p>
                   }
                   {adjustmentItems.some(i => i.amount < 0) && (
                     <div className="mt-4"><SellAccountNote /></div>
@@ -837,35 +835,35 @@ function RebalancePageContent() {
                   <>
                     <div className="space-y-3 mb-4">
                       <div>
-                        <label className="text-sm text-slate-400 mb-1 block">完了希望期間（ヶ月）</label>
+                        <label className="text-sm text-gray-600 mb-1 block">完了希望期間（ヶ月）</label>
                         <input
                           type="text"
                           inputMode="numeric"
                           value={periodMonths}
                           onChange={e => setPeriodMonths(e.target.value.replace(/[^0-9]/g, ''))}
                           placeholder="例: 12"
-                          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-lg focus:border-emerald-500 focus:outline-none"
+                          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-lg focus:border-emerald-500 focus:outline-none"
                         />
                       </div>
                       <div>
-                        <label className="text-sm text-slate-400 mb-1 block">毎月の積立額（円・任意）</label>
+                        <label className="text-sm text-gray-600 mb-1 block">毎月の積立額（円・任意）</label>
                         <input
                           type="text"
                           inputMode="numeric"
                           value={periodMonthlyAmount}
                           onChange={e => setPeriodMonthlyAmount(e.target.value.replace(/[^0-9]/g, ''))}
                           placeholder="例: 300,000"
-                          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-lg focus:border-emerald-500 focus:outline-none"
+                          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-lg focus:border-emerald-500 focus:outline-none"
                         />
                       </div>
-                      <p className="text-xs text-slate-400">いつもの積立を先に不足の資産クラスへ回し、足りない分だけを売ります。</p>
+                      <p className="text-xs text-gray-600">いつもの積立を先に不足の資産クラスへ回し、足りない分だけを売ります。</p>
                     </div>
 
                     {periodResult && periodResult.months > 0 && (
                       <div className="mb-4 space-y-1">
-                        <div className="text-xs text-slate-300 space-y-0.5">
+                        <div className="text-xs text-gray-700 space-y-0.5">
                           <p>毎月の操作合計：{formatThousands(periodResult.monthlyTotal)}</p>
-                          <div className="text-slate-500 pl-2 space-y-0.5">
+                          <div className="text-gray-500 pl-2 space-y-0.5">
                             {periodResult.monthlySellContribution > 0 && (
                               <p>売却資金の充当：{formatThousands(periodResult.monthlySellContribution)}</p>
                             )}
@@ -876,13 +874,13 @@ function RebalancePageContent() {
                           </div>
                         </div>
                         {periodResult.monthlySellContribution === 0 && (
-                          <p className="text-xs text-emerald-400">→ {periodResult.monthlyCashContribution > 0 ? 'いつもの積立と現金の取り崩しで足ります' : 'いつもの積立で足ります'}（売却なし）</p>
+                          <p className="text-xs text-emerald-700">→ {periodResult.monthlyCashContribution > 0 ? 'いつもの積立と現金の取り崩しで足ります' : 'いつもの積立で足ります'}（売却なし）</p>
                         )}
                       </div>
                     )}
 
                     {periodResult && periodResult.months === 0 && (
-                      <p className="text-xs text-emerald-400 text-center py-3">目標配分に到達しています</p>
+                      <p className="text-xs text-emerald-700 text-center py-3">目標配分に到達しています</p>
                     )}
 
                     {periodResult && periodResult.months > 0 && (() => {
@@ -892,16 +890,16 @@ function RebalancePageContent() {
 
                       return (
                         <div className="space-y-4">
-                          <h4 className="text-sm text-slate-300 font-medium">今月の操作（計算上の目安）</h4>
+                          <h4 className="text-sm text-gray-700 font-medium">今月の操作（計算上の目安）</h4>
 
                           {sellRows.length > 0 && (
                             <div className="space-y-3">
-                              <p className="text-xs text-red-400 mb-2">売却（毎月・分散）</p>
+                              <p className="text-xs text-red-600 mb-2">売却（毎月・分散）</p>
                               <div className="space-y-2">
                                 {sellRows.map(r => (
-                                  <div key={r.key} className="bg-slate-800 rounded-lg px-4 py-3 flex justify-between items-center gap-3">
+                                  <div key={r.key} className="bg-white rounded-lg px-4 py-3 flex justify-between items-center gap-3">
                                     <span className="text-sm">{r.label}</span>
-                                    <span className="text-sm font-medium text-red-400 text-right">{formatPeriodSellRow(r, N)}</span>
+                                    <span className="text-sm font-medium text-red-600 text-right">{formatPeriodSellRow(r, N)}</span>
                                   </div>
                                 ))}
                               </div>
@@ -911,26 +909,26 @@ function RebalancePageContent() {
 
                           {buyOps.length > 0 && (
                             <div>
-                              <p className="text-xs text-emerald-400 mb-2">積立（毎月）</p>
+                              <p className="text-xs text-emerald-700 mb-2">積立（毎月）</p>
                               <AdjustmentList items={buyOps} />
                             </div>
                           )}
 
                           {periodResult.monthlyCashDeposit > 0 && (
-                            <p className="text-xs text-slate-400">現金のまま置く：{formatThousands(periodResult.monthlyCashDeposit)}</p>
+                            <p className="text-xs text-gray-600">現金のまま置く：{formatThousands(periodResult.monthlyCashDeposit)}</p>
                           )}
 
-                          <div className="bg-slate-800/50 rounded-lg px-4 py-3 text-center">
-                            <p className="text-sm text-slate-300">
-                              完了予定：<span className="text-emerald-400 font-bold">{periodResult.months}ヶ月後</span>
-                              {completionDate && <span className="text-slate-500">（{completionDate}）</span>}
+                          <div className="bg-white rounded-lg px-4 py-3 text-center">
+                            <p className="text-sm text-gray-700">
+                              完了予定：<span className="text-emerald-700 font-bold">{periodResult.months}ヶ月後</span>
+                              {completionDate && <span className="text-gray-500">（{completionDate}）</span>}
                             </p>
                           </div>
 
                           {periodResult.months > 3 && (
-                            <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg px-4 py-3">
-                              <p className="text-sm text-blue-300 mb-1">📊 月次投資アドバイザーについて</p>
-                              <p className="text-xs text-blue-400/70">リバランス期間中は /rb の計画を優先してください。完了後、/ma の月次最適化が有効になります。</p>
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                              <p className="text-sm text-blue-700 mb-1">📊 月次投資アドバイザーについて</p>
+                              <p className="text-xs text-blue-600/70">リバランス期間中は /rb の計画を優先してください。完了後、/ma の月次最適化が有効になります。</p>
                             </div>
                           )}
                         </div>
@@ -946,7 +944,7 @@ function RebalancePageContent() {
                     )}
 
                     {!periodResult && (
-                      <p className="text-xs text-slate-500 text-center py-4">完了希望期間を入力すると計算結果を表示します</p>
+                      <p className="text-xs text-gray-500 text-center py-4">完了希望期間を入力すると計算結果を表示します</p>
                     )}
                   </>
                 );
@@ -957,20 +955,20 @@ function RebalancePageContent() {
             <div className="flex gap-3 mb-4">
               <button
                 onClick={() => setStep('input')}
-                className="flex-1 py-3 bg-slate-800 border border-slate-700 rounded-2xl text-sm text-slate-400 hover:bg-slate-700"
+                className="flex-1 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-600 hover:bg-gray-100"
               >
                 残高を修正
               </button>
               <button
                 onClick={() => setStep('target')}
-                className="flex-1 py-3 bg-slate-800 border border-slate-700 rounded-2xl text-sm text-slate-400 hover:bg-slate-700"
+                className="flex-1 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-600 hover:bg-gray-100"
               >
                 目標配分を編集
               </button>
             </div>
 
             <div className="mb-4">
-              <AllocationDisclaimer variant="dark" />
+              <AllocationDisclaimer />
             </div>
           </>
         )}

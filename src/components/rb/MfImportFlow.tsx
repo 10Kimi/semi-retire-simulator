@@ -24,12 +24,12 @@ const ASSET_CLASS_OPTIONS = [
 
 function CryptoNote({ amount, names }: { amount: number; names: string[] }) {
   return (
-    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4">
-      <p className="text-xs text-slate-400 mb-1">計算の対象外：暗号資産 {formatCurrency(amount)}</p>
+    <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
+      <p className="text-xs text-gray-600 mb-1">計算の対象外：暗号資産 {formatCurrency(amount)}</p>
       {names.length > 0 && (
-        <p className="text-xs text-slate-500 mb-1">対象外にした行：{names.join('、')}</p>
+        <p className="text-xs text-gray-500 mb-1">対象外にした行：{names.join('、')}</p>
       )}
-      <p className="text-sm text-slate-300">
+      <p className="text-sm text-gray-700">
         暗号資産は値動きが大きいため、配分の計算の対象外です（保存する残高と緊急資金にも含めません）
       </p>
     </div>
@@ -39,9 +39,9 @@ function CryptoNote({ amount, names }: { amount: number; names: string[] }) {
 function WarningList({ items }: { items: string[] }) {
   if (items.length === 0) return null;
   return (
-    <div role="alert" className="bg-amber-900/30 border border-amber-500/50 rounded-2xl p-4 space-y-1">
+    <div role="alert" className="bg-amber-50 border border-amber-300 rounded-2xl p-4 space-y-1">
       {items.map((w, i) => (
-        <p key={i} className="text-sm text-amber-200">{w}</p>
+        <p key={i} className="text-sm text-amber-800">{w}</p>
       ))}
     </div>
   );
@@ -149,8 +149,8 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
     <div className="space-y-4">
       {/* STEP 1: テキストの貼り付け */}
       {step === 'paste' && (
-        <div className="bg-slate-900 rounded-2xl p-4 space-y-3">
-          <ol className="text-slate-300 text-sm space-y-1">
+        <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
+          <ol className="text-gray-700 text-sm space-y-1">
             <li>① マネーフォワード ME で「資産」→「資産内訳」を開く</li>
             <li>② ⌘A（Windows は Ctrl＋A）でページ全体を選び、⌘C（Ctrl＋C）でコピー</li>
             <li>③ 下の欄に ⌘V（Ctrl＋V）で貼り付け。範囲を選ぶ必要はありません</li>
@@ -163,14 +163,14 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
             autoComplete="off"
             aria-label="MoneyForwardの資産ページのテキスト"
             placeholder="ここに貼り付け"
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:border-emerald-500 focus:outline-none"
+            className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-700 focus:border-emerald-500 focus:outline-none"
           />
-          {error && <p role="alert" className="text-red-400 text-sm">{error}</p>}
+          {error && <p role="alert" className="text-red-600 text-sm">{error}</p>}
           <WarningList items={warnings} />
           <button
             onClick={handleRead}
             disabled={loading || !pastedText.trim()}
-            className="w-full py-3 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-2xl font-bold text-sm hover:opacity-90 disabled:opacity-40"
+            className="w-full py-3 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-2xl font-bold text-sm hover:opacity-90 disabled:opacity-40 text-white"
           >
             {loading ? '読み取り中...' : '読み取る'}
           </button>
@@ -182,8 +182,8 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
         <>
           <WarningList items={warnings} />
 
-          <div className="bg-slate-900 rounded-2xl p-4">
-            <h3 className="text-sm text-slate-400 mb-3">
+          <div className="bg-gray-50 rounded-2xl p-4">
+            <h3 className="text-sm text-gray-600 mb-3">
               解析結果（{rawHoldings.length}件 / {classified.length}件自動振り分け / {unclassified.length}件未分類{excludedCount > 0 && ` / ${excludedCount}件対象外`}）
             </h3>
 
@@ -191,16 +191,16 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
             {classified.length > 0 && (
               <div className="space-y-1 mb-4">
                 {classified.map((item, i) => (
-                  <div key={i} className="bg-slate-800 rounded-lg px-3 py-2 flex items-center justify-between text-sm">
+                  <div key={i} className="bg-white rounded-lg px-3 py-2 flex items-center justify-between text-sm">
                     <div className="min-w-0">
-                      <span className="text-slate-300 truncate block">{item.holding.name}</span>
+                      <span className="text-gray-700 truncate block">{item.holding.name}</span>
                       {item.holding.ticker && (
-                        <span className="text-slate-500 text-xs">{item.holding.ticker}</span>
+                        <span className="text-gray-500 text-xs">{item.holding.ticker}</span>
                       )}
                     </div>
                     <div className="text-right shrink-0 ml-3">
-                      <div className="text-emerald-400">{formatCurrency(item.holding.amount)}</div>
-                      <div className="text-slate-500 text-xs">
+                      <div className="text-emerald-700">{formatCurrency(item.holding.amount)}</div>
+                      <div className="text-gray-500 text-xs">
                         {item.allocations.map(a => {
                           const cls = ASSET_CLASSES.find(ac => ac.key === a.assetClass);
                           return cls?.label ?? a.assetClass;
@@ -221,9 +221,9 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
             {/* 未分類 */}
             {unclassified.length > 0 && (
               <div className="space-y-2">
-                <h4 className="text-xs text-orange-400 font-medium">未分類（手動でアセットクラスを選択してください）</h4>
+                <h4 className="text-xs text-orange-600 font-medium">未分類（手動でアセットクラスを選択してください）</h4>
                 {unclassified.some(a => pendingTickers.has(a.holding.ticker || a.holding.name)) && (
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-gray-500">
                     「審査中」の銘柄は、審査が終わるまで次の取り込みでも未分類のままになることがあります。
                   </p>
                 )}
@@ -233,21 +233,21 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
                   const badge = fundRequestBadge(ticker, requestedTickers, pendingTickers);
 
                   return (
-                    <div key={idx} className="bg-orange-900/20 border border-orange-500/30 rounded-lg p-3">
+                    <div key={idx} className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                       <div className="flex items-center justify-between mb-2">
                         <div>
-                          <span className="text-sm text-slate-300">{item.holding.name}</span>
+                          <span className="text-sm text-gray-700">{item.holding.name}</span>
                           {item.holding.ticker && (
-                            <span className="text-slate-500 text-xs ml-2">{item.holding.ticker}</span>
+                            <span className="text-gray-500 text-xs ml-2">{item.holding.ticker}</span>
                           )}
                         </div>
-                        <span className="text-orange-400 text-sm">{formatCurrency(item.holding.amount)}</span>
+                        <span className="text-orange-600 text-sm">{formatCurrency(item.holding.amount)}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <select
                           value={item.manualClass ?? ''}
                           onChange={e => handleManualClass(globalIdx, e.target.value)}
-                          className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 focus:border-emerald-500 focus:outline-none"
+                          className="flex-1 bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-xs text-gray-700 focus:border-emerald-500 focus:outline-none"
                         >
                           <option value="">選択してください</option>
                           {ASSET_CLASS_OPTIONS.map(opt => (
@@ -256,13 +256,13 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
                         </select>
                         {item.manualClass && item.manualClass !== 'exclude' && (
                           badge ? (
-                            <span className="text-xs text-slate-500 shrink-0">{badge}</span>
+                            <span className="text-xs text-gray-500 shrink-0">{badge}</span>
                           ) : verifyingTicker === ticker ? (
-                            <span className="text-xs text-blue-400 shrink-0">検証中...</span>
+                            <span className="text-xs text-blue-600 shrink-0">検証中...</span>
                           ) : (
                             <button
                               onClick={() => handleSubmitRequest(item)}
-                              className="text-xs text-blue-400 hover:text-blue-300 shrink-0 whitespace-nowrap"
+                              className="text-xs text-blue-600 hover:text-blue-700 shrink-0 whitespace-nowrap"
                             >
                               登録リクエスト
                             </button>
@@ -279,14 +279,14 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
           <div className="flex gap-3">
             <button
               onClick={() => { setStep('paste'); setAllocated([]); setRawHoldings([]); setWarnings([]); }}
-              className="flex-1 py-3 bg-slate-800 border border-slate-700 rounded-2xl text-sm text-slate-400 hover:bg-slate-700"
+              className="flex-1 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-600 hover:bg-gray-100"
             >
               やり直す
             </button>
             <button
               onClick={() => setStep('confirm')}
               disabled={unclassified.length > 0 && !allUnclassifiedHandled}
-              className="flex-[2] py-3 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-2xl font-bold text-sm hover:opacity-90 disabled:opacity-40"
+              className="flex-[2] py-3 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-2xl font-bold text-sm hover:opacity-90 disabled:opacity-40 text-white"
             >
               {unclassified.length > 0 && !allUnclassifiedHandled
                 ? '未分類を全て選択してください'
@@ -303,12 +303,12 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
             <WarningList items={[`${clampedLabels.join('・')}は合計がマイナスのため、0円にしました`]} />
           )}
 
-          <div className="bg-slate-900 rounded-2xl p-4">
-            <h3 className="text-sm text-slate-400 mb-3">アセットクラス別 合計</h3>
+          <div className="bg-gray-50 rounded-2xl p-4">
+            <h3 className="text-sm text-gray-600 mb-3">アセットクラス別 合計</h3>
             {ASSET_CLASSES.filter(ac => summary[ac.key] > 0).map(ac => (
-              <div key={ac.key} className="flex justify-between py-2 border-b border-slate-800 last:border-0">
+              <div key={ac.key} className="flex justify-between py-2 border-b border-gray-200 last:border-0">
                 <span className="text-sm">{ac.label}</span>
-                <span className="text-emerald-400 text-sm">{formatCurrency(summary[ac.key])}</span>
+                <span className="text-emerald-700 text-sm">{formatCurrency(summary[ac.key])}</span>
               </div>
             ))}
           </div>
@@ -318,20 +318,20 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
           <div className="flex gap-3">
             <button
               onClick={() => setStep('preview')}
-              className="flex-1 py-3 bg-slate-800 border border-slate-700 rounded-2xl text-sm text-slate-400 hover:bg-slate-700"
+              className="flex-1 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-600 hover:bg-gray-100"
             >
               戻る
             </button>
             <button
               onClick={handleConfirm}
               disabled={!hasBalance}
-              className="flex-[2] py-4 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-2xl font-bold text-lg hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-[2] py-4 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-2xl font-bold text-lg hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed text-white"
             >
               この内容で保存する
             </button>
           </div>
           {!hasBalance && (
-            <p role="alert" className="text-sm text-amber-300 text-center">
+            <p role="alert" className="text-sm text-amber-700 text-center">
               保存できる残高がありません
             </p>
           )}
@@ -341,17 +341,17 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
       {/* Yahoo Finance検証NG確認ダイアログ */}
       {confirmTicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-sm bg-slate-900 rounded-xl border border-slate-700 p-5">
-            <p className="text-sm text-orange-300 mb-3">
+          <div className="w-full max-w-sm bg-gray-50 rounded-xl border border-gray-200 p-5">
+            <p className="text-sm text-orange-700 mb-3">
               ティッカー「{confirmTicker.ticker}」はYahoo Financeで確認できませんでした。
             </p>
-            <p className="text-xs text-slate-400 mb-4">
+            <p className="text-xs text-gray-600 mb-4">
               正しい場合はそのまま送信できますが、管理者の確認が必要になります。
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmTicker(null)}
-                className="flex-1 py-2.5 text-sm text-slate-400 border border-slate-600 rounded-lg hover:bg-slate-800"
+                className="flex-1 py-2.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 キャンセル
               </button>
@@ -368,7 +368,7 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
 
       <button
         onClick={onCancel}
-        className="w-full py-2 text-xs text-slate-500 hover:text-slate-300"
+        className="w-full py-2 text-xs text-gray-500 hover:text-gray-900"
       >
         手動入力に戻る
       </button>

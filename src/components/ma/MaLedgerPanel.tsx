@@ -59,45 +59,45 @@ export default function MaLedgerPanel({ rows, failed, legacyBalance, currentMont
   };
 
   return (
-    <div className="bg-amber-900/30 border-2 border-amber-500/50 rounded-2xl p-4 mb-4">
+    <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 mb-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-2xl">💰</span>
           <div>
-            <div className="text-xs text-amber-300/70 uppercase tracking-wide">待機資金（想定）</div>
-            <div className="text-amber-200 text-sm mt-0.5">暴落時に投入 高値比 −20%・−30%→1/3、−40%→全額</div>
+            <div className="text-xs text-amber-700/70 uppercase tracking-wide">待機資金（想定）</div>
+            <div className="text-amber-800 text-sm mt-0.5">暴落時に投入 高値比 −20%・−30%→1/3、−40%→全額</div>
           </div>
         </div>
-        <div className="text-2xl font-bold text-amber-300">{formatCurrency(balance)}</div>
+        <div className="text-2xl font-bold text-amber-700">{formatCurrency(balance)}</div>
       </div>
-      <p className="text-xs text-amber-200/80 mt-2">
+      <p className="text-xs text-amber-800/80 mt-2">
         {latest ? `${monthLabel(latest.month)}末の時点。` : ''}
         配分どおりに積み立てた前提の累計です。毎月の記録は25日の月次メールで作ります（この画面の計算は下書きで、保存しません）。
       </p>
-      <p className="text-xs text-amber-200/80 mt-1">
+      <p className="text-xs text-amber-800/80 mt-1">
         最後に実際の残高で合わせた月：
         {matched
           ? `${monthLabel(matched.month)}末 ${formatCurrency(matched.override_balance ?? 0)}（想定との差 ${(matched.override_balance ?? 0) - matched.closing_balance >= 0 ? '+' : '−'}${formatCurrency(Math.abs((matched.override_balance ?? 0) - matched.closing_balance))}）`
           : 'まだ合わせていません'}
       </p>
-      {failed && <p className="text-xs text-red-300 mt-1">台帳を読めませんでした（通信の失敗など）。表示は保存済みの残高です。</p>}
+      {failed && <p className="text-xs text-red-700 mt-1">台帳を読めませんでした（通信の失敗など）。表示は保存済みの残高です。</p>}
 
       {!failed && (
         <div className="mt-3">
           {!open ? (
             <div className="flex gap-2 flex-wrap">
-              <button onClick={() => setOpen(true)} className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-lg text-sm font-bold">
+              <button onClick={() => setOpen(true)} className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-lg text-sm font-bold text-white">
                 実際の残高に合わせる
               </button>
               {latest?.override_balance != null && (
-                <button onClick={() => save(null)} disabled={busy} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm">
+                <button onClick={() => save(null)} disabled={busy} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">
                   {monthLabel(latest.month)}末の上書きを取り消す
                 </button>
               )}
             </div>
           ) : (
             <div className="space-y-2">
-              <p className="text-sm text-amber-100">{monthLabel(targetMonth)}末の実際の待機資金の残高</p>
+              <p className="text-sm text-amber-900">{monthLabel(targetMonth)}末の実際の待機資金の残高</p>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -105,21 +105,21 @@ export default function MaLedgerPanel({ rows, failed, legacyBalance, currentMont
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="例 1234567"
-                  className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-white"
+                  className="flex-1 bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-gray-900"
                 />
-                <button onClick={submit} disabled={busy} className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-lg text-sm font-bold">
+                <button onClick={submit} disabled={busy} className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-lg text-sm font-bold text-white">
                   保存
                 </button>
-                <button onClick={() => setOpen(false)} className="px-3 py-1.5 bg-slate-700 rounded-lg text-sm">
+                <button onClick={() => setOpen(false)} className="px-3 py-1.5 bg-gray-100 rounded-lg text-sm">
                   やめる
                 </button>
               </div>
-              <p className="text-xs text-slate-400">想定の残高は残します。翌月からはこの額から積み直します。暴落ルールの段階と基準残高は変えません。</p>
+              <p className="text-xs text-gray-600">想定の残高は残します。翌月からはこの額から積み直します。暴落ルールの段階と基準残高は変えません。</p>
             </div>
           )}
         </div>
       )}
-      {message && <p className="text-xs text-amber-100 mt-2">{message}</p>}
+      {message && <p className="text-xs text-amber-900 mt-2">{message}</p>}
     </div>
   );
 }
