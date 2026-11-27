@@ -54,7 +54,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
 
-        {/* デスクトップ ナビ (md 以上)。項目が7つあり見出しと同じ行に収まらないので、下の行に出す（FI_project #142） */}
+        {/* デスクトップ ナビ (md 以上)。ツールが6つあり見出しと同じ行に収まらないので、下の行に出す（FI_project #142） */}
         <nav className="hidden md:flex w-full gap-1 lg:gap-2">
           <Link to="/" className={navLinkClass('/')}>
             シミュレーション
@@ -73,9 +73,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </Link>
           <Link to="/rb" className={navLinkClass('/rb')}>
             リバランス
-          </Link>
-          <Link to="/about" className={navLinkClass('/about')}>
-            運営者について
           </Link>
         </nav>
 
@@ -100,9 +97,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </Link>
               <Link to="/rb" onClick={closeMenu} className={mobileNavLinkClass('/rb')}>
                 リバランス
-              </Link>
-              <Link to="/about" onClick={closeMenu} className={mobileNavLinkClass('/about')}>
-                運営者について
               </Link>
 
               <div className="border-t border-gray-200 mt-2 pt-3 px-6 pb-4">
