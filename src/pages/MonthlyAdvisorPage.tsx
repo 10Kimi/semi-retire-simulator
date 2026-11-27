@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import Layout from '../components/Layout';
 import UserStatusBar from '../components/UserStatusBar';
 import type {
   Indicators,
@@ -26,7 +27,16 @@ import { draftLedgerMonth, ledgerMonthlyCalc, latestRow, nextMonth, seedFromLega
 import { fetchLedger, insertSeedWithOverride, setLedgerOverride } from '../lib/ma/ledgerDb';
 import MaLedgerPanel from '../components/ma/MaLedgerPanel';
 
+// 共通のメニューを、読み込み中・戻す画面を含む全部の画面の上に出す（FI_project #142）
 export default function MonthlyAdvisorPage() {
+  return (
+    <Layout>
+      <MonthlyAdvisorPageContent />
+    </Layout>
+  );
+}
+
+function MonthlyAdvisorPageContent() {
   const { user } = useAuth();
   const [indicators, setIndicators] = useState<Indicators | null>(null);
   const [settings, setSettings] = useState<UserMaSettings | null>(null);

@@ -13,7 +13,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const closeMenu = () => setIsMenuOpen(false);
 
   const navLinkClass = (path: string) =>
-    `text-xs md:text-sm px-2 py-1 md:px-3 md:py-1.5 rounded-md font-medium transition-colors ${
+    `whitespace-nowrap text-xs lg:text-sm px-2 py-1 lg:px-3 lg:py-1.5 rounded-md font-medium transition-colors ${
       location.pathname === path
         ? 'bg-blue-50 text-blue-700'
         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
@@ -28,7 +28,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="relative bg-white border-b border-gray-200 px-3 py-2 md:px-4 md:py-3 flex items-center justify-between gap-2">
+      <header className="relative bg-white border-b border-gray-200 px-3 py-2 md:px-4 md:py-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 md:gap-4 min-w-0">
           <div className="shrink-0">
             <h1 className="text-sm md:text-lg font-bold text-gray-800">
@@ -36,21 +36,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </h1>
             <p className="text-xs text-gray-500 hidden sm:block">Wealth Program</p>
           </div>
-          {/* デスクトップ ナビ (md 以上) */}
-          <nav className="hidden md:flex gap-1 md:gap-2 shrink-0">
-            <Link to="/" className={navLinkClass('/')}>
-              シミュレーション
-            </Link>
-            <Link to="/risk" className={navLinkClass('/risk')}>
-              リスク診断
-            </Link>
-            <Link to="/pf" className={navLinkClass('/pf')}>
-              PF診断
-            </Link>
-            <Link to="/about" className={navLinkClass('/about')}>
-              運営者について
-            </Link>
-          </nav>
         </div>
 
         {/* デスクトップ ログイン/ステータスバー (md 以上) */}
@@ -69,6 +54,31 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
 
+        {/* デスクトップ ナビ (md 以上)。項目が7つあり見出しと同じ行に収まらないので、下の行に出す（FI_project #142） */}
+        <nav className="hidden md:flex w-full gap-1 lg:gap-2">
+          <Link to="/" className={navLinkClass('/')}>
+            シミュレーション
+          </Link>
+          <Link to="/risk" className={navLinkClass('/risk')}>
+            リスク診断
+          </Link>
+          <Link to="/pf" className={navLinkClass('/pf')}>
+            PF診断
+          </Link>
+          <Link to="/portfolio" className={navLinkClass('/portfolio')}>
+            ポートフォリオ
+          </Link>
+          <Link to="/ma" className={navLinkClass('/ma')}>
+            月次アドバイザー
+          </Link>
+          <Link to="/rb" className={navLinkClass('/rb')}>
+            リバランス
+          </Link>
+          <Link to="/about" className={navLinkClass('/about')}>
+            運営者について
+          </Link>
+        </nav>
+
         {/* モバイル ドロップダウンメニュー */}
         {isMenuOpen && (
           <div className="md:hidden absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-md z-50">
@@ -81,6 +91,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </Link>
               <Link to="/pf" onClick={closeMenu} className={mobileNavLinkClass('/pf')}>
                 PF診断
+              </Link>
+              <Link to="/portfolio" onClick={closeMenu} className={mobileNavLinkClass('/portfolio')}>
+                ポートフォリオ
+              </Link>
+              <Link to="/ma" onClick={closeMenu} className={mobileNavLinkClass('/ma')}>
+                月次アドバイザー
+              </Link>
+              <Link to="/rb" onClick={closeMenu} className={mobileNavLinkClass('/rb')}>
+                リバランス
               </Link>
               <Link to="/about" onClick={closeMenu} className={mobileNavLinkClass('/about')}>
                 運営者について

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import Layout from '../components/Layout';
 import UserStatusBar from '../components/UserStatusBar';
 import { ASSET_CLASSES, MODEL_ALLOCATIONS, MODEL_META } from '../lib/rb/types';
 import type { Holdings, TargetAllocation, DeviationItem, AdjustmentItem, AdjustmentMode } from '../lib/rb/types';
@@ -108,7 +109,16 @@ function MaReserveNote({ source }: { source: MaReserveSource }) {
   return <p className={`text-xs ${warn ? 'text-amber-400' : 'text-slate-500'}`}>{text[source]}</p>;
 }
 
+// 共通のメニューを、読み込み中・戻す画面を含む全部の画面の上に出す（FI_project #142）
 export default function RebalancePage() {
+  return (
+    <Layout>
+      <RebalancePageContent />
+    </Layout>
+  );
+}
+
+function RebalancePageContent() {
   const { user } = useAuth();
   const [step, setStep] = useState<Step>('input');
   const [overYearOpen, setOverYearOpen] = useState(false);
