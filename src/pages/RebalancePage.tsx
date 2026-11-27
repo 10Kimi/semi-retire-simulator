@@ -373,7 +373,7 @@ function RebalancePageContent() {
             {/* 目標配分更新バナー */}
             {showTargetUpdateBanner && (
               <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 mb-4">
-                <p className="text-sm text-amber-800 mb-2">モデル配分が更新されました。目標配分を再設定してください。</p>
+                <p className="text-sm text-amber-800 mb-2">保存した目標配分は、いまのモデル配分と違います。自分で調整した配分ならそのままで大丈夫です。モデル配分を使っていた場合は、/risk か /portfolio で採用し直してください。</p>
                 <button
                   onClick={() => { setShowTargetUpdateBanner(false); setStep('target'); }}
                   className="text-xs text-amber-700 hover:text-amber-700 underline"

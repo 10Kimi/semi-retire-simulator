@@ -1,10 +1,13 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import AllocationDisclaimer from '../components/AllocationDisclaimer';
 import { ASSET_CLASSES, MODEL_ALLOCATIONS, MODEL_META } from '../lib/rb/types';
-import type { AssetClassKey } from '../lib/rb/types';
+import type { AssetClassKey, TargetAllocation } from '../lib/rb/types';
+import { fetchTargetAllocation, saveTargetAllocation } from '../lib/rb/db';
+import { isCompleteTarget, percentsFromAmounts } from '../lib/rb/adopt';
 import { calcVolatility, calcExpectedReturn, computeResult, RISK_FREE_RATE, VOL_UPPER, FALLBACK_MARKET } from '../logic/portfolioCustomize';
 import type { MarketParams, AnalysisResult } from '../logic/portfolioCustomize';
 import { loadLatestRisk } from '../lib/riskDb';
@@ -34,6 +37,13 @@ export default function PortfolioCustomizePage() {
       }
     });
   }, []);
+
+  // 採用した配分（user_rb_settings、/rb の目標配分と同じ）。undefined = 読み込み中、null = 無い（D-099）
+  const [adopted, setAdopted] = useState<TargetAllocation | null | undefined>(undefined);
+  useEffect(() => {
+    if (!user) return;
+    fetchTargetAllocation(user.id).then(t => setAdopted(isCompleteTarget(t) ? t : null));
+  }, [user]);
 
   const market = marketData ?? FALLBACK_MARKET;
   const baseLevel = userLevel ?? 4;
@@ -87,8 +97,9 @@ export default function PortfolioCustomizePage() {
     return { total, weights, result: computeResult(weights, baseLevel, market) };
   }, [heldAmounts, baseLevel, market]);
 
+  // 採用した配分があればそこから、無ければレベルのモデル配分から始める（D-099）
   useEffect(() => {
-    const base = MODEL_ALLOCATIONS[baseLevel] ?? MODEL_ALLOCATIONS[4];
+    const base = adopted ?? MODEL_ALLOCATIONS[baseLevel] ?? MODEL_ALLOCATIONS[4];
     const init: Record<string, number> = {};
     const keys: string[] = [];
     ASSET_CLASSES.forEach(ac => {
@@ -101,7 +112,7 @@ export default function PortfolioCustomizePage() {
     setEditingHeld(true);
     setAdjustedOptimal(false);
     setResult(null);
-  }, [baseLevel]);
+  }, [baseLevel, adopted]);
 
   const totalPercent = ASSET_CLASSES.reduce((s, ac) => s + (alloc[ac.key] ?? 0), 0);
   const totalAmount = ASSET_CLASSES.reduce((s, ac) => s + (amounts[ac.key] ?? 0), 0);
@@ -262,6 +273,34 @@ export default function PortfolioCustomizePage() {
     }, 10);
   }, [result, mcInitialAsset, mcMonthly, mcYears, optimal]);
 
+  // 「この配分を採用する」の対象（D-099）。％の配分、または金額モードの最適配分の試行・調整後。
+  // 金額モードで入力欄が保有中のPFのときは対象にしない（目標にしても /rb で差が出ないため）
+  const adoptCandidate = useMemo<TargetAllocation | null>(() => {
+    if (inputMode === 'percent') {
+      if (!isValid) return null;
+      const t: TargetAllocation = {};
+      ASSET_CLASSES.forEach(ac => { t[ac.key] = alloc[ac.key] ?? 0; });
+      return t;
+    }
+    if (editingHeld) return null;
+    return percentsFromAmounts(amounts);
+  }, [inputMode, isValid, alloc, editingHeld, amounts]);
+  const adoptOverLimit = useMemo(() => {
+    if (!adoptCandidate) return false;
+    const w: Record<string, number> = {};
+    ASSET_CLASSES.forEach(ac => { w[ac.key] = (adoptCandidate[ac.key] ?? 0) / 100; });
+    return computeResult(w, baseLevel, market).overLimit;
+  }, [adoptCandidate, baseLevel, market]);
+  const [adoptStep, setAdoptStep] = useState<'idle' | 'confirm' | 'saving' | 'done' | 'failed'>('idle');
+  const adoptKey = adoptCandidate ? JSON.stringify(adoptCandidate) : '';
+  useEffect(() => { setAdoptStep('idle'); }, [adoptKey]);
+  const handleAdopt = useCallback(async () => {
+    if (!user || !adoptCandidate) return;
+    setAdoptStep('saving');
+    const ok = await saveTargetAllocation(user.id, adoptCandidate);
+    setAdoptStep(ok ? 'done' : 'failed');
+  }, [user, adoptCandidate]);
+
   const availableToAdd = ASSET_CLASSES.filter(ac => !activeKeys.includes(ac.key));
   const volLimit = VOL_UPPER[baseLevel] ?? 100;
 
@@ -286,7 +325,11 @@ export default function PortfolioCustomizePage() {
       <main className="max-w-lg mx-auto px-4 py-6 md:py-10">
         <div className="text-center mb-6">
           <h1 className="text-xl font-bold text-gray-800 mb-1">ポートフォリオ カスタマイズ</h1>
-          {userLevel && (
+          {adopted ? (
+            <p className="text-xs text-gray-500">
+              採用中の配分を表示しています{userLevel ? `（あなたのリスク許容度：Lv${userLevel} ${MODEL_META[userLevel]?.name ?? ''}）` : ''}
+            </p>
+          ) : userLevel && (
             <p className="text-xs text-gray-500">
               Lv{userLevel} {MODEL_META[userLevel]?.name} をベースに調整
             </p>
@@ -437,6 +480,58 @@ export default function PortfolioCustomizePage() {
               </button>
             </div>
           </div>
+
+          {/* この配分を採用する（/rb の目標配分にもなる、D-099） */}
+          {adoptCandidate ? (
+            <div className="bg-white rounded-xl border border-gray-200 p-5 text-center space-y-3">
+              {adoptStep === 'done' ? (
+                <>
+                  <p className="text-sm font-medium text-emerald-700">✓ 採用しました。リバランス（/rb）の目標配分に設定されました</p>
+                  <Link to="/rb" className="inline-block text-sm text-blue-600 hover:text-blue-800 font-medium">リバランスへ進む →</Link>
+                </>
+              ) : adoptStep === 'confirm' || adoptStep === 'saving' || adoptStep === 'failed' ? (
+                <>
+                  <p className="text-sm text-gray-700">採用すると、リバランス（/rb）の目標配分もこの配分に置き換わります。</p>
+                  {adoptOverLimit && (
+                    <p role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
+                      この配分は、あなたのリスク許容度（Lv{baseLevel}・上限{volLimit}%）を超えています。
+                    </p>
+                  )}
+                  {adoptStep === 'failed' && (
+                    <p role="alert" className="text-sm text-red-700">保存できませんでした。もう一度お試しください</p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setAdoptStep('idle')}
+                      disabled={adoptStep === 'saving'}
+                      className="flex-1 py-3 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 min-h-[44px]"
+                    >
+                      やめる
+                    </button>
+                    <button
+                      onClick={handleAdopt}
+                      disabled={adoptStep === 'saving'}
+                      className="flex-1 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold disabled:opacity-50 min-h-[44px]"
+                    >
+                      {adoptStep === 'saving' ? '保存中...' : '採用する'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <button
+                  onClick={() => setAdoptStep('confirm')}
+                  disabled={!user}
+                  className="w-full py-3 rounded-lg border border-blue-600 text-blue-700 text-sm font-semibold hover:bg-blue-50 min-h-[44px]"
+                >
+                  この配分を採用する
+                </button>
+              )}
+            </div>
+          ) : inputMode === 'amount' && editingHeld && totalAmount > 0 && (
+            <p className="text-xs text-gray-500 text-center">
+              保有中のPFはそのまま採用できません。「最適配分にする」で試した配分や、調整した配分を採用できます。
+            </p>
+          )}
 
           {/* 保有中のPF カード（クリックで開閉。折りたたみ時は合計・Lvの1行サマリーのみ） */}
           {heldInfo && !editingHeld && (
