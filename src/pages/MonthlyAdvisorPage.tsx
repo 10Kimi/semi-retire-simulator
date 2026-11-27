@@ -472,7 +472,7 @@ function MonthlyAdvisorPageContent() {
                 const slot = settings[slotKey];
                 const isNisa = isTaxAdvantaged(slot.account);
                 return (
-                  <div key={slotKey} className="bg-white rounded-lg p-3 space-y-2">
+                  <div key={slotKey} className="bg-white border border-gray-200 rounded-lg p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <label className="text-sm text-gray-600">{SLOT_LABELS[slotKey]}</label>
@@ -689,7 +689,7 @@ function MonthlyAdvisorPageContent() {
               placeholder={settings.jp_index === 'nikkei' ? '例: 1.90' : '1.69'}
             />
             {settings.jp_index === 'nikkei' && (
-              <div className="mt-2 p-2.5 rounded-lg bg-white text-xs space-y-2">
+              <div className="mt-2 p-2.5 rounded-lg bg-white border border-gray-200 text-xs space-y-2">
                 {settings.nikkei_pbr_anchor != null && nikkeiEstimate != null ? (
                   <p className="text-gray-600">
                     推定PBR <b className="text-gray-900">{nikkeiEstimate}</b>
@@ -898,7 +898,7 @@ function MonthlyAdvisorPageContent() {
                 { label: '新興国株 最終倍率', value: `${result.details.emMultiplier.toFixed(2)}x` },
                 { label: 'ゴールド 最終倍率', value: `${result.details.goldMultiplier.toFixed(2)}x` },
               ].map(({ label, value }) => (
-                <div key={label} className="bg-white rounded-lg px-4 py-3 flex justify-between">
+                <div key={label} className="bg-white border border-gray-200 rounded-lg px-4 py-3 flex justify-between">
                   <span className="text-gray-600 text-sm">{label}</span>
                   <span className="font-medium">{value}</span>
                 </div>

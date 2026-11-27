@@ -34,7 +34,7 @@ function AdjustmentList({ items }: { items: AdjustmentItem[] }) {
           actionLabel = item.amount > 0 ? '追加' : '売却';
         }
         return (
-          <div key={item.key} className="bg-white rounded-lg px-4 py-3 flex justify-between items-center">
+          <div key={item.key} className="bg-white border border-gray-200 rounded-lg px-4 py-3 flex justify-between items-center">
             <span className="text-sm">{item.label}</span>
             <span className={`text-sm font-medium ${item.amount > 0 ? 'text-emerald-700' : 'text-red-600'}`}>
               {formatThousands(item.amount)} {actionLabel}
@@ -455,7 +455,7 @@ function RebalancePageContent() {
                     </select>
                   </div>
                   {(livingCostNum > 0 || emergency.reserveFund > 0) && (
-                    <div className="bg-white rounded-lg p-3 space-y-1">
+                    <div className="bg-white border border-gray-200 rounded-lg p-3 space-y-1">
                       {livingCostNum > 0 && (
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-600">緊急資金</span>
@@ -534,7 +534,7 @@ function RebalancePageContent() {
               </div>
 
               {selectedPreset && (
-                <div className="bg-white rounded-lg p-3 mb-4 space-y-2">
+                <div className="bg-white border border-gray-200 rounded-lg p-3 mb-4 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">期待リターン（計算上の目安）</span>
                     <span className="text-emerald-700 font-medium">{MODEL_META[selectedPreset].expectedReturn}%</span>
@@ -769,7 +769,7 @@ function RebalancePageContent() {
                         {plan.monthlyCashDeposit > 0 && (
                           <p className="text-xs text-gray-600">現金のまま置く（毎月）：{formatThousands(plan.monthlyCashDeposit)}</p>
                         )}
-                        <div className="bg-white rounded-lg px-4 py-3 text-center">
+                        <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 text-center">
                           {isOverTenYears(months)
                             ? <p className="text-sm text-gray-700">このペースでは、完了まで<span className="text-amber-700 font-bold">10年を超えます</span>（計算上の目安）</p>
                             : <p className="text-sm text-gray-700">
@@ -897,7 +897,7 @@ function RebalancePageContent() {
                               <p className="text-xs text-red-600 mb-2">売却（毎月・分散）</p>
                               <div className="space-y-2">
                                 {sellRows.map(r => (
-                                  <div key={r.key} className="bg-white rounded-lg px-4 py-3 flex justify-between items-center gap-3">
+                                  <div key={r.key} className="bg-white border border-gray-200 rounded-lg px-4 py-3 flex justify-between items-center gap-3">
                                     <span className="text-sm">{r.label}</span>
                                     <span className="text-sm font-medium text-red-600 text-right">{formatPeriodSellRow(r, N)}</span>
                                   </div>
@@ -918,7 +918,7 @@ function RebalancePageContent() {
                             <p className="text-xs text-gray-600">現金のまま置く：{formatThousands(periodResult.monthlyCashDeposit)}</p>
                           )}
 
-                          <div className="bg-white rounded-lg px-4 py-3 text-center">
+                          <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 text-center">
                             <p className="text-sm text-gray-700">
                               完了予定：<span className="text-emerald-700 font-bold">{periodResult.months}ヶ月後</span>
                               {completionDate && <span className="text-gray-500">（{completionDate}）</span>}

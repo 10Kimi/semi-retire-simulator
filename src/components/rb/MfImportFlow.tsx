@@ -191,7 +191,7 @@ export default function MfImportFlow({ onImportComplete, onCancel }: Props) {
             {classified.length > 0 && (
               <div className="space-y-1 mb-4">
                 {classified.map((item, i) => (
-                  <div key={i} className="bg-white rounded-lg px-3 py-2 flex items-center justify-between text-sm">
+                  <div key={i} className="bg-white border border-gray-200 rounded-lg px-3 py-2 flex items-center justify-between text-sm">
                     <div className="min-w-0">
                       <span className="text-gray-700 truncate block">{item.holding.name}</span>
                       {item.holding.ticker && (

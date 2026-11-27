@@ -3,12 +3,14 @@ import { Link, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import UserStatusBar from './UserStatusBar';
 import Footer from './Footer';
+import PasswordChangeModal from './PasswordChangeModal';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   const closeMenu = () => setIsMenuOpen(false);
 
@@ -116,6 +118,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <button
                       type="button"
                       onClick={() => {
+                        setShowPasswordModal(true);
+                        closeMenu();
+                      }}
+                      className="w-full border border-gray-300 text-gray-700 hover:bg-gray-100 font-bold py-3 rounded-lg transition-colors"
+                    >
+                      パスワード変更
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
                         signOut();
                         closeMenu();
                       }}
@@ -130,6 +142,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         )}
       </header>
+      {showPasswordModal && <PasswordChangeModal onClose={() => setShowPasswordModal(false)} />}
       <div className="flex-1">{children}</div>
       <Footer />
     </div>

@@ -81,7 +81,7 @@ export default function MaVaultPanel({ status, onSetup, onUnlock, onReset }: Pro
           パスフレーズを忘れた
         </button>
       ) : (
-        <div className="bg-white rounded-lg p-3">
+        <div className="bg-white border border-gray-200 rounded-lg p-3">
           <p className="text-gray-700">
             サーバーに保存した暗号文を消して、パスフレーズを設定し直します。消した金額は戻せません。
             {status === 'restore-needed'
