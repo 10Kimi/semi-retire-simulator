@@ -14,6 +14,12 @@ describe('percentsFromAmounts（/portfolio の採用、D-099）', () => {
     const t = percentsFromAmounts({ cash: 1, us_equity: 2 })!;
     ASSET_CLASSES.forEach(ac => expect(Math.round(t[ac.key] * 10)).toBeCloseTo(t[ac.key] * 10, 9));
   });
+  it('マイナスの金額は0として扱い、マイナスの割合を出さない', () => {
+    const t = percentsFromAmounts({ us_equity: 1, japan_bond: -1, gold: 4 })!;
+    expect(t.japan_bond).toBe(0);
+    expect(t.us_equity).toBe(20);
+    expect(t.gold).toBe(80);
+  });
   it('金額が全部0なら null', () => {
     expect(percentsFromAmounts({})).toBeNull();
   });

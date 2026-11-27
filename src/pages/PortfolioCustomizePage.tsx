@@ -21,12 +21,15 @@ export default function PortfolioCustomizePage() {
   // 資産パラメータ（DB: asset_class_params）。/pf と同じ値でボラ等を算出するため取得する。
   const [marketData, setMarketData] = useState<MarketParams | null>(null);
 
+  // 診断のレベルを読み終えたか（初期化は、レベルと採用した配分の両方を読み終えてから1回だけ行う）
+  const [riskLoaded, setRiskLoaded] = useState(false);
+  const userId = user?.id;
   useEffect(() => {
-    if (!user) return;
-    loadLatestRisk(user.id).then(data => {
-      if (data?.final_level) setUserLevel(data.final_level);
-    });
-  }, [user]);
+    if (!userId) return;
+    loadLatestRisk(userId)
+      .then(data => { if (data?.final_level) setUserLevel(data.final_level); })
+      .finally(() => setRiskLoaded(true));
+  }, [userId]);
 
   // マウント時に asset_class_params を読み込む（取得失敗時はフォールバック定数のまま）
   useEffect(() => {
@@ -39,11 +42,21 @@ export default function PortfolioCustomizePage() {
   }, []);
 
   // 採用した配分（user_rb_settings、/rb の目標配分と同じ）。undefined = 読み込み中、null = 無い（D-099）
+  // initialAdopted は開いたときに読んだもので、入力欄の初期値に使う。adopted は見出し用で、採用に成功したら更新する
+  // （initialAdopted まで更新すると入力欄が初期化され、金額モードの保有中のPFが消えるため分ける）
+  const [initialAdopted, setInitialAdopted] = useState<TargetAllocation | null | undefined>(undefined);
   const [adopted, setAdopted] = useState<TargetAllocation | null | undefined>(undefined);
+  // ログインの状態の更新（トークンの更新など）で user が作り直されても読み直さない（入力欄が初期化されるため）
   useEffect(() => {
-    if (!user) return;
-    fetchTargetAllocation(user.id).then(t => setAdopted(isCompleteTarget(t) ? t : null));
-  }, [user]);
+    if (!userId) return;
+    fetchTargetAllocation(userId)
+      .then(t => {
+        const v = isCompleteTarget(t) ? t : null;
+        setInitialAdopted(v);
+        setAdopted(v);
+      })
+      .catch(() => { setInitialAdopted(null); setAdopted(null); });
+  }, [userId]);
 
   const market = marketData ?? FALLBACK_MARKET;
   const baseLevel = userLevel ?? 4;
@@ -99,7 +112,8 @@ export default function PortfolioCustomizePage() {
 
   // 採用した配分があればそこから、無ければレベルのモデル配分から始める（D-099）
   useEffect(() => {
-    const base = adopted ?? MODEL_ALLOCATIONS[baseLevel] ?? MODEL_ALLOCATIONS[4];
+    if (!riskLoaded || initialAdopted === undefined) return;
+    const base = initialAdopted ?? MODEL_ALLOCATIONS[baseLevel] ?? MODEL_ALLOCATIONS[4];
     const init: Record<string, number> = {};
     const keys: string[] = [];
     ASSET_CLASSES.forEach(ac => {
@@ -112,7 +126,7 @@ export default function PortfolioCustomizePage() {
     setEditingHeld(true);
     setAdjustedOptimal(false);
     setResult(null);
-  }, [baseLevel, adopted]);
+  }, [baseLevel, initialAdopted, riskLoaded]);
 
   const totalPercent = ASSET_CLASSES.reduce((s, ac) => s + (alloc[ac.key] ?? 0), 0);
   const totalAmount = ASSET_CLASSES.reduce((s, ac) => s + (amounts[ac.key] ?? 0), 0);
@@ -283,23 +297,38 @@ export default function PortfolioCustomizePage() {
       return t;
     }
     if (editingHeld) return null;
+    // 「最適配分にする」のまま調整していなければ、万円に丸めた金額から割り戻さずモデル配分そのものを採用する
+    // （割り戻すと0.1%ずれ、/rb で「モデル配分と違う」と出るため）
+    if (!adjustedOptimal) {
+      const base = MODEL_ALLOCATIONS[baseLevel] ?? MODEL_ALLOCATIONS[4];
+      const t: TargetAllocation = {};
+      ASSET_CLASSES.forEach(ac => { t[ac.key] = base[ac.key] ?? 0; });
+      return t;
+    }
     return percentsFromAmounts(amounts);
-  }, [inputMode, isValid, alloc, editingHeld, amounts]);
+  }, [inputMode, isValid, alloc, editingHeld, adjustedOptimal, baseLevel, amounts]);
   const adoptOverLimit = useMemo(() => {
     if (!adoptCandidate) return false;
     const w: Record<string, number> = {};
     ASSET_CLASSES.forEach(ac => { w[ac.key] = (adoptCandidate[ac.key] ?? 0) / 100; });
     return computeResult(w, baseLevel, market).overLimit;
   }, [adoptCandidate, baseLevel, market]);
-  const [adoptStep, setAdoptStep] = useState<'idle' | 'confirm' | 'saving' | 'done' | 'failed'>('idle');
+  // 採用の段階は、どの配分についてのものか（key）と一緒に持つ。入力を変えて配分が変われば idle と見なす
+  // （保存中に入力を変えても、いまの配分に「採用しました」を出さない）
+  type AdoptStep = 'idle' | 'confirm' | 'saving' | 'done' | 'failed';
   const adoptKey = adoptCandidate ? JSON.stringify(adoptCandidate) : '';
-  useEffect(() => { setAdoptStep('idle'); }, [adoptKey]);
-  const handleAdopt = useCallback(async () => {
+  const [adoptState, setAdoptState] = useState<{ step: AdoptStep; key: string }>({ step: 'idle', key: '' });
+  const adoptStep: AdoptStep = adoptState.key === adoptKey ? adoptState.step : 'idle';
+  const setAdoptStep = (step: AdoptStep) => setAdoptState({ step, key: adoptKey });
+  const handleAdopt = async () => {
     if (!user || !adoptCandidate) return;
-    setAdoptStep('saving');
-    const ok = await saveTargetAllocation(user.id, adoptCandidate);
-    setAdoptStep(ok ? 'done' : 'failed');
-  }, [user, adoptCandidate]);
+    const key = adoptKey;
+    const target = adoptCandidate;
+    setAdoptState({ step: 'saving', key });
+    const ok = await saveTargetAllocation(user.id, target);
+    if (ok) setAdopted(target);
+    setAdoptState({ step: ok ? 'done' : 'failed', key });
+  };
 
   const availableToAdd = ASSET_CLASSES.filter(ac => !activeKeys.includes(ac.key));
   const volLimit = VOL_UPPER[baseLevel] ?? 100;
@@ -328,6 +357,7 @@ export default function PortfolioCustomizePage() {
           {adopted ? (
             <p className="text-xs text-gray-500">
               採用中の配分を表示しています{userLevel ? `（あなたのリスク許容度：Lv${userLevel} ${MODEL_META[userLevel]?.name ?? ''}）` : ''}
+              <br />（「最適配分に戻す」でモデル配分から始められます）
             </p>
           ) : userLevel && (
             <p className="text-xs text-gray-500">
@@ -356,7 +386,7 @@ export default function PortfolioCustomizePage() {
                 onClick={() => { setInputMode('percent'); setResult(null); }}
                 className={`flex-1 py-1.5 rounded-md font-medium transition-colors ${inputMode === 'percent' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}
               >
-                ％で調整（モデル配分から）
+                ％で調整
               </button>
               <button
                 onClick={() => {
@@ -462,11 +492,11 @@ export default function PortfolioCustomizePage() {
               <div className={`flex justify-between text-sm ${isValid ? 'text-gray-800' : 'text-red-500'}`}>
                 <span>合計</span>
                 <span className="font-bold">
-                  {inputMode === 'percent' ? `${totalPercent}%` : `${totalAmount.toLocaleString()}万円`}
+                  {inputMode === 'percent' ? `${totalPercent.toFixed(1)}%` : `${totalAmount.toLocaleString()}万円`}
                 </span>
               </div>
               {inputMode === 'percent' && !isValid && (
-                <p className="text-xs text-red-500 mt-1">合計: {totalPercent}%（100%になるよう調整してください）</p>
+                <p className="text-xs text-red-500 mt-1">合計: {totalPercent.toFixed(1)}%（100%になるよう調整してください）</p>
               )}
               {inputMode === 'amount' && !isValid && (
                 <p className="text-xs text-red-500 mt-1">保有額を入力してください</p>
@@ -494,7 +524,7 @@ export default function PortfolioCustomizePage() {
                   <p className="text-sm text-gray-700">採用すると、リバランス（/rb）の目標配分もこの配分に置き換わります。</p>
                   {adoptOverLimit && (
                     <p role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
-                      この配分は、あなたのリスク許容度（Lv{baseLevel}・上限{volLimit}%）を超えています。
+                      この配分は、あなたのリスク許容度（Lv{baseLevel}・上限{volLimit}%）を超えています。暴落のとき、想定より大きく下がる可能性があります。
                     </p>
                   )}
                   {adoptStep === 'failed' && (

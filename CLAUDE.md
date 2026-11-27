@@ -147,7 +147,7 @@ DB 層は `rowToSettings` / `settingsToRow` でフラットな行と入れ子の
 大きく動かすときは実践4-1の口座別ワークシートへ誘導する。
 
 ### 採用PF＝全ツールのアンカー
-`/risk` の「このPFを採用する」が `MODEL_ALLOCATIONS[finalLevel]` を `user_rb_settings` に保存し、`/rb` が目標配分として読む（`Docs/計算ロジックの地図.md`）。
+`/risk` の「このPFを採用する」が `MODEL_ALLOCATIONS[finalLevel]` を `user_rb_settings` に保存し、`/rb` が目標配分として読む（`Docs/計算ロジックの地図.md`）。`/portfolio` の「この配分を採用する」も同じ入れ物に割合を保存し、開いたときに採用した配分から始める（D-099）。`/rb` で手入力した目標配分も同じ入れ物に入る。
 - ツールの役割：初回移行＝口座別ワークシート（講座配布物）／毎月の積立＝`/ma`／定期リバランス（6ヶ月〜1年に一度）＝`/rb`
 - `/ma` は holdings も target も読まない。「/ma の積立リバランス」の go/no-go は**実践4-2 の脚本着手時に確定する**（脚本と機能の一致が必須）。実装するなら現在保有の配管が要る
 

@@ -12,10 +12,12 @@ export function isCompleteTarget(target: TargetAllocation | null | undefined): t
 
 /**
  * 金額（万円）から割合（0.1%単位）を出す。丸めのずれは一番大きいクラスで吸収し、合計をちょうど100にする。
- * 金額の合計が0なら null。
+ * 金額の合計が0なら null。マイナスの金額は0として扱う（/rb の目標配分にマイナスを入れないため）。
  */
-export function percentsFromAmounts(amounts: Record<string, number>): TargetAllocation | null {
-  const total = ASSET_CLASSES.reduce((s, ac) => s + (amounts[ac.key] ?? 0), 0);
+export function percentsFromAmounts(input: Record<string, number>): TargetAllocation | null {
+  const amounts: Record<string, number> = {};
+  ASSET_CLASSES.forEach(ac => { amounts[ac.key] = Math.max(0, Number(input[ac.key]) || 0); });
+  const total = ASSET_CLASSES.reduce((s, ac) => s + amounts[ac.key], 0);
   if (total <= 0) return null;
   const out: TargetAllocation = {};
   let maxKey: string = ASSET_CLASSES[0].key;
