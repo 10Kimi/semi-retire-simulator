@@ -173,6 +173,10 @@ scripts/market/.venv/bin/python scripts/optimize_portfolios.py --apply  # DB反�
   DB の最新パラメータで全レベルを照合する。月次のボラ更新ジョブ（launchd）が更新直後に `--notify` 付きで実行する。
   再最適化やしきい値の変更のあとも手で流して確認する（`python3 scripts/check_model_levels.py`、exit 1 なら不一致）
 
+### お知らせ帯（FI_project #136）
+メンテナンス・障害のお知らせは `public/notice.json` の `"message"` に文を書いて push すると、全部の画面の上に帯で出る。消すときは `""` に戻す（DB は使わない。毎回取り直すのでキャッシュは残らない）。
+画面の例外は `ErrorBoundary`（`main.tsx`）が受けて再読み込みを促し、新しい版を出したあとの読み込みの失敗（`vite:preloadError`）は1回だけ自動で再読み込みする（`lib/reloadOnPreloadError.ts`）。
+
 ### マイグレーション
 `supabase/migrations/`（〜043）。**適用は Supabase CLI の `supabase db push`**（2026-11-04、#17。SQL Editor への貼り付けはやめた）。
 CC がマイグレーションを書き、SQL をオーナーに見せ、**OK はオーナーが CC に直接伝える**（claude.ai 経由の回答は DB の変更の許可に使わない）。`db push`・`migration repair` は**オーナーが CC のプロンプトで `!` を付けて実行する**（自動の許可判定が本番 DB の変更を止めるため。2026-11-05、#26）。CC は実行するコマンドを1行で示し（アプリのディレクトリへの `cd` を含める）、適用の前後に `migration list --remote` で確かめる。`db push`・`migration repair` は settings.json の ask、`supabase db query`・`psql` は deny。`supabase login`・`link` はオーナーが行う。Supabase MCP は使わない。CLI は `npx supabase …` で使う（brew は不可）。`db push`・`migration repair`・`migration list` は既定でローカル（Docker）を見るので**必ず `--remote` を付ける**。本番を変える操作はエージェントからだと CLI が `--yes` を求めて止まる（`HostedMutationConsentRequiredError`、何も変わらない）。`--yes` はオーナーの直接の OK のあとだけ付ける（`--yes` 付きの1行を CC が実行せずオーナーに示す）。
