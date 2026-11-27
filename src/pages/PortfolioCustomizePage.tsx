@@ -356,7 +356,7 @@ export default function PortfolioCustomizePage() {
           <h1 className="text-xl font-bold text-gray-800 mb-1">ポートフォリオ カスタマイズ</h1>
           {adopted ? (
             <p className="text-xs text-gray-500">
-              採用中の配分を表示しています{userLevel ? `（あなたのリスク許容度：Lv${userLevel} ${MODEL_META[userLevel]?.name ?? ''}）` : ''}
+              採用中の配分があります{userLevel ? `（あなたのリスク許容度：Lv${userLevel} ${MODEL_META[userLevel]?.name ?? ''}）` : ''}
               <br />（「最適配分に戻す」でモデル配分から始められます）
             </p>
           ) : userLevel && (
