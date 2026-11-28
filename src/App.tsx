@@ -9,6 +9,8 @@ import MonthlyAdvisorPage from './pages/MonthlyAdvisorPage';
 import RebalancePage from './pages/RebalancePage';
 import PortfolioCustomizePage from './pages/PortfolioCustomizePage';
 import AboutPage from './pages/AboutPage';
+import TermsPage from './pages/TermsPage';
+import ApplyPage from './pages/ApplyPage';
 import RiskToleranceLPPage from './pages/tools/RiskToleranceLPPage';
 import RetirementSimulationLPPage from './pages/tools/RetirementSimulationLPPage';
 import Age50sLPPage from './pages/tools/Age50sLPPage';
@@ -49,6 +51,8 @@ function App() {
           <Route path="/tools/age50s" element={<Age50sLPPage />} />
           <Route path="/tools/retirement" element={<RetirementLPPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/apply" element={<ApplyPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="*" element={<AuthGatePage />} />
         </Routes>
@@ -69,6 +73,8 @@ function App() {
           <Route path="/tools/age50s" element={<Age50sLPPage />} />
           <Route path="/tools/retirement" element={<RetirementLPPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/apply" element={<ApplyPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="*" element={<EmailConfirmationPending email={user.email ?? ''} />} />
         </Routes>
@@ -93,6 +99,8 @@ function App() {
         <Route path="/tools/age50s" element={<Age50sLPPage />} />
         <Route path="/tools/retirement" element={<RetirementLPPage />} />
         <Route path="/about" element={<AboutPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/apply" element={<ApplyPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         {/* 有料版で復活予定 */}
         {/* <Route path="/assessment" element={<AssessmentPage />} /> */}
