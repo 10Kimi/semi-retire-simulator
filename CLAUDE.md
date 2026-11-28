@@ -182,7 +182,7 @@ scripts/market/.venv/bin/python scripts/optimize_portfolios.py --apply  # DB反�
 CC がマイグレーションを書き、SQL をオーナーに見せ、**OK はオーナーが CC に直接伝える**（claude.ai 経由の回答は DB の変更の許可に使わない）。`db push`・`migration repair` は**オーナーが CC のプロンプトで `!` を付けて実行する**（自動の許可判定が本番 DB の変更を止めるため。2026-11-05、#26）。CC は実行するコマンドを1行で示し（アプリのディレクトリへの `cd` を含める）、適用の前後に `migration list --remote` で確かめる。`db push`・`migration repair` は settings.json の ask、`supabase db query`・`psql` は deny。`supabase login`・`link` はオーナーが行う。Supabase MCP は使わない。CLI は `npx supabase …` で使う（brew は不可）。`db push`・`migration repair`・`migration list` は既定でローカル（Docker）を見るので**必ず `--remote` を付ける**。本番を変える操作はエージェントからだと CLI が `--yes` を求めて止まる（`HostedMutationConsentRequiredError`、何も変わらない）。`--yes` はオーナーの直接の OK のあとだけ付ける（`--yes` 付きの1行を CC が実行せずオーナーに示す）。
 コード側を push する前に適用すること（逆順だと保存時にエラーになる）。適用を確かめるまでコードは push しない。
 **先に試験用、足す → 入れる → 消す**（2026-11-25、D-091。手順は FI_project の `Docs/DB変更の手順_試験用と足す入れる消す_20261125.md`）：
-- migration は本番の前に試験用に当てる（`npx supabase --workdir staging …`、link は付け替えない。`--workdir staging` が無ければ本番）。画面は Vercel の Preview で確かめる
+- migration は本番の前に試験用に当てる（`npx supabase --workdir staging …`、link は付け替えない。`--workdir staging` が無ければ本番）。画面の確認は固定のアドレス `https://staging.fire.largogk.jp`（`staging` ブランチの Preview、試験用の DB につながる）。確認を頼む前に、確かめたいブランチを `staging` に載せ（強制なしで push、弾かれたらオーナーが `!` で強制 push）、Vercel のデプロイが Ready になるのを見る。`staging` は main に入れない（D-095）
 - 足す → 新しいコードを main に入れる → 古いものを消す、に分ける。消す・名前を変える・型を変えるは、使うコードが本番から無くなったあとの別の migration にする
 - 消す段の前だけ、オーナーが `!` で手動のバックアップを取る
 
